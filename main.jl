@@ -3,15 +3,13 @@ include("cubeData.jl")
 include("camera.jl")
 
 #include("compileAndLink.jl")
+const compileAndLink = isdefined(:createLoop) 
 
 ### PROGRAM ###
 
 println("---------------------------------------------------------------------")
 println("Start Program @ ", Dates.time())
 versioninfo()
-
-#initAll()
-#if true return nothing end
 
 # OS X-specific GLFW hints to initialize the correct version of OpenGL
 GLFW.Init()
@@ -161,9 +159,13 @@ render = function(x)
 		nothing
 end
 
-#objptr = createLoop(1,refblocks,render) #compileAndLink
-
-forloop() = for b in blocks; render(b); end
+if compileAndLink
+	objptr = createLoop(1,refblocks,render) #compileAndLink
+	const loopBlocks() = loopByObject(objptr) #compileAndLink
+else
+	const bb = blocks
+	const loopBlocks() = for b in bb; render(b); end
+end
 
 i=0
 while !GLFW.WindowShouldClose(window)
@@ -176,9 +178,8 @@ while !GLFW.WindowShouldClose(window)
 	glClearColor(c, c, c, 1.0)
 	glClear(GL_COLOR_BUFFER_BIT)
 	
-	#print("loopByObject "); @time
-	#loopByObject(objptr) #compileAndLink
-	forloop()
+	#print("loopBlocks "); @time
+	loopBlocks()
 		
 	# Swap front and back buffers
 	GLFW.SwapBuffers(window)
