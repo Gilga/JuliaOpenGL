@@ -124,21 +124,21 @@ for i=1:COUNT push!(blocks,INDEX()); push!(refblocks, pointer_from_objref(blocks
 x=0; y=0; z=0; w=0;
 
 for b in blocks
-		x += 1
-		if x >= COUNTX
-			y += 1; x=0;
-			if y >= COUNTY z += 1; y=0;
-				if z >= COUNTX w+=1; z=0;
-					if w > 1 error("invalid range"); end
-				end
-			end
-		end
-		
-		b.x = STARTX+dist*x
-		b.y = STARTY+dist*z
-		b.z = STARTZ-dist*y
+ x += 1
+ if x >= COUNTX
+  y += 1; x=0;
+  if y >= COUNTY z += 1; y=0;
+   if z >= COUNTX w+=1; z=0;
+    if w > 1 error("invalid range"); end
+   end
+  end
+ end
+ 
+ b.x = STARTX+dist*x
+ b.y = STARTY+dist*z
+ b.z = STARTZ-dist*y
 
-		b.pos = SMatrix{4,4,Float32}(translation([b.x,b.y,b.z]))
+ b.pos = SMatrix{4,4,Float32}(translation([b.x,b.y,b.z]))
 end
 
 function updateBlocks()
@@ -150,13 +150,13 @@ const ic = icount #optimized
 
 # Loop until the user closes the window
 render = function(x)
-		#mvp = mmvp*MMatrix{4,4,Float32}(unsafe_wrap(Array, mvp, (4,4)))
-		#setMVP(CAMERA.MVP*translation([c.x,c.y,c.z]))
-		
-		glUniformMatrix4fv(location_mvp, 1, false, x.mvp)
-		glDrawElements(GL_TRIANGLES, ic, GL_UNSIGNED_INT, C_NULL )
-		#glDrawArrays(GL_TRIANGLES, 0, vcount)
-		nothing
+ #mvp = mmvp*MMatrix{4,4,Float32}(unsafe_wrap(Array, mvp, (4,4)))
+ #setMVP(CAMERA.MVP*translation([c.x,c.y,c.z]))
+ 
+ glUniformMatrix4fv(location_mvp, 1, false, x.mvp)
+ glDrawElements(GL_TRIANGLES, ic, GL_UNSIGNED_INT, C_NULL )
+ #glDrawArrays(GL_TRIANGLES, 0, vcount)
+ nothing
 end
 
 if compileAndLink
@@ -169,22 +169,22 @@ end
 
 i=0
 while !GLFW.WindowShouldClose(window)
-	showFrames()
-	#UpdateCounters()
-	if OnUpdate(CAMERA) updateBlocks() end
-	
-	# Pulse the background
-	c=0.5 * (1 + sin(i * 0.01)); i+=1
-	glClearColor(c, c, c, 1.0)
-	glClear(GL_COLOR_BUFFER_BIT)
-	
-	#print("loopBlocks "); @time
-	loopBlocks()
-		
-	# Swap front and back buffers
-	GLFW.SwapBuffers(window)
-	# Poll for and process events
-	GLFW.PollEvents()
+ showFrames()
+ #UpdateCounters()
+ if OnUpdate(CAMERA) updateBlocks() end
+
+ # Pulse the background
+ c=0.5 * (1 + sin(i * 0.01)); i+=1
+ glClearColor(c, c, c, 1.0)
+ glClear(GL_COLOR_BUFFER_BIT)
+
+ #print("loopBlocks "); @time
+ loopBlocks()
+   
+ # Swap front and back buffers
+ GLFW.SwapBuffers(window)
+ # Poll for and process events
+ GLFW.PollEvents()
 end
 	
 GLFW.Terminate()
