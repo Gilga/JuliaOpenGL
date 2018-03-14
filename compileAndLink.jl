@@ -26,26 +26,26 @@ gcc_compile(gcc,cfile,Clib,ENVS)
 
 function createLoop(index, array, func)
   cfunc = (x)->func(unsafe_pointer_to_objref(x))
-	cLoopFunc = cfunction(cfunc, Void, Tuple{Ptr{Void},})
-	ccall((:createLoop, optimizer),
-	Ptr{Void},
-	(Cuint,Ptr{Ptr{Void}},Cuint,Ptr{Void}),
-	index,pointer(array),length(array),cLoopFunc)
+  cLoopFunc = cfunction(cfunc, Void, Tuple{Ptr{Void},})
+  ccall((:createLoop, optimizer),
+  Ptr{Void},
+  (Cuint,Ptr{Ptr{Void}},Cuint,Ptr{Void}),
+  index,pointer(array),length(array),cLoopFunc)
 end
 
 function loopByIndex(index)
-	ccall((:loopByIndex, optimizer),Void,(Cuint,),(index))
+  ccall((:loopByIndex, optimizer),Void,(Cuint,),(index))
 end
 
 function loopByObject(pointer)
-	ccall((:loopByObject, optimizer),Void,(Ptr{Void},),(pointer))
+  ccall((:loopByObject, optimizer),Void,(Ptr{Void},),(pointer))
 end
 
 function prepareStaticLoop(x,a)
-	f = cfunction(x, Void, Tuple{Ptr{Float32},})
-	ccall((:prepare, optimizer),Void,(Ptr{Void},Ptr{Ptr{Void}},Cuint),f,pointer(a),length(a))
+  f = cfunction(x, Void, Tuple{Ptr{Float32},})
+  ccall((:prepare, optimizer),Void,(Ptr{Void},Ptr{Ptr{Void}},Cuint),f,pointer(a),length(a))
 end
 
 function staticloop()
-	ccall((:loop, optimizer),Void,())
+  ccall((:loop, optimizer),Void,())
 end

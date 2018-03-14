@@ -11,17 +11,17 @@ uniform float time = 1;
 
 vec4 getVertexColor(vec3 pos, vec3 normal)
 {
-	if(false) // pos.z != 0 skip planes
-	{
-		float len = dot(length(pos),length(normal)); // skip cubes and spheres
-		if(len < RADIUS) pos = (pos + normal) * HALF; // model
-	}
-	
-	vec3 color1 = (1-normal)*0.5;
-	vec3 color2 = (1+normal)*0.5;
-	vec3 color = mix(color1,color2, sin(time));
-	
-	return vec4(color,1.0);
+  if(false) // pos.z != 0 skip planes
+  {
+    float len = dot(length(pos),length(normal)); // skip cubes and spheres
+    if(len < RADIUS) pos = (pos + normal) * HALF; // model
+  }
+  
+  vec3 color1 = (1-normal)*0.5;
+  vec3 color2 = (1+normal)*0.5;
+  vec3 color = mix(color1,color2, sin(time));
+  
+  return vec4(color,1.0);
 }
 
 in vec3 position;
