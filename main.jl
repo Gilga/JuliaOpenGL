@@ -29,8 +29,8 @@ GLFW.WindowHint(GLFW.OPENGL_DEBUG_CONTEXT,true) #show debug
 #GLFW.WindowHint(GLFW.SAMPLES,4)
 
 # OpenGL Version
-GLFW.WindowHint(GLFW.CONTEXT_VERSION_MAJOR,3)
-GLFW.WindowHint(GLFW.CONTEXT_VERSION_MINOR,3)
+GLFW.WindowHint(GLFW.CONTEXT_VERSION_MAJOR,4)
+GLFW.WindowHint(GLFW.CONTEXT_VERSION_MINOR,6)
 
 GLFW.SetCursorPosCallback(window, OnCursorPos)
 GLFW.SetKeyCallback(window, OnKey)
@@ -69,7 +69,9 @@ include("shader.jl")
 
 vertexShader = createShader(VSH, GL_VERTEX_SHADER)
 fragmentShader = createShader(FSH, GL_FRAGMENT_SHADER)
-program = createShaderProgram(vertexShader, fragmentShader)
+geometryShader = createShader(GSH, GL_GEOMETRY_SHADER)
+program = createShaderProgram(vertexShader, fragmentShader, geometryShader)
+
 glUseProgram(program)
 positionAttribute = glGetAttribLocation(program, "position")
 glEnableVertexAttribArray(positionAttribute)
@@ -99,9 +101,11 @@ setMVP(CAMERA.MVP)
 dist = 5
 r = 1f0/30 #0.005f0
 
-const COUNTX=32
-const COUNTY=32
-const COUNTZ=32
+const countrow = use_geometry_shader ? 2 : 32
+
+const COUNTX=countrow
+const COUNTY=countrow
+const COUNTZ=countrow
 global COUNT=COUNTX*COUNTY*COUNTZ #32768 #32*32*32
 
 const STARTX = -(COUNTX*dist) / 2.0f0
@@ -120,6 +124,8 @@ end
 
 blocks = INDEX[]; refblocks = Ptr{Void}[]
 for i=1:COUNT push!(blocks,INDEX()); push!(refblocks, pointer_from_objref(blocks[i])); end #fill copies references
+
+oneblock = blocks[1]
 
 x=0; y=0; z=0; w=0;
 
@@ -159,12 +165,16 @@ render = function(x)
   nothing
 end
 
-if compileAndLink
-  objptr = createLoop(1,refblocks,render) #compileAndLink
-  const loopBlocks() = loopByObject(objptr) #compileAndLink
+if use_geometry_shader
+  const loopBlocks() = render(oneblock)
 else
-  const bb = blocks
-  const loopBlocks() = for b in bb; render(b); end
+  if compileAndLink
+    objptr = createLoop(1,refblocks,render) #compileAndLink
+    const loopBlocks() = loopByObject(objptr) #compileAndLink
+  else
+    const bb = blocks
+    const loopBlocks() = for b in bb; render(b); end
+  end
 end
 
 i=0
@@ -180,7 +190,7 @@ while !GLFW.WindowShouldClose(window)
 
   #print("loopBlocks "); @time
   loopBlocks()
-   
+
   # Swap front and back buffers
   GLFW.SwapBuffers(window)
   # Poll for and process events

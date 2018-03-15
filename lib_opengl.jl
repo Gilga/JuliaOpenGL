@@ -11,6 +11,13 @@ glGenBuffer() = glGenOne(glGenBuffers)
 glGenVertexArray() = glGenOne(glGenVertexArrays)
 glGenTexture() = glGenOne(glGenTextures)
 
+glGetIntegerv_e(name::GLenum) = begin r=GLint[0]; glGetIntegerv(name,r); r[] end
+
+use_geometry_shader = false
+countOfCubesInRow() = use_geometry_shader ? "3" : "1"
+vertexColor() = use_geometry_shader ? "vcolors" : "vcolor"
+useMVP() = use_geometry_shader ? "" : "mvp*"
+
 function getInfoLog(obj::GLuint)
   # Return the info log for obj, whether it be a shader or a program.
   isShader = glIsShader(obj)
@@ -59,6 +66,9 @@ function glCheckError(actionName="")
   end
 end
 function createShader(source, typ)
+  if typ == GL_VERTEX_SHADER name="GL_VERTEX_SHADER" end
+  if typ == GL_FRAGMENT_SHADER name="GL_FRAGMENT_SHADER" end
+  if typ == GL_GEOMETRY_SHADER name="GL_GEOMETRY_SHADER" end
 # Create the shader
   shader = glCreateShader(typ)::GLuint
   if shader == 0
@@ -68,34 +78,41 @@ function createShader(source, typ)
   glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(source))])), C_NULL)
   glCompileShader(shader)
   # Check for errors
-  !validateShader(shader) && error("Shader creation error: ", getInfoLog(shader))
+  !validateShader(shader) && error("Shader $name creation error: ", getInfoLog(shader))
   shader
 end
-function createShaderProgram(f, vertexShader, fragmentShader)
+function createShaderProgram(f, vertexShader, fragmentShader, geometryShader)
   # Create, link then return a shader program for the given shaders.
   # Create the shader program
   prog = glCreateProgram()
   if prog == 0
     error("Error creating shader program: ", glErrorMessage())
   end
+  
   # Attach the vertex shader
   glAttachShader(prog, vertexShader)
   glCheckError("attaching vertex shader")
   # Attach the fragment shader
   glAttachShader(prog, fragmentShader)
   glCheckError("attaching fragment shader")
+  # Attach the geometry shader
+  if use_geometry_shader
+    glAttachShader(prog, geometryShader)
+    glCheckError("attaching geometry shader")
+  end
   f(prog)
   # Finally, link the program and check for errors.
   glLinkProgram(prog)
   status = GLint[0]
   glGetProgramiv(prog, GL_LINK_STATUS, status)
-  if status[] == GL_FALSE then
+  if status[] == GL_FALSE
+    msg = getInfoLog(prog)
     glDeleteProgram(prog)
-    error("Error linking shader: ", glGetInfoLog(prog))
+    error("Error linking shader: ", msg)
   end
   prog
 end
-createShaderProgram(vertexShader, fragmentShader) = createShaderProgram(prog->0, vertexShader, fragmentShader)
+createShaderProgram(vertexShader, fragmentShader, geometryShader) = createShaderProgram(prog->0, vertexShader, fragmentShader, geometryShader)
 global GLSL_VERSION = ""
 
 function createcontextinfo()
