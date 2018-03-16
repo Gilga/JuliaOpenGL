@@ -76,9 +76,11 @@ function createShader(source, typ)
   end
   # Compile the shader
   glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(source))])), C_NULL)
+  glCheckError("glShaderSource")
   glCompileShader(shader)
+  glCheckError("glCompileShader")
   # Check for errors
-  !validateShader(shader) && error("Shader $name creation error: ", getInfoLog(shader))
+  !validateShader(shader) && error("Shader $name compile error: ", getInfoLog(shader))
   shader
 end
 function createShaderProgram(f, vertexShader, fragmentShader, geometryShader)
