@@ -7,7 +7,6 @@ cubeVertices = GLfloat[
 #-1.0, -1.0, 0.0,
 #-1.0, 1.0, 0.0,
 
-
 # Bottom
 -1.0, -1.0, -1.0,
 1.0, -1.0, -1.0,
@@ -86,6 +85,19 @@ cubeIndices = GLuint[
 7, 6, 1, 1, 0, 7,           # Top face
 3, 2, 5, 5, 4, 3            # Bottom face
 ]
+
+planeVertices_small = [
+1f0,  0,  1, # 0
+-1,  0,  1, # 1
+1, 0, -1, # 2
+-1, 0, -1, # 3
+]
+
+planeIndices = GLfloat[
+2, 3, 1, 1, 0, 2,
+0, 1, 3, 3, 2, 0,
+]
+
 
 # The data for our cube
 planeVertices = GLfloat[

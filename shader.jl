@@ -85,38 +85,36 @@ vec4 getVertexColor(vec3 pos, vec3 normal, float time)
 "
 
 # Create and initialize shaders
-const VSH = """
+const VSH_INSTANCES = """
 $(GLOBALSHC)
-
-highp float vdiscard[3] = {0,0,0};
 
 uniform float time = 1;
 uniform mat4 mvp = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
 
 layout (location = 0) in vec3 position;
-layout (location = 1) in vec4 instanceMatrix;
+layout (location = 1) in vec4 instance;
 
 out Vertex vertex;
 
 void main() {
-  vec3 world_pos = instanceMatrix.xyz;
-  float texindex = instanceMatrix.w;
+  vec3 world_pos = instance.xyz;
+  float texindex = instance.w;
   
   vertex.pos = position;
-  vertex.normal = normalize(position);
+  vertex.normal = normalize(vertex.pos);
   vertex.uv = vec2(0);
-  vertex.color = getVertexColor(position,vertex.normal, time);
+  vertex.color = getVertexColor(vertex.pos,vertex.normal, time);
   vertex.world=world_pos;
-  vertex.world_pos = position+world_pos;
-  vertex.world_normal = normalize(position+world_pos);
+  vertex.world_pos = vertex.pos+world_pos;
+  vertex.world_normal = normalize(vertex.world_pos);
   vertex.texindex = texindex;
   
-  gl_Position = $(useMVP())vec4(position+world_pos, 1.0);
+  gl_Position = mvp*vec4(vertex.world_pos, 1.0);
   if(vertex.texindex == 0) { gl_Position = vec4(0,0,0,0); }
 }
 """
 
-const FSH = """
+const FSH_INSTANCES = """
 $(GLOBALSHC)
 
 in Vertex vertex;
@@ -161,7 +159,7 @@ void main() {
   //color = vertex.color; color = vec4(color.xyz,color.x*color.y*color.z);
   color = texture(tex, vec2((1-UV.y)-0.75, UV.x));
   
-  if(true){ //use phong?
+  if(false){ //use phong?
     float alpha = radians(0);
     
     light.color = vec4(1,1,1,1);
@@ -170,7 +168,7 @@ void main() {
     light.diffuse = 1;
     light.specular = 1;
 
-    material.emission = vec4(0,0,0,1);
+    material.emission = vec4(texindex==15?1:0,texindex==15?0.5:0,0,1);
     material.ambient = vec4(0.1,0.1,0.1,1);
     material.diffuse = vec4(1.0,1.0,1.0,1);
     material.specular = vec4(0.25,0.25,0.25,1);
@@ -237,6 +235,43 @@ void main() {
   
   }
   
+  outColor = color;
+}
+"""
+
+const VSH = """
+$(GLOBALSHC)
+
+uniform float time = 1;
+uniform mat4 mvp = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+
+layout (location = 0) in vec3 position;
+
+out Vertex vertex;
+
+void main() {
+  vertex.pos          = position;
+  vertex.normal       = normalize(vertex.pos);
+  vertex.uv           = vec2(0);
+  vertex.color        = getVertexColor(vertex.pos, vertex.normal, time);
+  vertex.world        = vec3(0,0,0);
+  vertex.world_pos    = vertex.pos+vertex.world;
+  vertex.world_normal = normalize(vertex.world_pos);
+  vertex.texindex     = 0;
+  
+  gl_Position = mvp*vec4(vertex.world_pos, 1.0);
+}
+"""
+
+const FSH = """
+$(GLOBALSHC)
+
+in Vertex vertex;
+out vec4 outColor;
+
+void main() {
+  vec4 color = vertex.color;
+  color = vec4(color.xyz,color.x*color.y*color.z);
   outColor = color;
 }
 """

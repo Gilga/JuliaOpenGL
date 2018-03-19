@@ -2,6 +2,9 @@ WIDTH = 800
 HEIGHT = 600
 RATIO = WIDTH/(HEIGHT*1f0)
 SIZE = WIDTH * HEIGHT
+FOV = 60.0f0
+CLIP_NEAR = 0.001f0
+CLIP_FAR = 10000.0f0
 
 function rezizeWindow(width,height)
   global WIDTH, HEIGHT, RATIO, SIZE
@@ -27,7 +30,10 @@ keyUD = 0
 speed = false
 
 mouseKeyPressed = false
- 
+keyPressed = false
+keyPressing = false
+keyValue = 0
+
 type Camera
   moved::Bool
   
@@ -59,20 +65,15 @@ setProjection(camera::Camera, m::AbstractArray) = (camera.projectionMat = m)
 setView(camera::Camera, m::AbstractArray) = (camera.viewMat = m)
 
 function OnKey(window, key::Number, scancode::Number, action::Number, mods::Number)
-  if key == 290 && action == 1 # F1 = 290
-    global fullscreen=!fullscreen
-    #WindowManager.fullscreen(WINDOW,fullscreen)
-
-  elseif key == 291 && action == 1 # F2
-    global wireframe
-    wireframe = !wireframe
-    println("Wireframe: ",wireframe)
-
-  elseif key == 293 && action == 1 # F4 = 293
-    #this.callList[:reload]()
-    #this.callList[:shaderRefresh]()
-    #whos()
-    println(current_module())
+  if key == 70 && action == 1 # f
+    # ...
+  elseif key == 71 && action == 1 # g
+    #global wireframe
+    #wireframe = !wireframe
+    #println("Wireframe: ",wireframe)
+    
+  elseif key == 72 && action == 1 # h
+    #global fullscreen=!fullscreen
 
   elseif key == 87 #w
     global keyFB = (action > 0)?1:0
@@ -90,9 +91,11 @@ function OnKey(window, key::Number, scancode::Number, action::Number, mods::Numb
     global speed = (action > 0)
   end
   
-  #println(key)
+  #println("K: ", key, " A: ", action, " C: ", scancode, " M: ", mods)
 
-  global keyPressed = action != 0
+  if action == 1 global keyPressed = true end
+  global keyPressing = action != 0
+  global keyValue = key
   nothing
 end
 
@@ -123,6 +126,17 @@ function OnCursorPos(window, x::Number, y::Number)
   nothing
 end
 
+function rotate(camera::Camera, rotation::AbstractArray)
+  camera.rotation += rotation
+  camera.moved=true
+  #println("rotated")
+end
+
+function move(camera::Camera, position::AbstractArray)
+  camera.position += position
+  camera.moved=true
+  #println("moved")
+end
 
 function OnRotate(camera::Camera)
   global cursorPos, cursorPos_old
@@ -130,38 +144,57 @@ function OnRotate(camera::Camera)
   my = cursorPos[2] - cursorPos_old[2]
   #println(mx)
   cursorPos_old = cursorPos
-  camera.rotation+=[-mx*2f0,my*2f0,0f0] #[-mx*2,my*2,0f0] #Vec3f((-mx+0.5f0),(-0.5f0+my),0f0)
-  camera.rotationMat = computeRotation(camera.rotation)
-  camera.moved=true
+  rotate(camera, [-mx*2f0,my*2f0,0f0]) #[-mx*2,my*2,0f0] #Vec3f((-mx+0.5f0),(-0.5f0+my),0f0)
 end
 
-function OnMove(camera::Camera, key::Symbol, m::Number)
-  if key == :FORWARD  camera.position += forward(camera)*(m*0.05f0*(!speed?1f0:100f0)); camera.moved=true
-  elseif key == :RIGHT  camera.position -= right(camera)*(m*0.05f0*(!speed?1f0:100f0)); camera.moved=true #+Vec3f(-right*0.02f0,-up*0.02f0,forward*0.02f0)
-  elseif key == :UP  camera.position -= up(camera)*(m*0.05f0*(!speed?1f0:100f0)); camera.moved=true
-  end
+oldposition = CAMERA.position
+shiftposition = [0.0f0,0,0]
+
+function setPosition(camera::Camera, position::AbstractArray)
+  camera.position = position
+  global oldposition = position
   camera.translateMat = translation(camera.position)
 end
 
-function Update(camera::Camera)
-  camera.viewMat = camera.scalingMat * camera.rotationMat * camera.translateMat
-  camera.MVP = camera.modelMat * camera.projectionMat * camera.viewMat
+function OnMove(camera::Camera, key::Symbol, m::Number)
+  global shiftposition
+  if key == :FORWARD  move(camera, forward(camera)*(m*0.05f0*(!speed?1f0:10f0)))
+  elseif key == :RIGHT  move(camera, right(camera)*(-m*0.05f0*(!speed?1f0:10f0))) #+Vec3f(-right*0.02f0,-up*0.02f0,forward*0.02f0)
+  elseif key == :UP  move(camera, up(camera)*(-m*0.05f0*(!speed?1f0:10f0)))
+  end
+  
+  #dif = camera.position
+  #step = trunc.(dif)
+  #shiftposition = dif - step 
+  #step = abs.(step)
+  
+  #if step[1] >= 2 camera.position[1] = 0 end
+  #if step[2] >= 2 camera.position[2] = 0 end
+  #if step[3] >= 2 camera.position[3] = 0 end
+  
+  #  dist = sqrt(camera.position[1]^2+camera.position[2]^2+camera.position[3]^2)
+  # if dist >= 1 camera.position = [0f0,0,0] end
 end
 
-function OnUpdate(camera::Camera)
-
-  #if isFocus return end
+function Update(camera::Camera)
   if OnTime(0.01)
     if keyFB != 0 OnMove(camera, :FORWARD, keyFB) end
     if keyLR != 0 OnMove(camera, :RIGHT, keyLR) end
     if keyUD != 0 OnMove(camera, :UP, keyUD) end
   end
-  
-  r = camera.moved
-  if r
-    camera.moved = false
-    Update(camera)
+
+  if camera.moved
+    camera.translateMat = translation(camera.position)
+    camera.rotationMat = computeRotation(camera.rotation)
+    camera.viewMat = camera.scalingMat * camera.rotationMat * camera.translateMat
+    camera.MVP = camera.modelMat * camera.projectionMat * camera.viewMat
   end
-  
+end
+
+function OnUpdate(camera::Camera)
+  #if isFocus return end
+  Update(camera)
+  r = camera.moved
+  camera.moved = false
   r
 end

@@ -2,28 +2,8 @@ using Quaternions
 using StaticArrays
 #using ArrayFire
 
-Mat2x2(T) = T[
-  0 0
-  0 0
-]
-
-Mat3x3(T) = T[
-  0 0 0
-  0 0 0
-  0 0 0
-]
-
-Mat4x4(T) = T[
-  0 0 0 0
-  0 0 0 0
-  0 0 0 0
-  0 0 0 0
-]
-
-const zerosVector3f = [0f0,0,0]
-const onesVector3f = [1f0,1,1]
-const zerosMat4x4f = Mat4x4(Float32)
-const eyeMat4x4f = eye(zerosMat4x4f)
+include("matrix.jl")
+include("vector.jl")
 
 function frustum{T}(left::T, right::T, bottom::T, top::T, znear::T, zfar::T)
   (right == left || bottom == top || znear == zfar) && return eye(Mat4x4(T))

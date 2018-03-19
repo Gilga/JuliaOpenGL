@@ -1,7 +1,7 @@
 TIMERS = Dict{Any,Base.RefValue{Float64}}()
 
 GetTimer(key) = Base.getindex(TIMERS[key])
-SetTimer(key, time::Float64) = (TIMERS[key] = Ref(time))
+SetTimer(key, time::Number) = (TIMERS[key] = Ref{Float64}(time))
 
 SetTimer("FRAME_TIMER", Dates.time())
 
@@ -17,7 +17,7 @@ function UpdateTimers()
   SetTimer("FRAME_TIMER", Dates.time())
 end
     
-function OnTime(milisec::Float64)
+function OnTime(milisec::Number)
   global TIMERS
   
   if !haskey(TIMERS,milisec)
@@ -30,7 +30,7 @@ function OnTime(milisec::Float64)
   (GetTimer("FRAME_TIMER") - prevTime) >= milisec
 end
 
-function OnTime(milisec::Float64, prevTime::Ref{Float64}, time)
+function OnTime(milisec::Number, prevTime::Ref{Float64}, time)
   r = (time - Base.getindex(prevTime)) >= milisec
   if r Base.setindex!(prevTime,time) end
   r
