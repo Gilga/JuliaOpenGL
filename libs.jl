@@ -1,3 +1,4 @@
+using Compat: uninitialized, Nothing, Cvoid, AbstractDict
 using Images
 
 include("lib_window.jl")
