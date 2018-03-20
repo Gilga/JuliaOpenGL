@@ -38,7 +38,7 @@ function hideUnseen(this::Chunk)
   
     b=a[x,y,z]
 
-    if !isVisible(b) continue end # skip invisible
+    if !isVisible(b) || x==1 || y==1 || z==1 || x==len || y==len || z==len continue end # skip invisible
     if x>1 && !isVisible(a[x-1,y,z]) continue end #skip
     if x<len && !isVisible(a[x+1,y,z]) continue end #skip
     if y>1 && !isVisible(a[x,y-1,z]) continue end #skip
@@ -60,6 +60,10 @@ end
 
 function removeType(this::Chunk, typ::Integer)
   for b in this.childs; if b.typ == typ; b.active = false; end; end
+end
+
+function showAll(this::Chunk)
+  for b in this.childs; b.visible = true; end
 end
 
 #------------------------------------------------------------------------------------

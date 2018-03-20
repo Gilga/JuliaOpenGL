@@ -158,6 +158,7 @@ end
 cam_updated=false
 
 FRUSTUM_KEY = 70
+ALL_KEY = 71
 
 i=0
 while !GLFW.WindowShouldClose(window)
@@ -188,10 +189,14 @@ while !GLFW.WindowShouldClose(window)
   useProgram(program_normal)
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
-  if keyPressed && keyValue == FRUSTUM_KEY
-    SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
-    checkInFrustum(mychunk, fstm)
-    upload(planeData, :vertices, getVertices(fstm))
+  if keyPressed && keyValue == FRUSTUM_KEY || keyValue == ALL_KEY
+    if keyValue == FRUSTUM_KEY
+      SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
+      checkInFrustum(mychunk, fstm)
+      upload(planeData, :vertices, getVertices(fstm))
+    elseif keyValue == ALL_KEY
+      showAll(mychunk)
+    end
     upload(chunkData, :instances, getData(mychunk))
   end
   
