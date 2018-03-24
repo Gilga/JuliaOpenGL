@@ -3,6 +3,8 @@ Example Julia uses OpenGL
 
 # Requirements
 ## Packages
+* Compat
+* Images
 * ModernGL
 * GLFW
 * Quaternions
