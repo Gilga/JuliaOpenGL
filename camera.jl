@@ -64,6 +64,8 @@ up(camera::Camera) = up(camera.rotationMat)
 setProjection(camera::Camera, m::AbstractArray) = (camera.projectionMat = m)
 setView(camera::Camera, m::AbstractArray) = (camera.viewMat = m)
 
+VIEW_KEYS=false
+
 function OnKey(window, key::Number, scancode::Number, action::Number, mods::Number)
   if key == 70 && action == 1 # f
     # ...
@@ -91,7 +93,12 @@ function OnKey(window, key::Number, scancode::Number, action::Number, mods::Numb
     global speed = (action > 0)
   end
   
-  #println("K: ", key, " A: ", action, " C: ", scancode, " M: ", mods)
+  if key == 75 && action == 1 #k
+    global VIEW_KEYS = !VIEW_KEYS
+    println("VIEW_KEYS = $VIEW_KEYS")
+  end
+  
+  if VIEW_KEYS println("K: ", key, " A: ", action, " C: ", scancode, " M: ", mods) end
 
   if action == 1 global keyPressed = true end
   global keyPressing = action != 0
@@ -154,6 +161,7 @@ function setPosition(camera::Camera, position::AbstractArray)
   camera.position = position
   global oldposition = position
   camera.translateMat = translation(camera.position)
+  camera.moved = true
 end
 
 function OnMove(camera::Camera, key::Symbol, m::Number)

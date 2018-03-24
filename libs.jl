@@ -1,6 +1,9 @@
 using Compat: uninitialized, Nothing, Cvoid, AbstractDict
 using Images
 
+displayInYellow(s) = string("\x1b[93m",s,"\x1b[0m")
+displayInRed(s) = string("\x1b[91m",s,"\x1b[0m")
+
 include("lib_window.jl")
 include("lib_opengl.jl")
 include("lib_math.jl")
@@ -44,6 +47,9 @@ end
 function write_c_file(libname)
   # write the C code inside a raw string
   C_code = raw"""
+  
+	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001; // NVIDIA
+	//__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1; // AMD Radeon
 
   int add(unsigned int a, unsigned int b){
       return a+b;
@@ -81,6 +87,29 @@ function compiler_setPaths(gcc,env_path)
   ENV2
 end
 
+function waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1)
+	result=false
+	for i = 1:tryCount
+
+		#try reading file
+		if stat(path).size > 0
+			open(path) do file
+				 result=func(file)
+			end
+			if result break end
+		end
+
+		Libc.systemsleep(tryWait) #wait
+	end
+	result
+end
+
+function fileGetContents(path::String, tryCount=100, tryWait=0.1)
+	content=nothing
+	waitForFileReady(path,(x)->(content=readstring(x); content != nothing),tryCount,tryWait)
+	content
+end
+
 TITLE = "Julia OpenGL"
 STARTTIME = Dates.time()
 PREVTIME = STARTTIME
@@ -89,7 +118,8 @@ MAX_FRAMES = 0
 FPS = 0
 MAX_FPS = 0
 ITERATION = 0
-COUNT = 0
+BLOCK_COUNT = 0
+SIZE = 0
 
 function UpdateCounters()
   UpdateTimers()
@@ -98,7 +128,7 @@ end
 
 prevTime = Ref(0.0)
 function showFrames()
-  global TITLE, TIMERS, FRAMES, MAX_FRAMES, FPS, MAX_FPS, ITERATION, COUNT, PREVTIME
+  global TITLE, TIMERS, FRAMES, MAX_FRAMES, FPS, MAX_FPS, ITERATION, BLOCK_COUNT, PREVTIME, RENDER_METHOD
   
   time = Dates.time() #GetTimer("FRAME_TIMER")
   
@@ -120,6 +150,13 @@ function showFrames()
   const max_fmps = MAX_FRAMES > 0 ? (1000.0 / MAX_FRAMES) : 0
   const norm_fps = FRAMES / MAX_FRAMES
   
-  GLFW.SetWindowTitle(window, "$(TITLE) - FPS $(round(fps, 2)) Max[$(round(max_fps, 2))] | FMPS $(round(fpms, 2)) Max[$(round(max_fmps, 2))] - Iteration $(ITERATION) - Count $(COUNT)")
+  GLFW.SetWindowTitle(window, "$(TITLE) - FPS $(round(fps, 2))[$(round(max_fps, 2))] | FMPS $(round(fpms, 2))[$(round(max_fmps, 2))] - Blocks $CHUNK_SIZE^3 ($BLOCK_COUNT) - IT $ITERATION")
   FRAMES = 0
 end
+
+include("cubeData.jl")
+include("camera.jl")
+include("frustum.jl")
+include("chunk.jl")
+include("mesh.jl")
+include("texture.jl")

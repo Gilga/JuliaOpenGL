@@ -1,12 +1,6 @@
-cubeVertices = GLfloat[
-#  X, Y, Z,
-#-1.0, 1.0, 0.0,
-#1.0, 1.0, 0.0,
-# 1.0, -1.0, 0.0,
-#1.0, -1.0, 0.0,
-#-1.0, -1.0, 0.0,
-#-1.0, 1.0, 0.0,
+const DATA_DUMMY = GLfloat[0,0,0]
 
+const DATA_CUBE = GLfloat[
 # Bottom
 -1.0, -1.0, -1.0,
 1.0, -1.0, -1.0,
@@ -56,52 +50,35 @@ cubeVertices = GLfloat[
 1.0, 1.0, 1.0,
 ]
 
-cubeVertices_small = [
-1f0,  1,  1, # 0
--1,  1,  1, # 1
--1, -1,  1, # 2
-1, -1,  1, # 3
-1, -1, -1, # 4
--1, -1, -1, # 5
--1,  1, -1, # 6
-1,  1, -1, # 7
-]
-#g_Vertices = [
-#[ [  1f0  1  1 ], [ 1 1 1 ] ], # 0
-#[ [ -1  1  1 ], [ 0 1 1 ] ], # 1
-#[ [ -1 -1  1 ], [ 0 0 1 ] ], # 2
-#[ [  1 -1  1 ], [ 1 0 1 ] ], # 3
-#[ [  1 -1 -1 ], [ 1 0 0 ] ], # 4
-#[ [ -1 -1 -1 ], [ 0 0 0 ] ], # 5
-#[ [ -1  1 -1 ], [ 0 1 0 ] ], # 6
-#[ [  1  1 -1 ], [ 1 1 0 ] ], # 7
-#]
-
-cubeIndices = GLuint[
-0, 1, 2, 2, 3, 0,           # Front face
-7, 4, 5, 5, 6, 7,           # Back face
-6, 5, 2, 2, 1, 6,           # Left face
-7, 0, 3, 3, 4, 7,           # Right face
-7, 6, 1, 1, 0, 7,           # Top face
-3, 2, 5, 5, 4, 3            # Bottom face
+const DATA_CUBE_VERTEX = [
+1f0,  1,  1,  # 0
+-1,  1,  1,   # 1
+-1, -1,  1,   # 2
+1, -1,  1,    # 3
+1, -1, -1,    # 4
+-1, -1, -1,   # 5
+-1,  1, -1,   # 6
+1,  1, -1,    # 7
 ]
 
-planeVertices_small = [
-1f0,  0,  1, # 0
--1,  0,  1, # 1
-1, 0, -1, # 2
--1, 0, -1, # 3
+const DATA_CUBE_INDEX = GLuint[
+0, 1, 2, 2, 3, 0, # Front face
+7, 4, 5, 5, 6, 7, # Back face
+6, 5, 2, 2, 1, 6, # Left face
+7, 0, 3, 3, 4, 7, # Right face
+7, 6, 1, 1, 0, 7, # Top face
+3, 2, 5, 5, 4, 3  # Bottom face
 ]
 
-planeIndices = GLfloat[
-2, 3, 1, 1, 0, 2,
-0, 1, 3, 3, 2, 0,
+const DATA_PLANE_VERTEX  = [
+1f0,  0,  1,  # 0
+1, 0, -1,     # 1
+-1,  0,  1,   # 2
+-1, 0, -1     # 3
 ]
 
-
-# The data for our cube
-planeVertices = GLfloat[
-0.0, 0.5,
-0.5, -0.5,
--0.5,-0.5
+const DATA_PLANE_INDEX = GLuint[
+0, 1, 2, 3 #GL_TRIANGLE_STRIP
+#0, 1, 2, 2, 1, 3 #GL_TRIANGLES
 ]
+

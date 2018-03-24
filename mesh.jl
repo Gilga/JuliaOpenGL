@@ -25,22 +25,30 @@ type MeshData
   MeshData() = new(0,Dict(),nothing)
 end
 
-function setAttributePosition(this::MeshArray, program)
-  if this.count == 0 return end
-  glBindBuffer(this.bufferType, this.bufferID)
-  positionAttribute = glGetAttribLocation(program, "position")
-  glEnableVertexAttribArray(positionAttribute)
-  glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, 0, C_NULL)
-  glBindBuffer(this.bufferType, 0)
-end
+gltypes=Dict(Float32=>GL_FLOAT,Float64=>GL_DOUBLE,UInt32=>GL_UNSIGNED_INT,Int32=>GL_INT)
 
-function setAttributeInstance(this::MeshArray, program)
+function setAttributes(this::MeshArray, program, attrb)
   if this.count == 0 return end
+  
+  const STRIDE = GLsizei(reduce(+, (x->sizeof(x[2])*x[3]).(attrb)))
+  OFFSET =  C_NULL
+  
   glBindBuffer(this.bufferType, this.bufferID)
-  instanceMatrixAttribute = glGetAttribLocation(program, "instance")
-  glEnableVertexAttribArray(instanceMatrixAttribute)
-  glVertexAttribPointer(instanceMatrixAttribute, 4, GL_FLOAT, GL_FALSE, 0, C_NULL)
-  glVertexAttribDivisor(instanceMatrixAttribute, 1)
+
+  for (name,typ,elems,inst) in attrb
+    atr = glGetAttribLocation(program, name)
+    glCheckError("glGetAttribLocation")
+    if atr > -1
+      glEnableVertexAttribArray(atr)
+      glCheckError("glEnableVertexAttribArray")
+      glVertexAttribPointer(atr, elems, gltypes[typ], GL_FALSE, STRIDE, OFFSET)
+      glCheckError("glVertexAttribPointer")
+      if inst>0 glVertexAttribDivisor(atr, inst); glCheckError("glVertexAttribDivisor") end
+      OFFSET +=  sizeof(typ)*elems
+    else warn("Could not load Attribute \"$name\"")
+    end
+  end
+  
   glBindBuffer(this.bufferType, 0)
 end
 
@@ -51,8 +59,9 @@ end
 
 function setAttributes(this::MeshData, program)
   glBindVertexArray(this.vao)
-  if haskey(this.arrays,:vertices) setAttributePosition(this.arrays[:vertices], program) end
-  if haskey(this.arrays,:instances) setAttributeInstance(this.arrays[:instances], program) end
+  glCheckError("glBindVertexArray")
+  if haskey(this.arrays,:vertices) setAttributes(this.arrays[:vertices], program, [("iVertex",Float32,3,0)]) end
+  if haskey(this.arrays,:instances) setAttributes(this.arrays[:instances], program, [("iInstancePos",Float32,3,1),("iInstanceFlags",Float32,2,1)]) end
   glBindVertexArray(0)
 end
 
@@ -92,7 +101,7 @@ function linkData(this::MeshData, args...)
     elseif this.draw == nothing this.draw = a
     end
   end
-  
+
   createBuffers(this)
   upload(this)
 end
@@ -101,22 +110,27 @@ function upload(this::MeshArray)
   if this.loaded || this.count == 0 return end
   const data = this.data
   glBindBuffer(this.bufferType, this.bufferID)
+  glCheckError("glBindBuffer")
   glBufferData(this.bufferType, sizeof(data), data, GL_STATIC_DRAW)
+  glCheckError("glBufferData")
   this.loaded=true
 end
 
 function upload(this::MeshData)
   glBindVertexArray(this.vao)
+  glCheckError("glBindVertexArray")
   for (s,a) in this.arrays upload(a) end
   glBindVertexArray(0)
 end
 
 # just update previous data
 function upload(this::MeshData, key::Symbol, data::AbstractArray)
+   if !haskey(this.arrays,key) warn("Could not find key $key"); return end
   a=this.arrays[key]
   setData(a, data)
   a.loaded = false
   glBindVertexArray(this.vao)
+  glCheckError("glBindVertexArray")
   upload(a)
   glBindVertexArray(0)
 end

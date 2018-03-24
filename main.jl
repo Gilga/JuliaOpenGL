@@ -1,23 +1,105 @@
-__precompile__()
+#__precompile__()
 
+## INCLUDES
 include("libs.jl")
-include("cubeData.jl")
-include("camera.jl")
-include("frustum.jl")
-include("chunk.jl")
-include("mesh.jl")
-include("texture.jl")
 
+FRUSTUM_CULLING = true
+HIDE_UNSEEN_CUBES = true
+RENDER_METHOD = 1
+mychunk = nothing
+program_chunks = 0
+SCENE = 2
+fstm = nothing
+planeData = nothing
+CHUNK_SIZE = 64
+
+function setFrustumCulling(load=true)
+  if FRUSTUM_CULLING
+    SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
+    checkInFrustum(mychunk, fstm)
+  else showAll(mychunk)
+  end
+  
+  if HIDE_UNSEEN_CUBES hideUnseen(mychunk) end
+
+  if load
+    update(mychunk)
+    upload(chunkData, :instances, getData(mychunk))
+    if FRUSTUM_CULLING upload(planeData, :vertices, getVertices(fstm)) end
+  end
+end
+
+function chooseRenderMethod(method=RENDER_METHOD)
+
+  if method == 1 name="INSTANCES of POINTS + GEOMETRY SHADER"
+  elseif method == 2  name="INSTANCES of TRIANGLES"
+  elseif method == 3 name="INSTANCES of TRIANGLES + INDICIES"
+  elseif method > 3 name="TRIANGLES + INDICIES"
+  end
+  
+  println(displayInYellow(name))
+
+  info("Create chunk & create blocks...")
+  
+  ## BLOCKS
+  global mychunk
+  clean(mychunk) # free memory
+
+  mychunk = Chunk(CHUNK_SIZE)
+
+  if SCENE == 0 createSingle(mychunk)
+  elseif SCENE == 1 createExample(mychunk)
+  else createLandscape(mychunk)
+  end
+  
+  setFrustumCulling(false)
+  
+  update(mychunk)
+  
+  global RENDER_METHOD = method
+  global BLOCK_COUNT = mychunk.fileredCount
+  #global VERT_COUNT = mychunk.verticesCount
+  
+  info("Upload data...")
+  glCheckError("Upload data")
+  if method == 1 linkData(chunkData, :instances=>getData(mychunk))
+  elseif method == 2 linkData(chunkData, :vertices=>(DATA_CUBE,3), :instances=>getData(mychunk))
+  elseif method == 3 linkData(chunkData, :vertices=>(DATA_CUBE_VERTEX,3), :indicies=>(DATA_CUBE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>getData(mychunk))
+  elseif method > 3 linkData(chunkData, :vertices=>(DATA_CUBE_VERTEX,3), :indicies=>(DATA_CUBE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
+  end
+  
+  global program_chunks
+  
+  if program_chunks != 0
+    glUseProgram(0)
+    glDeleteProgram(program_chunks)
+    glCheckError("glDeleteProgram")
+  end
+   
+  include("shader.jl")
+  
+  if method == 1 program_chunks = createShaderProgram(INST_VSH_GSH, INST_FSH, INST_GSH)
+  elseif method > 1 program_chunks = createShaderProgram(INST_VSH, INST_FSH)
+  #elseif method > 3  program_chunks = createShaderProgram(VSH, FSH)
+  end
+  
+  info("Compile Shader Programs...")
+  
+  if program_chunks <= 0 error("No Program") end
+  glUseProgram(program_chunks)
+  glCheckError("glUseProgram")
+    
+  setAttributes(chunkData, program_chunks)
+  setMatrix(program_chunks, "iMVP", CAMERA.MVP)
+  glCheckError("setMatrix")
+  
+  global location_position = glGetUniformLocation(program_chunks, "iPosition")
+  global location_texindex = glGetUniformLocation(program_chunks, "iTexIndex")
+end
+
+## COMPILE C File 
 #include("compileAndLink.jl")
 const compileAndLink = isdefined(:createLoop) 
-
-## BLOCKS
-mychunk = Chunk(64)
-
-const countrow = use_geometry_shader ? 2 : 64
-
-createLandscape(mychunk)
-#createSingle(mychunk)
 
 ## PROGRAM 
 
@@ -30,10 +112,12 @@ GLFW.Init()
     
 # Create a windowed mode window and its OpenGL context
 window = GLFW.CreateWindow(WIDTH, HEIGHT, "OpenGL Example")
+
 # Make the window's context current
 GLFW.MakeContextCurrent(window)
-GLFW.ShowWindow(window)
+
 GLFW.SetWindowSize(window, WIDTH, HEIGHT) # Seems to be necessary to guarantee that window > 0
+rezizeWindow(WIDTH,HEIGHT)
 
 # Window settings
 GLFW.SwapInterval(0) # intervall between canvas images (min. 2 images)
@@ -52,16 +136,14 @@ GLFW.SetMouseButtonCallback(window, OnMouseKey)
 
 #setEventCallbacks(OnCursorPos,OnKey,OnMouseKey)
 
-rezizeWindow(WIDTH,HEIGHT)
+GLFW.ShowWindow(window)
 
 glinfo = createcontextinfo()
 
-include("shader.jl")
-
-println("OpenGL $(glinfo[:gl_version])")
+println("OpenGL $(displayInRed(glinfo[:gl_version]))")
 println("GLSL $(glinfo[:glsl_version])")
-println("Vendor $(glinfo[:gl_vendor])")
-println("Renderer $(glinfo[:gl_renderer])")
+println("Vendor $(displayInRed(glinfo[:gl_vendor]))")
+println("Renderer $(displayInRed(glinfo[:gl_renderer]))")
 println("---------------------------------------------------------------------")
 
 ## CAMERA
@@ -84,32 +166,52 @@ setMatrix(program, name, m) = begin const cm = SMatrix{4,4,Float32}(m); glUnifor
 
 function setMVP(p, mvp)
   glUseProgram(p)
-  setMatrix(p, "mvp", mvp)
+  glCheckError("glUseProgram")
+  setMatrix(p, "iMVP", mvp)
+  glCheckError("setMatrix")
   glUseProgram(program)
+  glCheckError("glUseProgram")
 end
 
-setMVP(mvp) = setMatrix(program, "mvp", mvp)
+setMVP(mvp) = setMatrix(program, "iMVP", mvp)
 
 #------------------------------------------------------------------------------------
 
 chunkData = MeshData()
 planeData = MeshData()
 
-linkData(chunkData, :vertices=>(cubeVertices_small,3), :indicies=>(cubeIndices,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>getData(mychunk))
-linkData(planeData,  :vertices=>getVertices(fstm))
-
-program_chunks = createShaderProgram(createShader(VSH_INSTANCES, GL_VERTEX_SHADER), createShader(FSH_INSTANCES, GL_FRAGMENT_SHADER), createShader(GSH, GL_GEOMETRY_SHADER))
-program_normal = createShaderProgram(createShader(VSH, GL_VERTEX_SHADER), createShader(FSH, GL_FRAGMENT_SHADER), createShader(GSH, GL_GEOMETRY_SHADER))
-
-setAttributes(chunkData, program_chunks)
-setAttributes(planeData, program_normal)
-
-setMVP(program_chunks, CAMERA.MVP)
-setMVP(program_normal, CAMERA.MVP)
+#------------------------------------------------------------------------------------
 
 ## TEXTURES
 
 uploadTexture("blocks.png")
+
+## LOAD DEFAULT
+chooseRenderMethod()
+
+#------------------------------------------------------------------------------------
+
+#linkData(chunkData, :vertices=>(DATA_PLANE_VERTEX,3), :indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>getData(mychunk))
+linkData(planeData,  :vertices=>getVertices(fstm))
+
+#chunkData.arrays[:vertices].count
+#n = length(cubeVertices_small) / 3
+
+program_normal = nothing
+#function compileShaderPrograms()
+#  global program_chunks, program_normal
+
+program_normal = createShaderProgram(VSH, FSH) #, createShader(GSH, GL_GEOMETRY_SHADER)
+
+setAttributes(planeData, program_normal)
+setMVP(program_normal, CAMERA.MVP)
+
+#end
+
+#compileShaderPrograms()
+
+location_position = 0
+location_texindex = 0
 
 #------------------------------------------------------------------------------------
 
@@ -128,7 +230,7 @@ glEnable(GL_BLEND)
 glEnable(GL_CULL_FACE)
 #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 #glBlendEquation(GL_FUNC_ADD)
-glFrontFace(GL_CCW)
+#glFrontFace(GL_CCW)
 glCullFace(GL_BACK)
 #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)#GL_FILL,GL_LINE
 glClearColor(0.0, 0.0, 0.0, 1.0)
@@ -144,6 +246,7 @@ render = function(x)
   nothing
 end
 
+#=
 if use_geometry_shader
   const loopBlocks() = render(mychunk.childs[1])
 else
@@ -154,64 +257,172 @@ else
     const loopBlocks() = for b in mychunk.childs; render(b); end
   end
 end
+=#
 
 cam_updated=false
 
-FRUSTUM_KEY = 70
-ALL_KEY = 71
+function checkForUpdate()
+  global keyPressed, keyValue, cam_updated, FRUSTUM_KEY, ALL_KEY, CAMERA, mychunk, chunkData, fstm, planeData
+  
+  if keyPressed
+  
+    if keyValue == 80
+      setPosition(CAMERA,[0f0,0,0])
+    end
+    
+    if keyValue == 82 #F1
+      chooseRenderMethod()
+      
+    elseif keyValue == 290 #F1
+      chooseRenderMethod(1)
+    elseif keyValue == 291 #F2
+      chooseRenderMethod(2)
+    elseif keyValue == 292 #F3
+      chooseRenderMethod(3)
+    elseif keyValue == 293 #F4
+      chooseRenderMethod(4)
+      
+    elseif keyValue == 49 #1
+      global CHUNK_SIZE = 1
+      chooseRenderMethod()
+      
+    elseif keyValue == 50 #2
+      global CHUNK_SIZE = 2
+      chooseRenderMethod()
+      
+    elseif keyValue == 51 #2
+      global CHUNK_SIZE = 4
+      chooseRenderMethod()
+      
+    elseif keyValue == 52 #3
+      global CHUNK_SIZE = 8
+      chooseRenderMethod()
+      
+    elseif keyValue == 52 #4
+      global CHUNK_SIZE = 16
+      chooseRenderMethod()
+      
+    elseif keyValue == 53 #5
+      global CHUNK_SIZE = 24
+      chooseRenderMethod()
+      
+    elseif keyValue == 54 #6
+      global CHUNK_SIZE = 32
+      chooseRenderMethod()
+      
+    elseif keyValue == 55 #7
+      global CHUNK_SIZE = 40
+      chooseRenderMethod()
+      
+    elseif keyValue == 56 #8
+      global CHUNK_SIZE = 48
+      chooseRenderMethod()
+      
+    elseif keyValue == 57 #9
+      global CHUNK_SIZE = 56
+      chooseRenderMethod()
+      
+    elseif keyValue == 48 #0
+      global CHUNK_SIZE = 64
+      chooseRenderMethod()
+      
+    elseif keyValue == 45 #ß
+      global CHUNK_SIZE = 72
+      chooseRenderMethod()
+      
+    elseif keyValue == 61 #´
+      global CHUNK_SIZE = 80
+      chooseRenderMethod()
+      
+    elseif keyValue == 96 #^
+      global CHUNK_SIZE = 128
+      chooseRenderMethod()
+      
+    elseif keyValue == 86 #v
+      global SCENE = 0
+      chooseRenderMethod()
+    elseif keyValue == 66 #b
+      global SCENE = 1
+      chooseRenderMethod()
+    elseif keyValue == 78 #n
+      global SCENE = 2
+      chooseRenderMethod()
+      
+    elseif keyValue == 71 #g
+      global FRUSTUM_CULLING = !FRUSTUM_CULLING
+      setFrustumCulling()
+    elseif keyValue == 70 #f
+      setFrustumCulling()
+    elseif keyValue == 72 #g
+      global HIDE_UNSEEN_CUBES = !HIDE_UNSEEN_CUBES
+      setFrustumCulling()
+    end
+  end
+    
+  if cam_updated cam_updated=false end
+  if keyPressed keyPressed=false end
+end
+
+FPS=1f0/200
 
 i=0
 while !GLFW.WindowShouldClose(window)
   showFrames()
   UpdateCounters()
+  
   if OnUpdate(CAMERA)
     setMVP(program_chunks, CAMERA.MVP)
     setMVP(program_normal, CAMERA.MVP)
     cam_updated=true
   end
+  
+  checkForUpdate()
 
   # Pulse the background
-  c=0.5 * (1 + sin(i * 0.01)); i+=1
-  glClearColor(c, c, c, 1.0)
+  #c=0.5 * (1 + sin(i * 0.01)); i+=1
+  #glClearColor(c, c, c, 1.0)
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
   #print("loopBlocks "); @time
   #loopBlocks()
   
-  if mychunk.visibleCount > 0
+  if isValid(mychunk) 
     useProgram(program_chunks)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     glBindVertexArray(chunkData.vao)
-    glDrawElementsInstanced(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL, mychunk.count)
+    
+    if RENDER_METHOD == 1 glDrawArraysInstanced(GL_POINTS, 0, 1, mychunk.fileredCount) #GL_TRIANGLE_STRIP
+    elseif RENDER_METHOD == 2 glDrawArraysInstanced(GL_TRIANGLES, 0, chunkData.draw.count, mychunk.fileredCount)
+    elseif RENDER_METHOD == 3 glDrawElementsInstanced(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL, mychunk.fileredCount)
+    #glDrawElementsInstancedBaseVertex(GL_TRIANGLES, chunkData.draw.count / 6, GL_UNSIGNED_INT, C_NULL, mychunk.count, 0)
+    elseif RENDER_METHOD > 3
+      #* thats slow! (glDrawElements ~60 fps, glDrawElementsInstanced ~ 200 fps !!!)
+      for b in getFilteredChilds(mychunk)
+        glUniform1f(location_texindex, b.typ)
+        glUniform3fv(location_position, 1, b.pos)
+        glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL )
+      end
+    end
     glBindVertexArray(0)
   end
   
+  #=
   useProgram(program_normal)
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
-  if keyPressed && keyValue == FRUSTUM_KEY || keyValue == ALL_KEY
-    if keyValue == FRUSTUM_KEY
-      SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
-      checkInFrustum(mychunk, fstm)
-      upload(planeData, :vertices, getVertices(fstm))
-    elseif keyValue == ALL_KEY
-      showAll(mychunk)
-    end
-    upload(chunkData, :instances, getData(mychunk))
-  end
-  
   glBindVertexArray(planeData.vao)
   #glDrawElements(GL_TRIANGLES, planeData.draw.count, GL_UNSIGNED_INT, C_NULL )
   glDrawArrays(GL_TRIANGLES, 0, planeData.draw.count)
   glBindVertexArray(0)
-  
-  if cam_updated cam_updated=false end
-  if keyPressed keyPressed=false end
+  =#
 
   # Swap front and back buffers
   GLFW.SwapBuffers(window)
   # Poll for and process events
   GLFW.PollEvents()
+  
+  Libc.systemsleep(FPS)
 end
   
+GLFW.DestroyWindow(window)
 GLFW.Terminate()
