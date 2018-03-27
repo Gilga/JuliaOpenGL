@@ -2,7 +2,7 @@
 Example Julia uses OpenGL
 
 # Status
-* Works with 0.6.0 (Compiling won't work though see [BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl))
+* Works with 0.6.0 (Compiling won't work though see [Status of BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#status)
 * Works with 0.6.1
 
 # Requirements
@@ -24,4 +24,4 @@ Example Julia uses OpenGL
 * Graphics Card 2: NVIDIA GeForce 840M
 
 # Compiling
-look [Compiling with BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#compiling)
+see [Compiling with BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#compiling)
