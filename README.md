@@ -1,6 +1,11 @@
 # JuliaOpenGL
 Example Julia uses OpenGL
 
+# Status
+* ~~Works with 0.5.1~~ (<span style="color:red">deprecated</span>, not tested anymore!)
+* ~~Works with 0.6.0~~ (<span style="color:red">jl_init_with_image breaks</span> with no error!)
+* Works with 0.6.1
+
 # Requirements
 ## Packages
 * Compat
@@ -24,7 +29,7 @@ Compiling with [BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl)
 
 using lib namespace in non module context won't work so easily...
 
-**in non module context** ("using (module)" has to be called in each function!)
+**in non module context** ("using 'modulename'" has to be called in each function!)
 ```julia
 function test()
   using Images
