@@ -1,12 +1,8 @@
 function uploadTexture(path)
-  #img = Images.load(path)
-  #(imgwidth, imgheight) = size(img)
-  #imga = reinterpret.(vec(channelview(img)))
-  
-  # alternative loading raw image
-  (imgwidth, imgheight) = (512,512)
-  imga = convert(Array{UInt8},readcsv("$path.csv"))
-  
+  img = Images.load(path)
+  (imgwidth, imgheight) = size(img)
+  imga = reinterpret.(vec(channelview(img)))
+
   texture = glGenTexture()
   glActiveTexture(GL_TEXTURE0)
   glBindTexture(GL_TEXTURE_2D, texture)
