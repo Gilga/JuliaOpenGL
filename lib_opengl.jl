@@ -1,33 +1,33 @@
 using ModernGL
 
 function glGenOne(glGenFn)
-  id = ModernGL.GLuint[0]
+  id = GLuint[0]
   glGenFn(1, id)
   glCheckError("generating a buffer, array, or texture")
   id[]
 end
 
-glGenBuffer() = glGenOne(ModernGL.glGenBuffers)
-glGenVertexArray() = glGenOne(ModernGL.glGenVertexArrays)
-glGenTexture() = glGenOne(ModernGL.glGenTextures)
+glGenBuffer() = glGenOne(glGenBuffers)
+glGenVertexArray() = glGenOne(glGenVertexArrays)
+glGenTexture() = glGenOne(glGenTextures)
 
-glGetIntegerv_e(name::GLenum) = begin r=GLint[0]; ModernGL.glGetIntegerv(name,r); r[] end
+glGetIntegerv_e(name::GLenum) = begin r=GLint[0]; glGetIntegerv(name,r); r[] end
 
-function getInfoLog(obj::ModernGL.GLuint)
+function getInfoLog(obj::GLuint)
   # Return the info log for obj, whether it be a shader or a program.
-  isShader = ModernGL.glIsShader(obj)
-  getiv = isShader == ModernGL.GL_TRUE ? ModernGL.glGetShaderiv : ModernGL.glGetProgramiv
-  getInfo = isShader == ModernGL.GL_TRUE ? ModernGL.glGetShaderInfoLog : ModernGL.glGetProgramInfoLog
+  isShader = glIsShader(obj)
+  getiv = isShader == GL_TRUE ? glGetShaderiv : glGetProgramiv
+  getInfo = isShader == GL_TRUE ? glGetShaderInfoLog : glGetProgramInfoLog
   # Get the maximum possible length for the descriptive error message
-  len = ModernGL.GLint[0]
-  getiv(obj, ModernGL.GL_INFO_LOG_LENGTH, len)
+  len = GLint[0]
+  getiv(obj, GL_INFO_LOG_LENGTH, len)
   maxlength = len[]
   # TODO: Create a macro that turns the following into the above:
   # maxlength = @glPointer getiv(obj, GL_INFO_LOG_LENGTH, GLint)
   # Return the text of the message if there is any
   if maxlength > 0
     buffer = zeros(GLchar, maxlength)
-    sizei = ModernGL.GLsizei[0]
+    sizei = GLsizei[0]
     getInfo(obj, maxlength, sizei, buffer)
     len = sizei[]
     unsafe_string(pointer(buffer), len)
@@ -36,19 +36,19 @@ function getInfoLog(obj::ModernGL.GLuint)
   end
 end
 function validateShader(shader)
-  success = ModernGL.GLint[0]
-  ModernGL.glGetShaderiv(shader, ModernGL.GL_COMPILE_STATUS, success)
-  success[] == ModernGL.GL_TRUE
+  success = GLint[0]
+  glGetShaderiv(shader, GL_COMPILE_STATUS, success)
+  success[] == GL_TRUE
 end
 function glErrorMessage()
 # Return a string representing the current OpenGL error flag, or the empty string if there's no error.
-  err = ModernGL.glGetError()
-  err == ModernGL.GL_NO_ERROR ? "" :
-  err == ModernGL.GL_INVALID_ENUM ? "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument. The offending command is ignored and has no other side effect than to set the error flag." :
-  err == ModernGL.GL_INVALID_VALUE ? "GL_INVALID_VALUE: A numeric argument is out of range. The offending command is ignored and has no other side effect than to set the error flag." :
-  err == ModernGL.GL_INVALID_OPERATION ? "GL_INVALID_OPERATION: The specified operation is not allowed in the current state. The offending command is ignored and has no other side effect than to set the error flag." :
-  err == ModernGL.GL_INVALID_FRAMEBUFFER_OPERATION ? "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete. The offending command is ignored and has no other side effect than to set the error flag." :
-  err == ModernGL.GL_OUT_OF_MEMORY ? "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command. The state of the GL is undefined, except for the state of the error flags, after this error is recorded." : "Unknown OpenGL error with error code $err."
+  err = glGetError()
+  err == GL_NO_ERROR ? "" :
+  err == GL_INVALID_ENUM ? "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument. The offending command is ignored and has no other side effect than to set the error flag." :
+  err == GL_INVALID_VALUE ? "GL_INVALID_VALUE: A numeric argument is out of range. The offending command is ignored and has no other side effect than to set the error flag." :
+  err == GL_INVALID_OPERATION ? "GL_INVALID_OPERATION: The specified operation is not allowed in the current state. The offending command is ignored and has no other side effect than to set the error flag." :
+  err == GL_INVALID_FRAMEBUFFER_OPERATION ? "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete. The offending command is ignored and has no other side effect than to set the error flag." :
+  err == GL_OUT_OF_MEMORY ? "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command. The state of the GL is undefined, except for the state of the error flags, after this error is recorded." : "Unknown OpenGL error with error code $err."
 end
 function glCheckError(actionName="")
   message = glErrorMessage()
@@ -65,24 +65,24 @@ end
 #glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(source))])), C_NULL)
 
 function compileShader(shader,source)
-  ModernGL.glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{ModernGL.GLchar}, pointer(string(source,"\x00")))])), C_NULL)
+  glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(string(source,"\x00")))])), C_NULL)
   glCheckError("glShaderSource")
     
-  ModernGL.glCompileShader(shader)
+  glCompileShader(shader)
   glCheckError("glCompileShader")
   
   !validateShader(shader) && error("Shader $name compile error: ", getInfoLog(shader))
 end
 
-BackupSource=Dict{Symbol,Dict{ModernGL.GLuint,String}}()
+BackupSource=Dict{Symbol,Dict{GLuint,String}}()
 
 function createShader(source::Tuple{Symbol,String}, typ)
-  if typ == ModernGL.GL_VERTEX_SHADER name="GL_VERTEX_SHADER" end
-  if typ == ModernGL.GL_FRAGMENT_SHADER name="GL_FRAGMENT_SHADER" end
-  if typ == ModernGL.GL_GEOMETRY_SHADER name="GL_GEOMETRY_SHADER" end
+  if typ == GL_VERTEX_SHADER name="GL_VERTEX_SHADER" end
+  if typ == GL_FRAGMENT_SHADER name="GL_FRAGMENT_SHADER" end
+  if typ == GL_GEOMETRY_SHADER name="GL_GEOMETRY_SHADER" end
 
   # Create the shader
-  shader = ModernGL.glCreateShader(typ)::ModernGL.GLuint
+  shader = glCreateShader(typ)::GLuint
   glCheckError("glCreateShader")
   
   if shader == 0
@@ -116,38 +116,38 @@ end
 function createShaderProgram(vertexShader, fragmentShader, geometryShader=nothing)
   # Create, link then return a shader program for the given shaders.
   # Create the shader program
-  prog = ModernGL.glCreateProgram()
+  prog = glCreateProgram()
   if prog == 0
     error("Error creating shader program: ", glErrorMessage())
   end
   
-  vertexShader = createShader(vertexShader, ModernGL.GL_VERTEX_SHADER)
-  fragmentShader = createShader(fragmentShader, ModernGL.GL_FRAGMENT_SHADER)
+  vertexShader = createShader(vertexShader, GL_VERTEX_SHADER)
+  fragmentShader = createShader(fragmentShader, GL_FRAGMENT_SHADER)
   
   # Attach the vertex shader
-  ModernGL.glAttachShader(prog, vertexShader)
+  glAttachShader(prog, vertexShader)
   glCheckError("attaching vertex shader")
   # Attach the fragment shader
-  ModernGL.glAttachShader(prog, fragmentShader)
+  glAttachShader(prog, fragmentShader)
   glCheckError("attaching fragment shader")
   # Attach the geometry shader
   if geometryShader != nothing
-    geometryShader = createShader(geometryShader, ModernGL.GL_GEOMETRY_SHADER)
-    ModernGL.glAttachShader(prog, geometryShader)
+    geometryShader = createShader(geometryShader, GL_GEOMETRY_SHADER)
+    glAttachShader(prog, geometryShader)
     glCheckError("attaching geometry shader")
   end
   # Finally, link the program and check for errors.
-  ModernGL.glLinkProgram(prog)
+  glLinkProgram(prog)
   
-  ModernGL.glDeleteShader(vertexShader)
-  ModernGL.glDeleteShader(fragmentShader)
-  if geometryShader != nothing ModernGL.glDeleteShader(geometryShader) end
+  glDeleteShader(vertexShader)
+  glDeleteShader(fragmentShader)
+  if geometryShader != nothing glDeleteShader(geometryShader) end
   
-  status = ModernGL.GLint[0]
-  ModernGL.glGetProgramiv(prog, GL_LINK_STATUS, status)
+  status = GLint[0]
+  glGetProgramiv(prog, GL_LINK_STATUS, status)
   if status[] == GL_FALSE
     msg = getInfoLog(prog)
-    ModernGL.glDeleteProgram(prog)
+    glDeleteProgram(prog)
     error("Error linking shader: ", msg)
   end
   info("Shader Program initalized.")
@@ -158,7 +158,7 @@ global GLSL_VERSION = ""
 
 function createcontextinfo()
   global GLSL_VERSION
-  glsl = split(unsafe_string(ModernGL.glGetString(ModernGL.GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
+  glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
   if length(glsl) >= 2
     glsl = VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
     GLSL_VERSION = string(glsl.major) * rpad(string(glsl.minor),2,"0")
@@ -166,7 +166,7 @@ function createcontextinfo()
     error("Unexpected version number string. Please report this bug! GLSL version string: $(glsl)")
   end
 
-  glv = split(unsafe_string(ModernGL.glGetString(ModernGL.GL_VERSION)), ['.', ' '])
+  glv = split(unsafe_string(glGetString(GL_VERSION)), ['.', ' '])
   if length(glv) >= 2
     glv = VersionNumber(parse(Int, glv[1]), parse(Int, glv[2]))
   else
@@ -175,8 +175,8 @@ function createcontextinfo()
   dict = Dict{Symbol,Any}(
       :glsl_version   => glsl,
       :gl_version     => glv,
-      :gl_vendor      => unsafe_string(ModernGL.glGetString(ModernGL.GL_VENDOR)),
-      :gl_renderer  => unsafe_string(ModernGL.glGetString(ModernGL.GL_RENDERER)),
+      :gl_vendor      => unsafe_string(glGetString(GL_VENDOR)),
+      :gl_renderer  => unsafe_string(glGetString(GL_RENDERER)),
       #:gl_extensions => split(unsafe_string(glGetString(GL_EXTENSIONS))),
   )
 end
