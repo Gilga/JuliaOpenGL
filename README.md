@@ -18,3 +18,27 @@ Example Julia uses OpenGL
 * Memory: 8192MB RAM
 * Graphics Card 1: Intel(R) HD Graphics Family
 * Graphics Card 2: NVIDIA GeForce 840M
+
+# Compiling
+Compiling with [BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl)
+
+using lib namespace in non module context won't work so easily...
+
+**in non module context** ("using (module)" has to be called in each function!)
+```julia
+function test()
+  using Images
+  Images.load(...)
+end
+```
+
+**in module context**
+```julia
+module Test
+  using Images
+  
+  function load()
+    Images.load(...)
+  end  
+end
+```
