@@ -27,6 +27,7 @@ Example Julia uses OpenGL
 Compiling with [BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl)
 
 using module namespace in non module context won't work so easily...
+
 execution of main() will fail probably due to missing modules (even so you defined it). why? look:
 
 **in non module context** ("using 'modulename'" has to be called in each function!)
@@ -45,5 +46,32 @@ module Test
   function load()
     Images.load(...)
   end  
+end
+```
+
+I guess the reason is that: app execution != compiler run. main() function will be called by a executable file (.exe) after code was compiled.
+
+So question is if main() function can see all modules that i want to use.
+
+I did an approach of defining an module 'App' around a start() function which is the programs run point (instead of using main).
+All necessary files and modules are included there. The main function calls App.start(). This works!
+
+Example:
+```julia
+module App
+  include("myOtherModule")
+  
+  using Images
+  using myOtherModule
+  ...
+  
+  function start() # app run point
+    Images.load(...)
+    myOtherModule.call()
+  end
+end
+
+function main() # entry point
+  App.start() # app run point
 end
 ```
