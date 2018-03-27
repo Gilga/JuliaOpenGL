@@ -1,13 +1,5 @@
 VERSION >= v"0.4.0-dev+6521" && __precompile__(true)
 
-INST_VSH = ""
-INST_VSH_GSH = ""
-INST_GSH = ""
-INST_FSH = ""
-VSH = ""
-FSH = ""
-GSH = ""
-
 module App
 
 ## INCLUDES
