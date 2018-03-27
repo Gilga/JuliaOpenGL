@@ -26,7 +26,8 @@ Example Julia uses OpenGL
 # Compiling
 Compiling with [BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl)
 
-using lib namespace in non module context won't work so easily...
+using module namespace in non module context won't work so easily...
+execution of main() will fail probably due to missing modules (even so you defined it). why? look:
 
 **in non module context** ("using 'modulename'" has to be called in each function!)
 ```julia
