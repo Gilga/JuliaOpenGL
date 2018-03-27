@@ -10,6 +10,7 @@ include("shader.jl")
 #include("compileAndLink.jl")
 const compileAndLink = isdefined(:createLoop) 
 
+WIREFRAME = false
 FRUSTUM_CULLING = true
 HIDE_UNSEEN_CUBES = true
 RENDER_METHOD = 1
@@ -78,8 +79,8 @@ function chooseRenderMethod(method=RENDER_METHOD)
   global program_chunks
   
   if program_chunks != 0
-    ModernGL.glUseProgram(0)
-    ModernGL.glDeleteProgram(program_chunks)
+    glUseProgram(0)
+    glDeleteProgram(program_chunks)
     glCheckError("glDeleteProgram")
   end
    
@@ -93,15 +94,15 @@ function chooseRenderMethod(method=RENDER_METHOD)
   info("Compile Shader Programs...")
   
   if program_chunks <= 0 error("No Program") end
-  ModernGL.glUseProgram(program_chunks)
+  glUseProgram(program_chunks)
   glCheckError("glUseProgram")
     
   setAttributes(chunkData, program_chunks)
   setMatrix(program_chunks, "iMVP", CAMERA.MVP)
   glCheckError("setMatrix")
   
-  global location_position = ModernGL.glGetUniformLocation(program_chunks, "iPosition")
-  global location_texindex = ModernGL.glGetUniformLocation(program_chunks, "iTexIndex")
+  global location_position = glGetUniformLocation(program_chunks, "iPosition")
+  global location_texindex = glGetUniformLocation(program_chunks, "iTexIndex")
 end
 
 function checkForUpdate()
@@ -109,11 +110,13 @@ function checkForUpdate()
   
   if keyPressed
   
-    if keyValue == 80
+    if keyValue == 80 #p
       setPosition(CAMERA,[0f0,0,0])
-    end
-    
-    if keyValue == 82 #F1
+      
+    elseif keyValue == 81 #q
+      global WIREFRAME=!WIREFRAME
+
+    elseif keyValue == 82 #r
       chooseRenderMethod()
       
     elseif keyValue == 290 #F1
@@ -205,17 +208,17 @@ function checkForUpdate()
   if keyPressed keyPressed=false end
 end
 
-useProgram(p) = begin global program = p; ModernGL.glUseProgram(p) end
+useProgram(p) = begin global program = p; glUseProgram(p) end
 
-setMatrix(program, name, m) = begin const cm = SMatrix{4,4,Float32}(m); ModernGL.glUniformMatrix4fv(ModernGL.glGetUniformLocation(program, name), 1, false, cm) end
+setMatrix(program, name, m) = begin const cm = SMatrix{4,4,Float32}(m); glUniformMatrix4fv(glGetUniformLocation(program, name), 1, false, cm) end
 
 function setMVP(program, mvp, old_program=nothing)
-  ModernGL.glUseProgram(program)
+  glUseProgram(program)
   glCheckError("glUseProgram")
   setMatrix(program, "iMVP", mvp)
   glCheckError("setMatrix")
   if old_program!=nothing
-    ModernGL.glUseProgram(old_program)
+    glUseProgram(old_program)
     glCheckError("glUseProgram")
   end
 end
@@ -333,15 +336,15 @@ end
 
 #------------------------------------------------------------------------------------
 
-ModernGL.glEnable(ModernGL.GL_DEPTH_TEST)
-ModernGL.glEnable(ModernGL.GL_BLEND)
-ModernGL.glEnable(ModernGL.GL_CULL_FACE)
+glEnable(GL_DEPTH_TEST)
+glEnable(GL_BLEND)
+glEnable(GL_CULL_FACE)
 #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 #glBlendEquation(GL_FUNC_ADD)
 #glFrontFace(GL_CCW)
-ModernGL.glCullFace(ModernGL.GL_BACK)
+glCullFace(GL_BACK)
 #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)#GL_FILL,GL_LINE
-ModernGL.glClearColor(0.0, 0.0, 0.0, 1.0)
+glClearColor(0.0, 0.0, 0.0, 1.0)
 
 # Loop until the user closes the window
 render = function(x)
@@ -388,29 +391,29 @@ while !GLFW.WindowShouldClose(window)
   # Pulse the background
   #c=0.5 * (1 + sin(i * 0.01)); i+=1
   #glClearColor(c, c, c, 1.0)
-  ModernGL.glClear(ModernGL.GL_COLOR_BUFFER_BIT | ModernGL.GL_DEPTH_BUFFER_BIT)
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
   #print("loopBlocks "); @time
   #loopBlocks()
   
   if isValid(mychunk) 
     useProgram(program_chunks)
-    ModernGL.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-    ModernGL.glBindVertexArray(chunkData.vao)
+    glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
+    glBindVertexArray(chunkData.vao)
     
-    if RENDER_METHOD == 1 ModernGL.glDrawArraysInstanced(ModernGL.GL_POINTS, 0, 1, mychunk.fileredCount) #GL_TRIANGLE_STRIP
-    elseif RENDER_METHOD == 2 ModernGL.glDrawArraysInstanced(ModernGL.GL_TRIANGLES, 0, chunkData.draw.count, mychunk.fileredCount)
-    elseif RENDER_METHOD == 3 ModernGL.glDrawElementsInstanced(ModernGL.GL_TRIANGLES, chunkData.draw.count, ModernGL.GL_UNSIGNED_INT, C_NULL, mychunk.fileredCount)
+    if RENDER_METHOD == 1 glDrawArraysInstanced(GL_POINTS, 0, 1, mychunk.fileredCount) #GL_TRIANGLE_STRIP
+    elseif RENDER_METHOD == 2 glDrawArraysInstanced(GL_TRIANGLES, 0, chunkData.draw.count, mychunk.fileredCount)
+    elseif RENDER_METHOD == 3 glDrawElementsInstanced(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL, mychunk.fileredCount)
     #glDrawElementsInstancedBaseVertex(GL_TRIANGLES, chunkData.draw.count / 6, GL_UNSIGNED_INT, C_NULL, mychunk.count, 0)
     elseif RENDER_METHOD > 3
       #* thats slow! (glDrawElements ~60 fps, glDrawElementsInstanced ~ 200 fps !!!)
       for b in getFilteredChilds(mychunk)
-        ModernGL.glUniform1f(location_texindex, b.typ)
-        ModernGL.glUniform3fv(location_position, 1, b.pos)
-        ModernGL.glDrawElements(ModernGL.GL_TRIANGLES, chunkData.draw.count, ModernGL.GL_UNSIGNED_INT, C_NULL )
+        glUniform1f(location_texindex, b.typ)
+        glUniform3fv(location_position, 1, b.pos)
+        glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL )
       end
     end
-    ModernGL.glBindVertexArray(0)
+    glBindVertexArray(0)
   end
   
   #=
