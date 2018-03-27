@@ -4,11 +4,13 @@ Example Julia uses OpenGL
 # Status
 * Works with 0.6.0 (Compiling won't work though see [Status of BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#status))
 * Works with 0.6.1
+* Works with 0.6.2 (in progress)
 
 # Requirements
 ## Packages
 * Compat
 * Images
+* ImageMagick
 * ModernGL
 * GLFW
 * Quaternions
