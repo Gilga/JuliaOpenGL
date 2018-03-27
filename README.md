@@ -2,8 +2,7 @@
 Example Julia uses OpenGL
 
 # Status
-* ~~Works with 0.5.1~~ (<span style="color:red">deprecated</span>, not tested anymore!)
-* ~~Works with 0.6.0~~ (<span style="color:red">jl_init_with_image breaks</span> with no error!)
+* Works with 0.6.0 (Compiling won't work though see [BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl))
 * Works with 0.6.1
 
 # Requirements
