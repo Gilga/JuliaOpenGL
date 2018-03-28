@@ -2,9 +2,9 @@
 Example Julia uses OpenGL
 
 # Status
-* Works with 0.6.0 (Compiling won't work though see [Status of BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#status))
+* Works with 0.6.0 (Compiling will work, but execution will fail, see [Status of BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#status))
 * Works with 0.6.1
-* Works with 0.6.2 (in progress)
+* Works with 0.6.2
 
 # Requirements
 ## Packages
