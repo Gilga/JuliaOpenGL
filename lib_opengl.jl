@@ -64,7 +64,7 @@ end
 #loadShaderSource(shaderID::GLuint, source::String) = (shadercode=Vector{UInt8}(string(source,"\x00")); glShaderSource(shaderID, 1, Ptr{UInt8}[pointer(shadercode)], Ref{GLint}(length(shadercode))))
 #glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(source))])), C_NULL)
 
-function compileShader(shader,source)
+function compileShader(name, shader,source)
   glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(string(source,"\x00")))])), C_NULL)
   glCheckError("glShaderSource")
     
@@ -93,7 +93,7 @@ function createShader(source::Tuple{Symbol,String}, typ)
   name=source[1]; source=source[2]; err=false
   
   try
-    compileShader(shader,source)
+    compileShader(name, shader,source)
     
      # save backup
     if !haskey(BackupSource, name) BackupSource[name] = Dict() end
