@@ -1,5 +1,3 @@
-uniform float time = 1;
-uniform mat4 iMVP = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
 uniform vec3 iPosition;
 
 layout (location = 1) in vec3 iInstancePos;
@@ -10,12 +8,11 @@ layout (location = 0) out Vertex vertex;
 void main() {
   Vertex v = _Vertex();
 
-  v.texindex = (iInstanceFlags.x-1);
-  
-  if(v.texindex >= 0) {
-    v.world        = iInstancePos.xyz+iPosition*0;
-    v.texUV        = getTexUV(v.texindex);
-    v.sides        = iInstanceFlags.y;
+  v.flags = vec4((iInstanceFlags.x-1),iInstanceFlags.y,0,0);
+
+  if(v.flags.x >= 0) { //texture index
+    v.world_center  = vec4(iInstancePos.xyz+iPosition,1);
+    v.uvs.zw = getTexUV(v.flags.x);
   }
 
   vertex = v;

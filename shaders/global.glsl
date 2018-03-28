@@ -6,19 +6,17 @@
 
 struct Vertex
 {
-	vec3 pos;
-	vec3 normal;
-	vec2 uv;
+	vec4 pos;
+	vec4 normal;
 	vec4 color;
-  vec3 world;
-	vec3 world_pos;
-	vec3 world_normal;
-  vec2 texUV;
-  float texindex;
-  float sides;
+  vec4 flags;
+  vec4 uvs;
+  vec4 world_center;
+  vec4 world_pos;
+	vec4 world_normal;
 };
 
-Vertex _Vertex() { return Vertex(vec3(0),vec3(0),vec2(0),vec4(0),vec3(0),vec3(0),vec3(0),vec2(0),0,0); }
+Vertex _Vertex() { return Vertex(vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0)); }
 
 vec2 getUV(vec3 vertex)
 {
@@ -93,4 +91,19 @@ vec2 getTexUV(float texindex){
     }
   }
   return vec2(tx,ty);
+}
+
+Vertex preset(vec3 pos){
+  Vertex v = _Vertex();
+
+  v.pos          = vec4(pos,1);
+  v.normal       = normalize(v.pos);
+  v.uvs          = vec4(0);
+  v.color        = getVertexColor(v.pos.xyz, v.normal.xyz, 1);
+  // flags
+  v.world_center = vec4(0,0,0,0);
+  v.world_pos    = vec4(v.pos.xyz+v.world_center.xyz,1);
+  v.world_normal = normalize(v.world_pos);
+  
+  return v;
 }

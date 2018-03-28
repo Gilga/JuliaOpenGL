@@ -6,7 +6,6 @@ layout(location = 0) in Vertex iv[];
 layout(location = 0) out Vertex ov;
 
 uniform mat4 iMVP = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
-uniform float time = 1;
 
 const vec3 cube[6][4] = {
   {vec3(1,1,1),vec3(1,1,-1),vec3(-1,1,1),vec3(-1,1,-1)},
@@ -20,15 +19,15 @@ const vec3 cube[6][4] = {
 void createSide(Vertex v, int side)
 {
   for(int i=0;i<4;++i) {
-    v.pos=cube[side][i];
-    v.normal = normalize(v.pos);
-    v.color = getVertexColor(v.pos,v.normal, time);
-    v.world_pos    = v.pos+v.world;
+    v.pos          = vec4(cube[side][i],1);
+    v.normal       = normalize(v.pos);
+    v.color        = getVertexColor(v.pos.xyz, v.normal.xyz, 1);
+    v.world_pos    = vec4(v.pos.xyz+v.world_center.xyz,1);
     v.world_normal = normalize(v.world_pos);
     
     ov = v;
     
-    gl_Position = iMVP * (vec4(v.world+v.pos,1));
+    gl_Position = iMVP * v.world_pos;
     EmitVertex();
   }
   EndPrimitive();
@@ -52,13 +51,15 @@ void main()
   */
   
   v = iv[0];
-  uint sides = uint(floor(v.sides));
   
-  if((sides & 0x1) > 0) createSide(v, 4);  // LEFT
-  if((sides & 0x2) > 0) createSide(v, 5);  // RIGHT
-  if((sides & 0x4) > 0) createSide(v, 0);  // TOP
-  if((sides & 0x8) > 0) createSide(v, 1);  // BOTTOM
-  if((sides & 0x10) > 0) createSide(v, 2);  // FRONT
-  if((sides & 0x20) > 0) createSide(v, 3);  // BACK
-
+  if(v.flags.x >= 0) {
+    uint sides = uint(floor(v.flags.y));
+    
+    if((sides & 0x1) > 0) createSide(v, 4);  // LEFT
+    if((sides & 0x2) > 0) createSide(v, 5);  // RIGHT
+    if((sides & 0x4) > 0) createSide(v, 0);  // TOP
+    if((sides & 0x8) > 0) createSide(v, 1);  // BOTTOM
+    if((sides & 0x10) > 0) createSide(v, 2);  // FRONT
+    if((sides & 0x20) > 0) createSide(v, 3);  // BACK
+  }
 }

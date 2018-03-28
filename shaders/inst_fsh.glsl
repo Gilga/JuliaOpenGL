@@ -1,4 +1,4 @@
-layout(location = 0) in Vertex vertex;
+layout(location = 0) in Vertex v;
 layout(location = 0) out vec4 outColor;
 
 uniform float time;
@@ -21,20 +21,22 @@ struct iLight {
 } light;
 
 void main() {
-  if(vertex.texindex < 0) { discard; return; }
-  //int glow = vertex.texindex==15;
+  if(v.flags.x < 0) { discard; return; } //texture index
+  //int glow = v.texindex==15;
   
   vec4 color = vec4(0,0,0,1);
   
-  vec2 UV = getUV(vertex.pos)*0.25f;
-
+  vec2 UV = getUV(v.pos.xyz)*0.25f;
+  vec2 texUV = v.uvs.zw;
+  
   // flip texture 
   UV.y=(1-UV.y);
-  UV.x+=0.25f*vertex.texUV.x;
-  UV.y+=-0.75f+0.25*vertex.texUV.y;
+  UV.x+=0.25f*texUV.x;
+  UV.y+=-0.75f+0.25*texUV.y;
   UV = clamp(UV,0,1); // valid values otherwise might be break
+  //UV = vec2(0,0);
   
-  //color = vertex.color; color = vec4(color.xyz,color.x*color.y*color.z);
+  //color = v.color; color = vec4(color.xyz,color.x*color.y*color.z);
   color = texture(tex, vec2(UV.y, UV.x));
   
   if(true){ //use phong?
@@ -56,16 +58,16 @@ void main() {
     float gammaAmount = 2.2f;
     float shininessCoefficient = 1;
     
-    vec3 E = - normalize(vertex.pos); // camera direction (towards the camera)
+    vec3 E = - vec3(0,0,0); //normalize(v.pos); // camera direction (towards the camera)
     
-    vec3 lightDir = (light.position - vertex.world);
+    vec3 lightDir = (light.position - v.world_center.xyz);
     float lightDist = length(lightDir);
 
     vec3 L = normalize(lightDir); // Direction of the light (from the fragment to the light)
-    vec3 N = normalize(vertex.normal*lightDist); // Normal of the computed fragment, in camera space
-    //N-=vertex.world*0.001f;
+    vec3 N = normalize(v.normal.xyz); // Normal of the computed fragment, in camera space
    
     float H = dot(L, N);
+
     float cosPhi = clamp(H,0,1);
     float diffuseCoefficient = max(cosPhi, 0.0);
     
@@ -109,7 +111,7 @@ void main() {
       
       //attenuation
       float distanceToLight = 1/length(lightDist);
-      float attenuation = 1.0 / (1.0 + lightAttenuation * pow(distanceToLight,2));
+      float attenuation = 1; //1.0 / (1.0 + lightAttenuation * pow(distanceToLight,2));
       
       difSpec += (diffuse + specular*0) * attenuation * light.energy;
     }
