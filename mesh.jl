@@ -30,7 +30,7 @@ gltypes=Dict(Float32=>GL_FLOAT,Float64=>GL_DOUBLE,UInt32=>GL_UNSIGNED_INT,Int32=
 function setAttributes(this::MeshArray, program, attrb)
   if this.count == 0 return end
   
-  const STRIDE = GLsizei(reduce(+, (x->sizeof(x[2])*x[3]).(attrb)))
+  const STRIDE = GLsizei(length(attrb)<=1?0:reduce(+, (x->sizeof(x[2])*x[3]).(attrb)))
   OFFSET =  C_NULL
   
   glBindBuffer(this.bufferType, this.bufferID)
@@ -77,6 +77,9 @@ end
 
 function linkData(this::MeshData, args...)
   d=Dict(args)
+  
+  this.arrays = Dict()
+  this.draw = nothing
   
   for (s,x) in d
     l=isa(x,Tuple)?length(x):0

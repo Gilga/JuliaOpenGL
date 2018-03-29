@@ -121,6 +121,9 @@ function createShaderProgram(vertexShader, fragmentShader, geometryShader=nothin
     error("Error creating shader program: ", glErrorMessage())
   end
   
+  # attributes
+  #glBindAttribLocation(prog,0,"iVertex") # bind attribute always
+  
   vertexShader = createShader(vertexShader, GL_VERTEX_SHADER)
   fragmentShader = createShader(fragmentShader, GL_FRAGMENT_SHADER)
   
@@ -136,6 +139,7 @@ function createShaderProgram(vertexShader, fragmentShader, geometryShader=nothin
     glAttachShader(prog, geometryShader)
     glCheckError("attaching geometry shader")
   end
+  
   # Finally, link the program and check for errors.
   glLinkProgram(prog)
   
@@ -150,7 +154,7 @@ function createShaderProgram(vertexShader, fragmentShader, geometryShader=nothin
     glDeleteProgram(prog)
     error("Error linking shader: ", msg)
   end
-  info("Shader Program initalized.")
+  info("Shader Program $prog initalized.")
   prog
 end
 

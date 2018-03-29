@@ -1,4 +1,4 @@
-uniform vec3 iPosition;
+uniform vec3 iPosition = vec3(0);
 
 layout (location = 1) in vec3 iInstancePos;
 layout (location = 2) in vec2 iInstanceFlags;

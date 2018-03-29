@@ -11,6 +11,9 @@ include("shader.jl")
 const compileAndLink = isdefined(:createLoop) 
 
 WIREFRAME = false
+TEXTUREMODE = true
+LIGHTMODE = true
+
 FRUSTUM_CULLING = true
 HIDE_UNSEEN_CUBES = true
 RENDER_METHOD = 1
@@ -21,10 +24,21 @@ fstm = nothing
 planeData = nothing
 CHUNK_SIZE = 64
 
+load_once = true
+
+function setMode(program, name, mode)
+  l = glGetUniformLocation(program, name)
+  if l>-1 glUniform1i(l, mode) end
+end
+
 function setFrustumCulling(load=true)
-  if FRUSTUM_CULLING
+  global load_once
+  if load || load_once
     SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
-    checkInFrustum(mychunk, fstm)
+    load_once = false
+  end
+
+  if FRUSTUM_CULLING checkInFrustum(mychunk, fstm)
   else showAll(mychunk)
   end
   
@@ -32,6 +46,7 @@ function setFrustumCulling(load=true)
 
   if load
     update(mychunk)
+    global BLOCK_COUNT = mychunk.fileredCount
     upload(chunkData, :instances, getData(mychunk))
     if FRUSTUM_CULLING upload(planeData, :vertices, getVertices(fstm)) end
   end
@@ -79,6 +94,7 @@ function chooseRenderMethod(method=RENDER_METHOD)
   global program_chunks
   
   if program_chunks != 0
+    println("Unbind & Delete previous program")
     glUseProgram(0)
     glDeleteProgram(program_chunks)
     glCheckError("glDeleteProgram")
@@ -87,8 +103,8 @@ function chooseRenderMethod(method=RENDER_METHOD)
   (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH, FSH, GSH) = loadShaders()
 
   if method == 1 program_chunks = createShaderProgram(INST_VSH_GSH, INST_FSH, INST_GSH)
-  elseif method > 1 program_chunks = createShaderProgram(INST_VSH, INST_FSH)
-  #elseif method > 3  program_chunks = createShaderProgram(VSH, FSH)
+  elseif method > 1 && method <= 3 program_chunks = createShaderProgram(INST_VSH, INST_FSH)
+  elseif method > 3 program_chunks = createShaderProgram(VSH, INST_FSH)
   end
   
   info("Compile Shader Programs...")
@@ -103,6 +119,9 @@ function chooseRenderMethod(method=RENDER_METHOD)
   
   global location_position = glGetUniformLocation(program_chunks, "iPosition")
   global location_texindex = glGetUniformLocation(program_chunks, "iTexIndex")
+  
+  setMode(program_chunks, "iUseLight", LIGHTMODE)
+  setMode(program_chunks, "iUseTexture", TEXTUREMODE)
 end
 
 function checkForUpdate()
@@ -115,6 +134,14 @@ function checkForUpdate()
       
     elseif keyValue == 81 #q
       global WIREFRAME=!WIREFRAME
+      
+    elseif keyValue == 84 #t
+      global TEXTUREMODE=!TEXTUREMODE
+      setMode(program_chunks, "iUseTexture", TEXTUREMODE)
+      
+    elseif keyValue == 76 #l
+      global LIGHTMODE=!LIGHTMODE
+      setMode(program_chunks, "iUseLight", LIGHTMODE)
 
     elseif keyValue == 82 #r
       chooseRenderMethod()
@@ -208,7 +235,7 @@ function checkForUpdate()
   if keyPressed keyPressed=false end
 end
 
-useProgram(p) = begin global program = p; glUseProgram(p) end
+useProgram(program) = begin global current_program = program; glUseProgram(program) end
 
 setMatrix(program, name, m) = begin const cm = SMatrix{4,4,Float32}(m); glUniformMatrix4fv(glGetUniformLocation(program, name), 1, false, cm) end
 
@@ -321,8 +348,8 @@ setMVP(program_normal, CAMERA.MVP)
 
 #compileShaderPrograms()
 
-global location_position = 0
-global location_texindex = 0
+global location_position = -1
+global location_texindex = -1
 
 #------------------------------------------------------------------------------------
 
@@ -381,7 +408,7 @@ while !GLFW.WindowShouldClose(window)
   
   if OnUpdate(CAMERA)
     setMVP(program_chunks, CAMERA.MVP)
-    setMVP(program_normal, CAMERA.MVP)
+    #setMVP(program_normal, CAMERA.MVP)
     cam_updated=true
   end
   
@@ -398,8 +425,10 @@ while !GLFW.WindowShouldClose(window)
   
   if isValid(mychunk) 
     useProgram(program_chunks)
+    #glCheckError("useProgram")
     glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
     glBindVertexArray(chunkData.vao)
+    #glCheckError("glBindVertexArray bind")
     
     if RENDER_METHOD == 1 glDrawArraysInstanced(GL_POINTS, 0, 1, mychunk.fileredCount) #GL_TRIANGLE_STRIP
     elseif RENDER_METHOD == 2 glDrawArraysInstanced(GL_TRIANGLES, 0, chunkData.draw.count, mychunk.fileredCount)
@@ -408,12 +437,14 @@ while !GLFW.WindowShouldClose(window)
     elseif RENDER_METHOD > 3
       #* thats slow! (glDrawElements ~60 fps, glDrawElementsInstanced ~ 200 fps !!!)
       for b in getFilteredChilds(mychunk)
-        glUniform1f(location_texindex, b.typ)
-        glUniform3fv(location_position, 1, b.pos)
+        if location_texindex > -1 glUniform1f(location_texindex, b.typ) end
+        if location_position > -1 glUniform3fv(location_position, 1, b.pos) end
         glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL )
+        #glCheckError("glDrawElements")
       end
     end
     glBindVertexArray(0)
+    #glCheckError("glBindVertexArray unbind")
   end
   
   #=

@@ -78,32 +78,32 @@ function hideUnseen(this::Chunk)
     
     if x>1
       r=b.sides[LEFT_SIDE]=!isSeen(a[x-1,y,z])
-      if r blocked+=1 end
+      if !r blocked+=1 end
     end
     
     if x<len
       r=b.sides[RIGHT_SIDE]=!isSeen(a[x+1,y,z])
-      if r blocked+=1 end
+      if !r blocked+=1 end
     end
  
     if y>1
       r=b.sides[BOTTOM_SIDE]=!isSeen(a[x,y-1,z])
-      if r blocked+=1 end
+      if !r blocked+=1 end
     end
     
     if y<len
       r=b.sides[TOP_SIDE]=!isSeen(a[x,y+1,z])
-      if r blocked+=1 end
+      if !r blocked+=1 end
     end
     
     if z>1
       r=b.sides[BACK_SIDE]=!isSeen(a[x,y,z-1])
-      if r blocked+=1 end
+      if !r blocked+=1 end
     end
     
     if z<len
       r=b.sides[FRONT_SIDE]=!isSeen(a[x,y,z+1])
-      if r blocked+=1 end
+      if !r blocked+=1 end
     end
     
     setSurrounded(b,blocked >= 6)

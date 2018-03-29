@@ -2,6 +2,9 @@ layout(location = 0) in Vertex v;
 layout(location = 0) out vec4 outColor;
 
 uniform float time;
+uniform bool iUseLight = true;
+uniform bool iUseTexture = true;
+
 uniform sampler2D tex;
 
 struct iMaterial {
@@ -26,20 +29,21 @@ void main() {
   
   vec4 color = vec4(0,0,0,1);
   
-  vec2 UV = getUV(v.pos.xyz)*0.25f;
-  vec2 texUV = v.uvs.zw;
+  if(!iUseTexture) color = v.color; //color.w = color.x*color.y*color.z;
+  else {
+    vec2 UV = getUV(v.pos.xyz)*0.25f;
+    vec2 texUV = v.uvs.zw;
+    
+    // flip texture 
+    UV.y=(1-UV.y);
+    UV.x+=0.25f*texUV.x;
+    UV.y+=-0.75f+0.25*texUV.y;
+    UV = clamp(UV,0,1); // valid values otherwise might be break
+    //UV = vec2(0,0);
+      color = texture(tex, vec2(UV.y, UV.x));
+  }
   
-  // flip texture 
-  UV.y=(1-UV.y);
-  UV.x+=0.25f*texUV.x;
-  UV.y+=-0.75f+0.25*texUV.y;
-  UV = clamp(UV,0,1); // valid values otherwise might be break
-  //UV = vec2(0,0);
-  
-  //color = v.color; color = vec4(color.xyz,color.x*color.y*color.z);
-  color = texture(tex, vec2(UV.y, UV.x));
-  
-  if(true){ //use phong?
+  if(iUseLight){ //use phong?
     float alpha = radians(0);
     
     light.color = vec4(1,1,1,1);
