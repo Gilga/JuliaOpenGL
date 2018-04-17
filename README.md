@@ -55,3 +55,5 @@ Rendermethods:
 | WASD  | Move Camera (Forward,Left,Back,Right,Up,Down)
 |Space  | Move Camera (Up)
 |Ctrl/c | Move Camera (Down)
+|LShift | Hold left shift to speedUp Camera Movement
+| HMK   | Hold any mouse key to rotate view
