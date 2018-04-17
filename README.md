@@ -14,8 +14,11 @@ Example Julia uses OpenGL
 * ModernGL
 * GLFW
 * Quaternions
-* StaticArrays
-* WinRPM
+* StaticArrays (used by Images)
+* WinRPM (used by ImageMagick)
+
+# Compiling
+see [Compiling with BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#compiling)
 
 # Run
 ## Windows
@@ -25,5 +28,31 @@ Example Julia uses OpenGL
 * Graphics Card 1: Intel(R) HD Graphics Family
 * Graphics Card 2: NVIDIA GeForce 840M
 
-# Compiling
-see [Compiling with BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#compiling)
+# Program Control
+Rendermethods: 
+1. Arrays Instanced + Points
+2. Arrays Instanced + Triangles
+3. Elements Instanced + Triangles
+4. Elements + Triangles
+
+| Key | Command/Description
+|:---:| ---
+|  k  | Show Keys
+|  q  | Wireframe (Enable/Disable)     
+|  t  | Texture (Enable/Disable)
+|  l  | Light (Enable/Disable)
+|  f  | Frustum Culling (Enable/Disable)
+|  o  | Outside Only Cubes (Enable/Disable)
+|  r  | Reload
+|F1-F4| Rendermethod 1 - 4
+| 0-9 | Chunk Size 1-64 ^ 3 (0 = 64)
+| ß´^ | Chunk Size > 64 (72, 96, 128)
+|  b  | Szene: Single Block
+|  n  | Szene: Blocks (Full Chunk)
+|  m  | Szene: Terrain
+|  v  | Set Camera Vew (Frustum)
+|  p  | Set Camera Position (Frustum)
+| WASD| Move Camera (Forward,Left,Back,Right,Up,Down)
+|Space| Move Camera (Up)
+|Ctrl | Move Camera (Down)
+|  c  | Move Camera (Down)
