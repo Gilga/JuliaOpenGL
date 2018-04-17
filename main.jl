@@ -160,14 +160,10 @@ function checkForUpdate()
       chooseRenderMethod()
       
     elseif keyValue == 50 #2
-      global CHUNK_SIZE = 2
-      chooseRenderMethod()
-      
-    elseif keyValue == 51 #2
       global CHUNK_SIZE = 4
       chooseRenderMethod()
       
-    elseif keyValue == 52 #3
+    elseif keyValue == 51 #3
       global CHUNK_SIZE = 8
       chooseRenderMethod()
       
@@ -204,29 +200,29 @@ function checkForUpdate()
       chooseRenderMethod()
       
     elseif keyValue == 61 #´
-      global CHUNK_SIZE = 80
+      global CHUNK_SIZE = 96
       chooseRenderMethod()
       
     elseif keyValue == 96 #^
       global CHUNK_SIZE = 128
       chooseRenderMethod()
       
-    elseif keyValue == 86 #v
+    elseif keyValue == 66 #b
       global SCENE = 0
       chooseRenderMethod()
-    elseif keyValue == 66 #b
+    elseif keyValue == 78 #n
       global SCENE = 1
       chooseRenderMethod()
-    elseif keyValue == 78 #n
+    elseif keyValue == 77 #m
       global SCENE = 2
       chooseRenderMethod()
       
-    elseif keyValue == 71 #g
+    elseif keyValue == 70 #f
       global FRUSTUM_CULLING = !FRUSTUM_CULLING
       setFrustumCulling()
-    elseif keyValue == 70 #f
+    elseif keyValue == 86 #v
       setFrustumCulling()
-    elseif keyValue == 72 #g
+    elseif keyValue == 79 #o
       global HIDE_UNSEEN_CUBES = !HIDE_UNSEEN_CUBES
       setFrustumCulling()
     end
@@ -305,7 +301,7 @@ setPosition(CAMERA,[0f0,0,0])
 setProjection(CAMERA, projection_perspective(FOV, RATIO, CLIP_NEAR, CLIP_FAR))
 
 global fstm = Frustum()
-SetFrustum(fstm, FOV, RATIO, CLIP_NEAR, 100f0)
+SetFrustum(fstm, FOV, RATIO, CLIP_NEAR, 1000f0)
 SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
 
 Update(CAMERA)
