@@ -1,8 +1,10 @@
 # Julia 0.7 Documentation
-
+{% include_relative src/menu.html %}
 Welcome to the documentation for Julia 0.7.
 
 Please read the [release notes](NEWS.md) to see what has changed since the last release.
+
+## [Manual](manual)
 
 * [Manual](manual)
 * [Base](#Base-1)
