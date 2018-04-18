@@ -1,0 +1,29 @@
+\select@language {german}
+\contentsline {section}{\numberline {1}Einleitung}{3}{section.1}
+\contentsline {section}{\numberline {2}Basics}{4}{section.2}
+\contentsline {subsection}{\numberline {2.1}Was ist Julia?}{4}{subsection.2.1}
+\contentsline {subsection}{\numberline {2.2}Was ist LLVM?}{5}{subsection.2.2}
+\contentsline {subsection}{\numberline {2.3}Dokumentation}{7}{subsection.2.3}
+\contentsline {subsection}{\numberline {2.4}Beispiel Code}{7}{subsection.2.4}
+\contentsline {subsection}{\numberline {2.5}Julia Box - Julia Code im Web}{7}{subsection.2.5}
+\contentsline {subsection}{\numberline {2.6}Design Pattern}{7}{subsection.2.6}
+\contentsline {subsection}{\numberline {2.7}Garbage Collection}{8}{subsection.2.7}
+\contentsline {subsection}{\numberline {2.8}Unit Tests}{9}{subsection.2.8}
+\contentsline {subsection}{\numberline {2.9}Parallelisierung}{9}{subsection.2.9}
+\contentsline {subsection}{\numberline {2.10}JIT und Power of Eval}{10}{subsection.2.10}
+\contentsline {subsubsection}{\numberline {2.10.1}Was sind die Vor- und Nachteile von JIT?}{10}{subsubsection.2.10.1}
+\contentsline {section}{\numberline {3}Julia vs Python}{11}{section.3}
+\contentsline {subsection}{\numberline {3.1}Artikel 'Giving up on Julia'}{11}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.2}Artikel 'Updated Analysis'}{11}{subsection.3.2}
+\contentsline {subsection}{\numberline {3.3}Artikel 'Observations'}{11}{subsection.3.3}
+\contentsline {subsection}{\numberline {3.4}Zusammenfassung}{12}{subsection.3.4}
+\contentsline {section}{\numberline {4}Entwicklung}{12}{section.4}
+\contentsline {subsection}{\numberline {4.1}Projekte einrichten}{12}{subsection.4.1}
+\contentsline {subsection}{\numberline {4.2}Julia GrafikEngine}{13}{subsection.4.2}
+\contentsline {subsection}{\numberline {4.3}JuliaOpenGL}{14}{subsection.4.3}
+\contentsline {subsection}{\numberline {4.4}Warum wurde nicht GLAbstraction.jl verwendet?}{15}{subsection.4.4}
+\contentsline {subsection}{\numberline {4.5}Optimierung}{15}{subsection.4.5}
+\contentsline {subsection}{\numberline {4.6}Ausf\"uhrbare Dateien}{16}{subsection.4.6}
+\contentsline {section}{\numberline {5}Probleme}{16}{section.5}
+\contentsline {section}{\numberline {6}Zusammenfassung}{16}{section.6}
+\contentsline {subsection}{\numberline {6.1}Wie gut sind Julia Projekte Skalierbar?}{17}{subsection.6.1}
