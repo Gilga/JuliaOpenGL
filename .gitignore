@@ -5,7 +5,7 @@ deps/deps.jl
 
 build/
 old/
-doc/
+docs/
 
 *.docx
 *.dll
