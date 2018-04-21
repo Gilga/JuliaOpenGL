@@ -6,8 +6,6 @@ deps/deps.jl
 bin/
 build/
 
-!docs/build/
-
 src/*/.vs/
 src/*/bin/
 

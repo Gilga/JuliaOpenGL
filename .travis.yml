@@ -14,8 +14,7 @@ addons:
       #- libglu1-mesa-dev # required for GLFW
       #- libgtk-3-0
 after_success:
-  - julia -e 'Pkg.add("Documenter")'
-  - julia -e 'include(joinpath("docs", "make.jl"))'
+  - julia -e 'include(joinpath("doc", "make.jl"))'
 #before_install:
 #  - sudo apt-get -qq update
 #  - sudo apt-get install xorg-dev libglu1-mesa-dev # required for GLFW
