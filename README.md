@@ -10,8 +10,7 @@ Example 3D OpenGL Szene with up to 128³ Blocks. Uses Instances, Geometry Shader
 * Works with 0.6.2
 
 ## Documentation
-Full documentation is found [here](https://gilga.github.io/JuliaOpenGL/).
-For detailed information go to [Documentation](https://gilga.github.io/JuliaOpenGL/).
+Full detailed documentation can be found [here](https://gilga.github.io/JuliaOpenGL/).
 
 ## Requirements (Packages)
 * Compat
