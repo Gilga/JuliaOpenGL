@@ -1,0 +1,8 @@
+language: julia
+rvm:
+  - 0.6.2
+branches:
+  - master
+after_success:
+  - julia -e 'Pkg.add("Documenter")'
+  - julia -e 'include(joinpath("docs", "make.jl"))'

@@ -4,17 +4,16 @@
 deps/deps.jl
 
 build/
-old/
-doc/
-wdocs/
+site/
 
 *.docx
 *.dll
 *.db
 
 */.vs/
-*/build/
 */bin/
+*/build/
+*/site/
 
 mylibByGCC.c
 *.log
