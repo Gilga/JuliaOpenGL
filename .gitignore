@@ -4,7 +4,6 @@
 deps/deps.jl
 
 build/
-site/
 
 *.docx
 *.dll
@@ -12,8 +11,6 @@ site/
 
 */.vs/
 */bin/
-*/build/
-*/site/
 
 mylibByGCC.c
 *.log
