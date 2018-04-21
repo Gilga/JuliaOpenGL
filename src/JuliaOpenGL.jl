@@ -1,5 +1,8 @@
 VERSION >= v"0.4.0-dev+6521" && __precompile__(true)
 
+"""
+Module App
+"""
 module App
 
 ## INCLUDES
@@ -13,7 +16,6 @@ const compileAndLink = isdefined(:createLoop)
 WIREFRAME = false
 TEXTUREMODE = true
 LIGHTMODE = true
-
 FRUSTUM_CULLING = true
 HIDE_UNSEEN_CUBES = true
 RENDER_METHOD = 1
@@ -26,6 +28,11 @@ CHUNK_SIZE = 64
 
 load_once = true
 
+"""
+setMode(program, name::String, mode::Int)
+
+Sets a mode in a shader.
+"""
 function setMode(program, name, mode)
   l = glGetUniformLocation(program, name)
   if l>-1 glUniform1i(l, mode) end

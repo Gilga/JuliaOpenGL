@@ -1,15 +1,21 @@
-# Julia 0.7 Documentation
+# JuliaOpenGL
 
-Welcome to the documentation for Julia 0.7.
+Description
 
-Please read the [release notes](NEWS.md) to see what has changed since the last release.
-
-## [Manual](manual)
+## Start
 
 * [Manual](#Manual-1)
 * [Base](#Base-1)
 * [Standard Library](#Standard-Library-1)
 * [Developer Documentation](#Developer-Documentation-1)
+
+```@docs
+App
+```
+
+```@docs
+setMode(program, name, mode)
+```
 
 ## Manual
 
