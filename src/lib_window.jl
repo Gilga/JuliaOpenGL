@@ -1,4 +1,4 @@
-import GLFW
+using GLFW
 
 glfwDll = GLFW.lib #should throw error if not exists
 glfwLibs = abspath(GLFW.lib,"../")
