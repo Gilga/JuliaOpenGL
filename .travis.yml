@@ -5,4 +5,4 @@ branches:
   - master
 after_success:
   - julia -e 'Pkg.add("Documenter")'
-  - julia -e 'include(joinpath("docs", "make.jl"))'
+  - julia -e 'cd("./src/"); include(joinpath("docs", "make.jl"))'

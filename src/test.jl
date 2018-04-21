@@ -1,0 +1,2 @@
+include("JuliaOpenGL.jl")
+main()
