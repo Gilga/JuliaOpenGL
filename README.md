@@ -1,4 +1,4 @@
-[statusPic]: https://github.com/Gilga/JuliaOpenGL/blob/master/docs/images/status.png "128³ Blocks"
+[statusPic]: status.png "128³ Blocks"
 
 [![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL)
 
