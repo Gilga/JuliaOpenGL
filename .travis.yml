@@ -3,12 +3,25 @@ rvm:
   - 0.6.2
 branches:
   - master
+addons:
+  apt:
+    packages:
+      - libgl1-mesa-dev  # required for GLFW
+      #- libglu1-mesa-dev # required for GLFW
+      - xvfb  # required for GLFW
+      - xauth # required for GLFW
+      #- xorg-dev  # required for GLFW
+      #- libglu1-mesa-dev # required for GLFW
+      #- libgtk-3-0
 after_success:
   - julia -e 'Pkg.add("Documenter")'
   - julia -e 'include(joinpath("docs", "make.jl"))'
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install xorg-dev libglu1-mesa-dev # required for GLFW
+#before_install:
+#  - sudo apt-get -qq update
+#  - sudo apt-get install xorg-dev libglu1-mesa-dev # required for GLFW
+script:
+  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+  - if [[ `uname` = "Linux" ]]; then TESTCMD="xvfb-run julia"; else TESTCMD="julia"; fi
 deploy:
   provider: pages
   skip-cleanup: true
