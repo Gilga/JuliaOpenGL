@@ -1,14 +1,12 @@
 [statusPic]: status.png "128³ Blocks"
 
-# JuliaOpenGL
+# JuliaOpenGL [![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL)
 
 Example 3D OpenGL Szene with up to 128³ Blocks. Uses Instances, Geometry Shader, Frustum Culling and Outside Only (Surrounded Blocks will be hidden) algorithm to render many Blocks efficiency.
 
 For detailed information go to [Documentation](https://gilga.github.io/JuliaOpenGL/).
 
-![statusPic][statusPic]
-
-# Status [![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL)
+# Status
 * Works with 0.6.0 (Compiling will work, but execution will fail, see [Status of BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#status))
 * Works with 0.6.1
 * Works with 0.6.2
@@ -64,3 +62,5 @@ Rendermethods:
 |Ctrl/c | Move Camera (Down)
 |LShift | Hold left shift to speedUp Camera Movement
 | HMK   | Hold any mouse key to rotate view
+
+![statusPic][statusPic]
