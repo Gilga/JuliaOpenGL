@@ -2,7 +2,7 @@ push!(LOAD_PATH,"../src/")
 
 # isntall packages
 Pkg.init()
-cp(joinpath(@__DIR__, "REQUIRE"), Pkg.dir("REQUIRE"); force = true)
+cp(joinpath(@__DIR__, "REQUIRE"), Pkg.dir("REQUIRE"); remove_destination = true)
 Pkg.update()
 Pkg.resolve()
 
