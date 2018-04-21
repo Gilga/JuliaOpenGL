@@ -1,14 +1,23 @@
 push!(LOAD_PATH,"../src/")
 
-# isntall packages
+# install packages
+info("Install Packages...")
 Pkg.init()
 cp(joinpath(@__DIR__, "REQUIRE"), Pkg.dir("REQUIRE"); remove_destination = true)
 Pkg.update()
 Pkg.resolve()
+info("Packages done.")
 
 # include package
-include("../src/JuliaOpenGL.jl")
+info("Include all...")
+try
+  include("../src/JuliaOpenGL.jl")
+catch e # do not exit this run!
+  warn(e)
+end
+info("Include done.")
 
+info("Create Docs...")
 using Documenter, App
 
 makedocs(
@@ -32,3 +41,5 @@ deploydocs(
   branch = "gh-pages",
   julia  = "0.6.2",
 )
+
+info("Docs done.")
