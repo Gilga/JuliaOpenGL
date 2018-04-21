@@ -1,3 +1,6 @@
+"""
+load all content from shaders located in shaders folder in root dir
+"""
 function loadShaders()
 
 CONTENT_SH = fileGetContents("shaders/global.glsl")

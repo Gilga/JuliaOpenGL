@@ -1,17 +1,18 @@
 VERSION >= v"0.4.0-dev+6521" && __precompile__(true)
 
 """
-Module App
+TODO
 """
 module App
 
 ## INCLUDES
 include("libs.jl")
 include("shader.jl")
+include("compileAndLink.jl")
   
-## COMPILE C File 
-#include("compileAndLink.jl")
-const compileAndLink = isdefined(:createLoop) 
+## COMPILE C File
+const compileAndLink = isdefined(:USE_COMPILE) 
+if compileAndLink compileWithGCC() end
 
 WIREFRAME = false
 TEXTUREMODE = true
@@ -29,15 +30,16 @@ CHUNK_SIZE = 64
 load_once = true
 
 """
-setMode(program, name::String, mode::Int)
-
-Sets a mode in a shader.
+sets a mode in a shader.
 """
 function setMode(program, name, mode)
   l = glGetUniformLocation(program, name)
   if l>-1 glUniform1i(l, mode) end
 end
 
+"""
+TODO
+"""
 function setFrustumCulling(load=true)
   global load_once
   if load || load_once
@@ -59,6 +61,9 @@ function setFrustumCulling(load=true)
   end
 end
 
+"""
+TODO
+"""
 function chooseRenderMethod(method=RENDER_METHOD)
 
   if method == 1 name="INSTANCES of POINTS + GEOMETRY SHADER"
@@ -92,6 +97,7 @@ function chooseRenderMethod(method=RENDER_METHOD)
   
   info("Upload data...")
   glCheckError("Upload data")
+  
   if method == 1 linkData(chunkData, :instances=>getData(mychunk))
   elseif method == 2 linkData(chunkData, :vertices=>(DATA_CUBE,3), :instances=>getData(mychunk))
   elseif method == 3 linkData(chunkData, :vertices=>(DATA_CUBE_VERTEX,3), :indicies=>(DATA_CUBE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>getData(mychunk))
@@ -131,6 +137,9 @@ function chooseRenderMethod(method=RENDER_METHOD)
   setMode(program_chunks, "iUseTexture", TEXTUREMODE)
 end
 
+"""
+TODO
+"""
 function checkForUpdate()
   global keyPressed, keyValue, cam_updated, FRUSTUM_KEY, ALL_KEY, CAMERA, mychunk, chunkData, fstm, planeData
   
@@ -238,10 +247,19 @@ function checkForUpdate()
   if keyPressed keyPressed=false end
 end
 
+"""
+TODO
+"""
 useProgram(program) = begin global current_program = program; glUseProgram(program) end
 
+"""
+TODO
+"""
 setMatrix(program, name, m) = begin const cm = SMatrix{4,4,Float32}(m); glUniformMatrix4fv(glGetUniformLocation(program, name), 1, false, cm) end
 
+"""
+TODO
+"""
 function setMVP(program, mvp, old_program=nothing)
   glUseProgram(program)
   glCheckError("glUseProgram")
@@ -257,6 +275,9 @@ end
 
 ## PROGRAM 
 
+"""
+TODO
+"""
 function run()
 
 println("---------------------------------------------------------------------")
@@ -405,6 +426,10 @@ cam_updated=false
 const SLEEP=0 #1f0/200
 
 i=0
+
+"""
+TODO
+"""
 while !GLFW.WindowShouldClose(window)
   showFrames()
   UpdateCounters()
@@ -426,6 +451,9 @@ while !GLFW.WindowShouldClose(window)
   #print("loopBlocks "); @time
   #loopBlocks()
   
+  """
+  TODO
+  """
   if isValid(mychunk) 
     useProgram(program_chunks)
     #glCheckError("useProgram")
@@ -475,6 +503,9 @@ end
 
 end
 
+"""
+TODO
+"""
 function main()
   App.run()
 end

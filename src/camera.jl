@@ -6,6 +6,9 @@ FOV = 60.0f0
 CLIP_NEAR = 0.001f0
 CLIP_FAR = 10000.0f0
 
+"""
+sets glfw window size + viewport
+"""
 function rezizeWindow(width,height)
   global WIDTH, HEIGHT, RATIO, SIZE
   WIDTH = width
@@ -34,6 +37,9 @@ keyPressed = false
 keyPressing = false
 keyValue = 0
 
+"""
+camera object with holds position, rotation, scaling and various matrices like MVP
+"""
 type Camera
   moved::Bool
   
@@ -57,15 +63,37 @@ end
 
 CAMERA = Camera()
 
+"""
+gets forward vector of camera direction
+"""
 forward(camera::Camera) = forward(camera.rotationMat)
+
+"""
+gets right vector of camera direction
+"""
 right(camera::Camera) = right(camera.rotationMat)
+
+"""
+gets up vector of camera direction
+"""
 up(camera::Camera) = up(camera.rotationMat)
 
+"""
+sets projection matrix
+"""
 setProjection(camera::Camera, m::AbstractArray) = (camera.projectionMat = m)
+
+"""
+sets view matrix
+"""
 setView(camera::Camera, m::AbstractArray) = (camera.viewMat = m)
 
 VIEW_KEYS=false
 
+"""
+event which catches keyboard inputs.
+here keys for wireframe, fullscreen and camera movement are defined 
+"""
 function OnKey(window, key::Number, scancode::Number, action::Number, mods::Number)
   if key == 70 && action == 1 # f
     # ...
@@ -106,6 +134,9 @@ function OnKey(window, key::Number, scancode::Number, action::Number, mods::Numb
   nothing
 end
 
+"""
+event which catches mouse key inpits and hides/shows cursor when mouse button is pressed
+"""
 function OnMouseKey(window, key::Number, action::Number, mods::Number)
   global cursorPos_old, cursorPos
   global mouseKeyPressed = action != 0
@@ -119,6 +150,9 @@ function OnMouseKey(window, key::Number, action::Number, mods::Number)
   nothing
 end
 
+"""
+event which catches mouse position for camera rotation event
+"""
 function OnCursorPos(window, x::Number, y::Number)
   global CAMERA, lastCursorPos, cursorPos, mouseMove, mouseKeyPressed
 
@@ -133,18 +167,27 @@ function OnCursorPos(window, x::Number, y::Number)
   nothing
 end
 
+"""
+rotates camera
+"""
 function rotate(camera::Camera, rotation::AbstractArray)
   camera.rotation += rotation
   camera.moved=true
   #println("rotated")
 end
 
+"""
+moves camera, adds vector to current position
+"""
 function move(camera::Camera, position::AbstractArray)
   camera.position += position
   camera.moved=true
   #println("moved")
 end
 
+"""
+event which calculates cursor position shifts and calls rotate function
+"""
 function OnRotate(camera::Camera)
   global cursorPos, cursorPos_old
   mx = cursorPos[1] - cursorPos_old[1]
@@ -157,6 +200,9 @@ end
 oldposition = CAMERA.position
 shiftposition = [0.0f0,0,0]
 
+"""
+sets camera position
+"""
 function setPosition(camera::Camera, position::AbstractArray)
   camera.position = position
   global oldposition = position
@@ -164,6 +210,11 @@ function setPosition(camera::Camera, position::AbstractArray)
   camera.moved = true
 end
 
+"""
+event which updates positions shifts (left,right,up,down,forward,back)
+key is (left,right,up,down,forward,back)
+m is direction value with weight (positive, negative)
+"""
 function OnMove(camera::Camera, key::Symbol, m::Number)
   global shiftposition
   if key == :FORWARD  move(camera, forward(camera)*(m*0.05f0*(!speed?1f0:10f0)))
@@ -184,6 +235,10 @@ function OnMove(camera::Camera, key::Symbol, m::Number)
   # if dist >= 1 camera.position = [0f0,0,0] end
 end
 
+"""
+update function where camera translation is update only when camera was moved by input. 
+here cameras MVP Matrix is updated aswell
+"""
 function Update(camera::Camera)
   if OnTime(0.01)
     if keyFB != 0 OnMove(camera, :FORWARD, keyFB) end
@@ -199,6 +254,10 @@ function Update(camera::Camera)
   end
 end
 
+"""
+event which is called by game loop and calls real update function
+this event resets camera moved state
+"""
 function OnUpdate(camera::Camera)
   #if isFocus return end
   Update(camera)

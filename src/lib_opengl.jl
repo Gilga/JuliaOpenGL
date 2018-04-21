@@ -1,5 +1,8 @@
 using ModernGL
 
+"""
+TODO
+"""
 function glGenOne(glGenFn)
   id = GLuint[0]
   glGenFn(1, id)
@@ -7,12 +10,29 @@ function glGenOne(glGenFn)
   id[]
 end
 
+"""
+TODO
+"""
 glGenBuffer() = glGenOne(glGenBuffers)
+
+"""
+TODO
+"""
 glGenVertexArray() = glGenOne(glGenVertexArrays)
+
+"""
+TODO
+"""
 glGenTexture() = glGenOne(glGenTextures)
 
+"""
+TODO
+"""
 glGetIntegerv_e(name::GLenum) = begin r=GLint[0]; glGetIntegerv(name,r); r[] end
 
+"""
+TODO
+"""
 function getInfoLog(obj::GLuint)
   # Return the info log for obj, whether it be a shader or a program.
   isShader = glIsShader(obj)
@@ -35,11 +55,19 @@ function getInfoLog(obj::GLuint)
     ""
   end
 end
+
+"""
+TODO
+"""
 function validateShader(shader)
   success = GLint[0]
   glGetShaderiv(shader, GL_COMPILE_STATUS, success)
   success[] == GL_TRUE
 end
+
+"""
+TODO
+"""
 function glErrorMessage()
 # Return a string representing the current OpenGL error flag, or the empty string if there's no error.
   err = glGetError()
@@ -50,6 +78,10 @@ function glErrorMessage()
   err == GL_INVALID_FRAMEBUFFER_OPERATION ? "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete. The offending command is ignored and has no other side effect than to set the error flag." :
   err == GL_OUT_OF_MEMORY ? "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command. The state of the GL is undefined, except for the state of the error flags, after this error is recorded." : "Unknown OpenGL error with error code $err."
 end
+
+"""
+TODO
+"""
 function glCheckError(actionName="")
   message = glErrorMessage()
   if length(message) > 0
@@ -64,6 +96,9 @@ end
 #loadShaderSource(shaderID::GLuint, source::String) = (shadercode=Vector{UInt8}(string(source,"\x00")); glShaderSource(shaderID, 1, Ptr{UInt8}[pointer(shadercode)], Ref{GLint}(length(shadercode))))
 #glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(source))])), C_NULL)
 
+"""
+TODO
+"""
 function compileShader(name, shader,source)
   glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(string(source,"\x00")))])), C_NULL)
   glCheckError("glShaderSource")
@@ -76,6 +111,9 @@ end
 
 BackupSource=Dict{Symbol,Dict{GLuint,String}}()
 
+"""
+TODO
+"""
 function createShader(source::Tuple{Symbol,String}, typ)
   if typ == GL_VERTEX_SHADER name="GL_VERTEX_SHADER" end
   if typ == GL_FRAGMENT_SHADER name="GL_FRAGMENT_SHADER" end
@@ -113,6 +151,10 @@ function createShader(source::Tuple{Symbol,String}, typ)
   info("Shader $name initalized.")
   shader
 end
+
+"""
+TODO
+"""
 function createShaderProgram(vertexShader, fragmentShader, geometryShader=nothing)
   # Create, link then return a shader program for the given shaders.
   # Create the shader program
@@ -160,6 +202,9 @@ end
 
 global GLSL_VERSION = ""
 
+"""
+TODO
+"""
 function createcontextinfo()
   global GLSL_VERSION
   glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])

@@ -11,3 +11,4 @@ src/*/bin/
 
 *.log
 *.db
+*.backup.*

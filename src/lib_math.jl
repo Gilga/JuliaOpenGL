@@ -5,6 +5,9 @@ using StaticArrays
 include("matrix.jl")
 include("vector.jl")
 
+"""
+TODO
+"""
 function frustum{T}(left::T, right::T, bottom::T, top::T, znear::T, zfar::T)
   (right == left || bottom == top || znear == zfar) && return eye(Mat4x4(T))
   T[
@@ -15,6 +18,9 @@ function frustum{T}(left::T, right::T, bottom::T, top::T, znear::T, zfar::T)
   ]
 end
 
+"""
+TODO
+"""
 function projection_perspective{T}(fovy::T, aspect::T, znear::T, zfar::T)
   (znear == zfar) && error("znear ($znear) must be different from tfar ($zfar)")
   zfn = 1/(zfar-znear)
@@ -31,6 +37,9 @@ function projection_perspective{T}(fovy::T, aspect::T, znear::T, zfar::T)
   frustum(-w, w, -h, h, znear, zfar)
 end
 
+"""
+TODO
+"""
 function projection_orthographic{T}(left::T,right::T,bottom::T,top::T,znear::T,zfar::T)
   (right==left || bottom==top || znear==zfar) && return eye(Mat4x4(T))
   T[
@@ -41,6 +50,9 @@ function projection_orthographic{T}(left::T,right::T,bottom::T,top::T,znear::T,z
   ]
 end
 
+"""
+TODO
+"""
 function translation{T}(t::Array{T,1})
   lt = length(t)
   T[
@@ -51,6 +63,9 @@ function translation{T}(t::Array{T,1})
   ]
 end
 
+"""
+TODO
+"""
 function rotation{T}(r::Array{T,1})
   lr = length(r)
   T[
@@ -61,6 +76,9 @@ function rotation{T}(r::Array{T,1})
   ]
 end
 
+"""
+TODO
+"""
 function rotation{T}(q::Quaternion{T})
   sx, sy, sz = 2q.s*q.v1,  2q.s*q.v2,   2q.s*q.v3
   xx, xy, xz = 2q.v1^2,    2q.v1*q.v2,  2q.v1*q.v3
@@ -74,6 +92,9 @@ function rotation{T}(q::Quaternion{T})
   ]
 end
 
+"""
+TODO
+"""
 function computeRotation{T}(r::Array{T,1})
   lr = length(r)
   (lr<3) && error("rotation has less than 3 elements!")
@@ -92,6 +113,9 @@ function computeRotation{T}(r::Array{T,1})
   rotation(q)
 end
 
+"""
+TODO
+"""
 function scaling{T}(s::Array{T})
   ls = length(s)
   T[
@@ -102,6 +126,9 @@ function scaling{T}(s::Array{T})
   ]
 end
 
+"""
+TODO
+"""
 function transform{T}(t::Array{T,1},r::Array{T,1},s::Array{T,1})
 #=
   lt = length(t)
@@ -117,6 +144,9 @@ function transform{T}(t::Array{T,1},r::Array{T,1},s::Array{T,1})
   translation(t)*computeRotation(r)*scaling(s)
 end
 
+"""
+TODO
+"""
 function ViewRH{T}(eye::Array{T,1}, yaw::T, pitch::T)
   (length(eye) < 3) && error("eye has less than 3 elements!")
 
@@ -142,6 +172,9 @@ function ViewRH{T}(eye::Array{T,1}, yaw::T, pitch::T)
   ]
 end
 
+"""
+TODO
+"""
 function lookat{T}(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1})
   (length(eye) < 3) && error("eye has less than 3 elements!")
   (length(lookAt) < 3) && error("lookAt has less than 3 elements!")
@@ -160,8 +193,19 @@ function lookat{T}(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1})
   ]
 end
 
+"""
+TODO
+"""
 forward{T}(m::Array{T, 2}) = T[m[3,1],m[3,2],m[3,3]]
+
+"""
+TODO
+"""
 right{T}(m::Array{T, 2}) = T[m[1,1],m[1,2],m[1,3]]
+
+"""
+TODO
+"""
 up{T}(m::Array{T, 2}) = T[m[2,1],m[2,2],m[2,3]]
 
 #=

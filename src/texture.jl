@@ -1,3 +1,6 @@
+"""
+uploads a texture by given file path
+"""
 function uploadTexture(path)
   img = Images.load(path)
   (imgwidth, imgheight) = size(img)

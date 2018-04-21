@@ -10,6 +10,9 @@ include("lib_opengl.jl")
 include("lib_math.jl")
 include("lib_time.jl")
 
+"""
+TODO
+"""
 function waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1)
 	result=false
 	for i = 1:tryCount
@@ -27,6 +30,9 @@ function waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.
 	result
 end
 
+"""
+TODO
+"""
 function fileGetContents(path::String, tryCount=100, tryWait=0.1)
 	content=nothing
 	waitForFileReady(path,(x)->(content=readstring(x); content != nothing),tryCount,tryWait)
@@ -44,12 +50,19 @@ ITERATION = 0
 BLOCK_COUNT = 0
 SIZE = 0
 
+"""
+TODO
+"""
 function UpdateCounters()
   UpdateTimers()
   showFrames()
 end    
 
 prevTime = Ref(0.0)
+
+"""
+TODO
+"""
 function showFrames()
   global TITLE, TIMERS, FRAMES, MAX_FRAMES, FPS, MAX_FPS, ITERATION, BLOCK_COUNT, PREVTIME, RENDER_METHOD
   

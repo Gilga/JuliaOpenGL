@@ -1,4 +1,6 @@
-
+"""
+TODO
+"""
 struct HeptaOrder{T} <: FieldVector{6, T}
   front::Union{T,Void}
   back::Union{T,Void}
@@ -8,6 +10,9 @@ struct HeptaOrder{T} <: FieldVector{6, T}
   bottom::Union{T,Void}
 end
 
+"""
+TODO
+"""
 type Block
   typ::Int32
   pos::Vec3f
@@ -20,9 +25,21 @@ type Block
 end
 
 const BlockOrder = HeptaOrder{Block}
+
+
+"""
+TODO
+"""
 BlockOrder() = HeptaOrder{Block}(nothing,nothing,nothing,nothing,nothing,nothing)
+
+"""
+TODO
+"""
 Block(pos=Vec3f,typ=0) = Block(typ,pos,0,true,true,false,resetSides(),BlockOrder()) #,zeros(Mat4x4f),zeros(Mat4x4f))
 
+"""
+TODO
+"""
 type Chunk
   active::Bool
   len::UInt32
@@ -30,14 +47,20 @@ type Chunk
   filtered::Array{Block,1}
   count::UInt32
   fileredCount::UInt32
+end
   
-  function Chunk(len::Integer)
-    this = new(true,len,Array{Block,3}(len,len,len),Block[],0,0)
-    for x=1:len; for y=1:len; for z=1:len; this.childs[x,y,z] = Block(Vec3f(x,y,z)); end; end; end
-    this
-  end
+"""
+TODO
+"""
+function Chunk(len::Integer)
+  this = Chunk(true,len,Array{Block,3}(len,len,len),Block[],0,0)
+  for x=1:len; for y=1:len; for z=1:len; this.childs[x,y,z] = Block(Vec3f(x,y,z)); end; end; end
+  this
 end
 
+"""
+TODO
+"""
 function clean(this::Union{Void,Chunk})
   if this == nothing return end
   this.childs = Array{Block,3}(0,0,0)
@@ -45,10 +68,19 @@ function clean(this::Union{Void,Chunk})
   gc() # force garbage collection, free memory
 end
 
+"""
+TODO
+"""
 isType(this::Block, typ) = this.typ == typ
 
+"""
+TODO
+"""
 isValid(this::Chunk) = this.count > 0 && this.fileredCount > 0
 
+"""
+TODO
+"""
 isSeen(this::Block) = isActive(this) && isVisible(this) && this.typ > 0
 
 MAX_SIDES = 6
@@ -60,9 +92,19 @@ BOTTOM_SIDE = 4 #0x8
 FRONT_SIDE = 5 #0x10
 BACK_SIDE = 6 #0x20
 
+"""
+TODO
+"""
 resetSides() = fill(UInt32(1),MAX_SIDES)
+
+"""
+TODO
+"""
 resetSides(this::Block) = this.sides=resetSides()
 
+"""
+TODO
+"""
 function hideUnseen(this::Chunk)
   a = this.childs
   len = this.len
@@ -111,42 +153,104 @@ function hideUnseen(this::Chunk)
   end; end; end
 end
 
+"""
+TODO
+"""
 function setFlag(this::Block, flag::Unsigned, add::Bool)
     if add this.flags |= flag
     else this.flags ⊻= flag #⊻ = xor and is not shown on windows...
     end
 end
 
+"""
+TODO
+"""
 isActive(this::Block) = this.active
+
+"""
+TODO
+"""
 isVisible(this::Block) = this.visible
+
+"""
+TODO
+"""
 isSurrounded(this::Block) = this.surrounded
 
+"""
+TODO
+"""
 isValid(this::Block) = isActive(this) && isVisible(this) && !isSurrounded(this) && this.typ > 0
 
+"""
+TODO
+"""
 setActive(this::Block, active::Bool) = this.active = active
+
+"""
+TODO
+"""
 setVisible(this::Block, visible::Bool) = this.visible = visible
+
+"""
+TODO
+"""
 setSurrounded(this::Block, surrounded::Bool) = this.surrounded = surrounded
 
+"""
+TODO
+"""
 hideType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; setVisible(b,false); end; end
+
+"""
+TODO
+"""
 removeType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; setActive(b,false); end; end
 
+"""
+TODO
+"""
 showAll(this::Chunk) = for b in this.childs
   setVisible(b,true)
   setSurrounded(b,false)
   resetSides(b)
 end
 
+"""
+TODO
+"""
 checkInFrustum(this::Chunk, fstm::Frustum) = for b in this.childs setVisible(b,checkSphere(fstm, b.pos, 1.5) != 0) end
 
 #------------------------------------------------------------------------------------
 
+"""
+TODO
+"""
 setFilteredChilds(this::Chunk, r::Array{Block,1}) = begin this.filtered = r; this.fileredCount = length(r); r end
+
+"""
+TODO
+"""
 getFilteredChilds(this::Chunk) = this.filtered
 
+"""
+TODO
+"""
 getActiveChilds(this::Chunk) = filter(b->isActive(b),this.childs)
+
+"""
+TODO
+"""
 getVisibleChilds(this::Chunk) = filter(b->isVisible(b),this.childs)
+
+"""
+TODO
+"""
 getValidChilds(this::Chunk) = filter(b->isValid(b),this.childs)
 
+"""
+TODO
+"""
 function getData(this::Block)
   
   sides=0
@@ -186,8 +290,14 @@ function getData(this::Block)
   SVector(Float32[this.pos...,this.typ,sides]...)
 end
 
+"""
+TODO
+"""
 getData(this::Chunk) = isValid(this)?vec((b->getData(b)).(getFilteredChilds(this))):Float32[]
 
+"""
+TODO
+"""
 function update(this::Chunk)
   this.count = length(this.childs)
   setFilteredChilds(this, getValidChilds(this))
@@ -197,10 +307,16 @@ function update(this::Chunk)
   #for b in this.childs push!(refblocks, pointer_from_objref(b)) end
 end
 
+"""
+TODO
+"""
 function createSingle(this::Chunk)
   this.childs[1,1,1] = Block(Vec3f(0, 0, -10),1) 
 end
 
+"""
+TODO
+"""
 function createExample(this::Chunk)
   const DIST = Vec3f(2,2,2); #Vec3f(3,5,3) #r = 1f0/30 #0.005f0
   const START = Vec3f(-(this.len*DIST.x) / 2.0f0, -(this.len*DIST.y) / 2.0f0, (this.len*DIST.z) / 2.0f0)
@@ -223,6 +339,9 @@ function createExample(this::Chunk)
   end
 end
 
+"""
+TODO
+"""
 function createLandscape(this::Chunk)
   #Texture* heightTexture = m_pRenderer->GetTexture(m_pChunkManager->GetHeightMapTexture());
   

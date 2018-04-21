@@ -1,42 +1,59 @@
+"""
+TODO
+"""
 type Plane3D
 	mPoint::Vec3f
 	mNormal::Vec3f
 	d::Float32
-  
-  Plane3D() = new(Vec3f(),Vec3f(),0)
-  
-  function Plane3D(mNormal::Vec3f, mPoint::Vec3f)
-    mNormal = normalize(mNormal)
-    d= -(dot(mNormal, mPoint))
-    new(mPoint,mNormal,d)
-   end
-   
-  function Plane3D(lv1::Vec3f, lv2::Vec3f, lv3::Vec3f)
-    mNormal = normalize(cross(lv3 - lv2, lv1 - lv2))
-    mPoint = lv2
-    d= -(dot(mNormal, mPoint))
-    new(mPoint,mNormal,d)
-  end
-  
-  function Plane3D(a::Float32, b::Float32, c::Float32, d::Float32)
-    mPoint = Vec3f(0,0,0)
-
-    # Set the normal vector
-    mNormal = Vec3f(a, b, c)
-
-    # Compute the length of the vector
-    lLength = length(mNormal)
-    
-    # Normalize the vector
-    mNormal = Vec3f(a / lLength, b / lLength, c / lLength)
-
-    # And divide d by the length as well
-    d = d / lLength
-    new(mPoint,mNormal,d)
-  end
 end
 
-# Operations
+"""
+TODO
+"""
+Plane3D() = Plane3D(Vec3f(),Vec3f(),0)
+  
+"""
+TODO
+"""
+function Plane3D(mNormal::Vec3f, mPoint::Vec3f)
+  mNormal = normalize(mNormal)
+  d= -(dot(mNormal, mPoint))
+  Plane3D(mPoint,mNormal,d)
+end
+ 
+"""
+TODO
+"""
+function Plane3D(lv1::Vec3f, lv2::Vec3f, lv3::Vec3f)
+  mNormal = normalize(cross(lv3 - lv2, lv1 - lv2))
+  mPoint = lv2
+  d= -(dot(mNormal, mPoint))
+  Plane3D(mPoint,mNormal,d)
+end
+
+"""
+TODO
+"""
+function Plane3D(a::Float32, b::Float32, c::Float32, d::Float32)
+  mPoint = Vec3f(0,0,0)
+
+  # Set the normal vector
+  mNormal = Vec3f(a, b, c)
+
+  # Compute the length of the vector
+  lLength = length(mNormal)
+  
+  # Normalize the vector
+  mNormal = Vec3f(a / lLength, b / lLength, c / lLength)
+
+  # And divide d by the length as well
+  d = d / lLength
+  Plane3D(mPoint,mNormal,d)
+end
+
+"""
+TODO
+"""
 GetPointDistance(this::Plane3D, lPoint::Vec3f) = this.d + dot(this.mNormal, lPoint)
 
 const FRUSTUM_TOP = 1
@@ -50,6 +67,9 @@ const FRUSTUM_OUTSIDE = 0
 const FRUSTUM_INTERSECT = 1
 const FRUSTUM_INSIDE = 2
 
+"""
+TODO
+"""
 type Frustum
   planes::Array{Plane3D,1}
   
@@ -76,6 +96,9 @@ type Frustum
   Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f())
 end
 
+"""
+TODO
+"""
 function getVertices(this::Frustum)
   [
     this.nearTopLeft, this.farTopLeft, this.farTopRight,
@@ -110,6 +133,9 @@ function getVertices(this::Frustum)
   ]
 end
 
+"""
+TODO
+"""
 function SetFrustum(this::Frustum, angle::Float32, ratio::Float32, nearD::Float32, farD::Float32)
   this.ratio = ratio
   this.angle = angle
@@ -123,6 +149,9 @@ function SetFrustum(this::Frustum, angle::Float32, ratio::Float32, nearD::Float3
   this.farWidth = this.farHeight * this.ratio
 end
 
+"""
+TODO
+"""
 function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f)
   pos = -pos
   target = -target
@@ -156,6 +185,9 @@ function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f)
 	this.planes[FRUSTUM_FAR] = Plane3D(this.farTopRight, this.farTopLeft, this.farBottomLeft)
 end
 
+"""
+TODO
+"""
 function checkPoint(this::Frustum, pos::Vec3f)
  for plane in this.planes
     if GetPointDistance(plane, pos) < 0 return FRUSTUM_OUTSIDE end
@@ -163,6 +195,9 @@ function checkPoint(this::Frustum, pos::Vec3f)
   FRUSTUM_INSIDE
 end
 
+"""
+TODO
+"""
 function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
   result = FRUSTUM_INSIDE
 	distance = 0f0
@@ -178,6 +213,9 @@ function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
 	result
 end
 
+"""
+TODO
+"""
 function checkCube(this::Frustum, center::Vec3f, size::Vec3f)
   result = FRUSTUM_INSIDE
   

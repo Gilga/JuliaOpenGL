@@ -1,36 +1,23 @@
 # JuliaOpenGL
 
-Description
+Example 3D OpenGL Szene with up to 128³ Blocks.
+Uses Instances, Geometry Shader, Frustum Culling and Outside Only (Surrounded Blocks will be hidden) algorithm
+to render many Blocks efficiency.
 
 ## Start
 
-* [Manual](#Manual-1)
-* [Base](#Base-1)
-* [Standard Library](#Standard-Library-1)
-* [Developer Documentation](#Developer-Documentation-1)
-
-```@docs
-App
-```
-
-```@docs
-setMode(program, name, mode)
-```
+* [Manual](#Manual)
+* [Developer Documentation](#Developer-Documentation)
 
 ## Manual
 
-  * [Introduction](@ref man-introduction)
-
-## Base
-
-  * [Essentials](@ref)
- 
-
+* [Install](@ref install)
+* [Start](@ref start)
+* [Szene](@ref szene)
+  
 ## Developer Documentation
 
-  * Reflection and introspection
-  * Documentation of Julia's Internals
-      * Initialization of the Julia runtime
-  * Developing/debugging Julia's C code
-      * Reporting and analyzing crashes
-
+* [Algorithm](@ref algorithm)
+* [Build](@ref build)
+* [Optimization](@ref optimization)
+* [References](@ref references)
