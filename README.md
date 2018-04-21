@@ -1,6 +1,8 @@
 [statusPic]: https://github.com/Gilga/JuliaOpenGL/blob/master/docs/images/status.png "128³ Blocks"
 
 # JuliaOpenGL
+[![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL)
+[![Build status](https://ci.appveyor.com/api/projects/status/fpcrd186rddbjilb?svg=true)](https://ci.appveyor.com/project/Gilga/JuliaOpenGL)
 Example 3D OpenGL Szene with up to 128³ Blocks. Uses Instances, Geometry Shader, Frustum Culling and Outside Only (Surrounded Blocks will be hidden) algorithm to render many Blocks efficiency.
 
 ![statusPic][statusPic]
