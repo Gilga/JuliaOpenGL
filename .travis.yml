@@ -10,7 +10,7 @@ addons:
       #- libglu1-mesa-dev # required for GLFW
       - xvfb  # required for GLFW
       - xauth # required for GLFW
-      #- xorg-dev  # required for GLFW
+      - xorg-dev  # required for GLFW
       #- libglu1-mesa-dev # required for GLFW
       #- libgtk-3-0
 after_success:
