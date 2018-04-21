@@ -3,14 +3,13 @@
 *.jl.mem
 deps/deps.jl
 
+bin/
 build/
 
-*.docx
-*.dll
-*.db
+!docs/build/
 
-*/.vs/
-*/bin/
+src/*/.vs/
+src/*/bin/
 
-mylibByGCC.c
 *.log
+*.db
