@@ -1,5 +1,12 @@
 push!(LOAD_PATH,"../src/")
 
+# isntall packages
+Pkg.init()
+cp(joinpath(@__DIR__, "REQUIRE"), Pkg.dir("REQUIRE"); force = true)
+Pkg.update()
+Pkg.resolve()
+
+# include package
 include("../src/JuliaOpenGL.jl")
 
 using Documenter, App
