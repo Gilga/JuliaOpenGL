@@ -1,12 +1,12 @@
 # Julia 0.7 Documentation
-{% include_relative src/menu.html %}
+
 Welcome to the documentation for Julia 0.7.
 
 Please read the [release notes](NEWS.md) to see what has changed since the last release.
 
 ## [Manual](manual)
 
-* [Manual](manual)
+* [Manual](#Manual-1)
 * [Base](#Base-1)
 * [Standard Library](#Standard-Library-1)
 * [Developer Documentation](#Developer-Documentation-1)
@@ -14,114 +14,17 @@ Please read the [release notes](NEWS.md) to see what has changed since the last 
 ## Manual
 
   * [Introduction](@ref man-introduction)
-  * [Getting Started](@ref man-getting-started)
-  * [Variables](@ref)
-  * [Integers and Floating-Point Numbers](@ref)
-  * [Mathematical Operations and Elementary Functions](@ref)
-  * [Complex and Rational Numbers](@ref)
-  * [Strings](@ref man-strings)
-  * [Functions](@ref man-functions)
-  * [Control Flow](@ref)
-  * [Scope of Variables](@ref scope-of-variables)
-  * [Types](@ref man-types)
-  * [Methods](@ref)
-  * [Constructors](@ref man-constructors)
-  * [Conversion and Promotion](@ref conversion-and-promotion)
-  * [Interfaces](@ref)
-  * [Modules](@ref modules)
-  * [Documentation](@ref)
-  * [Metaprogramming](@ref)
-  * [Multi-dimensional Arrays](@ref man-multi-dim-arrays)
-  * [Missing Values](@ref missing)
-  * [Networking and Streams](@ref)
-  * [Parallel Computing](@ref)
-  * [Running External Programs](@ref)
-  * [Calling C and Fortran Code](@ref)
-  * [Handling Operating System Variation](@ref)
-  * [Environment Variables](@ref)
-  * [Embedding Julia](@ref)
-  * [Packages](@ref)
-  * [Profiling](@ref)
-  * [Stack Traces](@ref)
-  * [Performance Tips](@ref man-performance-tips)
-  * [Workflow Tips](@ref man-workflow-tips)
-  * [Style Guide](@ref)
-  * [Frequently Asked Questions](@ref)
-  * [Noteworthy Differences from other Languages](@ref)
-  * [Unicode Input](@ref)
 
 ## Base
 
   * [Essentials](@ref)
-  * [Collections and Data Structures](@ref)
-  * [Mathematics](@ref)
-  * [Numbers](@ref lib-numbers)
-  * [Strings](@ref lib-strings)
-  * [Arrays](@ref lib-arrays)
-  * [Tasks](@ref)
-  * [Distributed Computing](@ref)
-  * [Multi-Threading](@ref)
-  * [Shared Arrays](@ref)
-  * [Constants](@ref lib-constants)
-  * [Filesystem](@ref)
-  * [I/O and Network](@ref)
-  * [Punctuation](@ref)
-  * [Sorting and Related Functions](@ref)
-  * [Package Manager Functions](@ref)
-  * [Iteration utilities](@ref)
-  * [C Interface](@ref)
-  * [C Standard Library](@ref)
-  * [Dynamic Linker](@ref)
-  * [StackTraces](@ref)
-  * [SIMD Support](@ref)
-
-## Standard Library
-
-  * [The Julia REPL](@ref)
-  * [Base64](@ref)
-  * [CRC32c](@ref)
-  * [SHA](@ref)
-  * [Dates](@ref)
-  * [Delimited Files](@ref)
-  * [Distributed Computing](@ref)
-  * [File Events](@ref lib-filewatching)
-  * [Iterative Eigensolvers](@ref lib-itereigen)
-  * [Memory-mapped I/O](@ref)
-  * [Printf](@ref)
-  * [Profiling](@ref lib-profiling)
-  * [Random Numbers](@ref)
-  * [Shared Arrays](@ref)
-  * [Linear Algebra](@ref)
-  * [Logging](@ref)
-  * [Sparse Arrays](@ref)
-  * [Unicode](@ref)
-  * [Unit Testing](@ref)
+ 
 
 ## Developer Documentation
 
-  * [Reflection and introspection](@ref)
+  * Reflection and introspection
   * Documentation of Julia's Internals
-      * [Initialization of the Julia runtime](@ref)
-      * [Julia ASTs](@ref)
-      * [More about types](@ref)
-      * [Memory layout of Julia Objects](@ref)
-      * [Eval of Julia code](@ref)
-      * [Calling Conventions](@ref)
-      * [High-level Overview of the Native-Code Generation Process](@ref)
-      * [Julia Functions](@ref)
-      * [Base.Cartesian](@ref)
-      * [Talking to the compiler (the `:meta` mechanism)](@ref)
-      * [SubArrays](@ref)
-      * [System Image Building](@ref)
-      * [Working with LLVM](@ref)
-      * [printf() and stdio in the Julia runtime](@ref)
-      * [Bounds checking](@ref)
-      * [Proper maintenance and care of multi-threading locks](@ref)
-      * [Arrays with custom indices](@ref man-custom-indices)
-      * [Module loading](@ref)
-      * [Inference](@ref)
+      * Initialization of the Julia runtime
   * Developing/debugging Julia's C code
-      * [Reporting and analyzing crashes (segfaults)](@ref)
-      * [gdb debugging tips](@ref)
-      * [Using Valgrind with Julia](@ref)
-      * [Sanitizer support](@ref)
+      * Reporting and analyzing crashes
+
