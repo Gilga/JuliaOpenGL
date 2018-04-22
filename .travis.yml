@@ -28,5 +28,6 @@ deploy:
   github-token: $GITHUB_TOKEN
   keep-history: true
   file: docs/*
+  target-branch: deploy
   on:
     branch: master
