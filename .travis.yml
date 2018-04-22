@@ -2,7 +2,8 @@ language: julia
 rvm:
   - 0.6.2
 branches:
-  - master
+  only:
+    - master
 addons:
   apt:
     packages:
