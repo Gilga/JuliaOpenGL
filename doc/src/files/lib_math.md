@@ -1,37 +1,66 @@
-# lib_math.jl
+# [lib_math.jl](@id lib_math.jl)
 
-using Quaternions
-using StaticArrays
-#using ArrayFire
+libs:
+* [Quaternions](https://github.com/JuliaGeometry/Quaternions.jl)
+* [StaticArrays](https://github.com/JuliaArrays/StaticArrays.jl)
 
-include("matrix.jl")
-include("vector.jl")
+includes:
+* [matrix.jl](@ref)
+* [vector.jl](@ref)
 
-frustum{T}(left::T, right::T, bottom::T, top::T, znear::T, zfar::T)
+```@docs
+App.frustum{T}(left::T, right::T, bottom::T, top::T, znear::T, zfar::T)
+```
 
-projection_perspective{T}(fovy::T, aspect::T, znear::T, zfar::T)
+```@docs
+App.projection_perspective{T}(fovy::T, aspect::T, znear::T, zfar::T)
+```
 
-projection_orthographic{T}(left::T,right::T,bottom::T,top::T,znear::T,zfar::T)
+```@docs
+App.projection_orthographic{T}(left::T,right::T,bottom::T,top::T,znear::T,zfar::T)
+```
 
-translation{T}(t::Array{T,1})
+```@docs
+App.translation{T}(t::Array{T,1})
+```
 
-rotation{T}(r::Array{T,1})
+```@docs
+App.rotation{T}(r::Array{T,1})
+```
 
-rotation{T}(q::Quaternion{T})
+```@docs
+App.rotation{T}(q::Quaternions.Quaternion{T})
+```
 
-computeRotation{T}(r::Array{T,1})
+```@docs
+App.computeRotation{T}(r::Array{T,1})
+```
 
-scaling{T}(s::Array{T})
+```@docs
+App.scaling{T}(s::Array{T})
+```
 
-transform{T}(t::Array{T,1},r::Array{T,1},s::Array{T,1})
+```@docs
+App.transform{T}(t::Array{T,1},r::Array{T,1},s::Array{T,1})
+```
 
-ViewRH{T}(eye::Array{T,1}, yaw::T, pitch::T)
+```@docs
+App.ViewRH{T}(eye::Array{T,1}, yaw::T, pitch::T)
+```
 
-lookat{T}(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1})
+```@docs
+App.lookat{T}(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1})
+```
 
-forward{T}(m::Array{T, 2})
+```@docs
+App.forward{T}(m::Array{T, 2})
+```
 
-right{T}(m::Array{T, 2})
+```@docs
+App.right{T}(m::Array{T, 2})
+```
 
-up{T}(m::Array{T, 2})
+```@docs
+App.up{T}(m::Array{T, 2})
+```
 

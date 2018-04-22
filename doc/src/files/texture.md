@@ -1,3 +1,5 @@
-# texture.jl
+# [texture.jl](@id texture.jl)
 
-uploadTexture(path)
+```@docs
+App.uploadTexture(path)
+```

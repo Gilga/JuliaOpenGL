@@ -1,3 +1,5 @@
-# shader.jl
+# [shader.jl](@id shader.jl)
 
-loadShaders()
+```@docs
+App.loadShaders()
+```

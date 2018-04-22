@@ -1,4 +1,4 @@
-# frutsum.jl
+# [frutsum.jl](@id frutsum.jl)
 
 ```@docs
 App.Plane3D

@@ -1,4 +1,4 @@
-# libs.jl
+# [libs.jl](@id libs.jl)
 
 using Compat: uninitialized, Nothing, Cvoid, AbstractDict
 using Images
@@ -12,17 +12,25 @@ include("lib_opengl.jl")
 include("lib_math.jl")
 include("lib_time.jl")
 
-waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1)
-
-fileGetContents(path::String, tryCount=100, tryWait=0.1)
-
-UpdateCounters()
-
-showFrames()
-
 include("cubeData.jl")
 include("camera.jl")
 include("frustum.jl")
 include("chunk.jl")
 include("mesh.jl")
 include("texture.jl")
+
+```@docs
+App.waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1)
+```
+
+```@docs
+App.fileGetContents(path::String, tryCount=100, tryWait=0.1)
+```
+
+```@docs
+App.UpdateCounters()
+```
+
+```@docs
+App.showFrames()
+```

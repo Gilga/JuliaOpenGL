@@ -1,4 +1,4 @@
-# compileAndLink.jl
+# [compileAndLink.jl](@id compileAndLink.jl)
 
 * COMPILE WITH GCC
 * LINK LIB FUNCTIONS

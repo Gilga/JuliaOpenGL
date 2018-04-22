@@ -1,4 +1,4 @@
-# camera.jl
+# [camera.jl](@id camera.jl)
 
 Camera script with defines camera object, its functions, events and creates a single camera object for whole szene.
 

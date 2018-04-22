@@ -1,29 +1,41 @@
-# lib_opengl.jl
+# [lib_opengl.jl](@id lib_opengl.jl)
 
 using ModernGL
 
 glGenOne(glGenFn)
 
-glGenBuffer() = glGenOne(glGenBuffers)
-glGenVertexArray() = glGenOne(glGenVertexArrays)
-glGenTexture() = glGenOne(glGenTextures)
+glGenBuffer()
+glGenVertexArray()
+glGenTexture()
 
-glGetIntegerv_e(name::GLenum) = begin r=GLint[0]; glGetIntegerv(name,r); r[] end
+glGetIntegerv_e()
 
-getInfoLog(obj::GLuint)
-
-validateShader(shader)
+get_glsl_version_string()
 
 glErrorMessage()
 
-glCheckError(actionName="")
+glCheckError()
 
-compileShader(name, shader,source)
+```@docs
+App.getInfoLog(obj::ModernGL.GLuint)
+```
 
-createShader(source::Tuple{Symbol,String}, typ)
+```@docs
+App.validateShader(shader)
+```
 
-createShaderProgram(vertexShader, fragmentShader, geometryShader=nothing)
+```@docs
+App.compileShader(name, shader,source)
+```
 
-createcontextinfo()
+```@docs
+App.createShader(source::Tuple{Symbol,String}, typ)
+```
 
-get_glsl_version_string()
+```@docs
+App.createShaderProgram(vertexShader, fragmentShader, geometryShader=nothing)
+```
+
+```@docs
+App.createcontextinfo()
+```

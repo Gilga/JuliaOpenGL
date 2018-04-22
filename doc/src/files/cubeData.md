@@ -1,4 +1,4 @@
-# cubeData.jl
+# [cubeData.jl](@id cubeData.jl)
 
 * DATA_DUMMY
 * DATA_CUBE

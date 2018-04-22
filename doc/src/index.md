@@ -11,8 +11,8 @@ to render many Blocks efficiency.
 
 ## Manual
 
-* [Install](@ref install)
 * [Start](@ref start)
+* [Install](@ref install)
 * [Szene](@ref szene)
   
 ## Developer Documentation
