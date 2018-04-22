@@ -13,7 +13,7 @@ info("Create Docs...")
 using Documenter, App
 
 makedocs(
-  build     = joinpath(@__DIR__, "../docs"),
+  build     = joinpath(@__DIR__, "../build/docs"),
   modules   = [App],
   clean     = true,
   doctest   = true, # :fix
