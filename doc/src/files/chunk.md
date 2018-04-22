@@ -1,4 +1,4 @@
-# chunk.jl
+# [chunk.jl](@id chunk.jl)
 
 ```@docs
 App.HeptaOrder{T}

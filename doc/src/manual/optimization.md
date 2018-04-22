@@ -1,14 +1,18 @@
-# [JuliaOptimizer](@id optimization)
-(main.h, main.cpp)
+# [Optimization](@id optimization)
 
-#pragma once
+Optimization can be done know how to write your code following the rules of julia page ()[].
 
-#include <array>
-#include <unordered_map>
+Another option to optimize is to use write c-code, use gcc compiler to compile a lib (dll) file and link to its c-functions in julia.
 
-typedef void(*LoopFunc)(void*);
-typedef void(*LoopFunc2)(float*);
+If you wanna use on Windows Visual Studio's famous C++ Compiler you can do this aswell, just keep in mind to export your c++ functions to c.
 
+## JuliaOptimizer
+Is one approach to use the C++ of Visual Studio (Windows)
+
+Files main.h and main.cpp contains examples where you can pass data from julia to C++ or C++ to julia.
+
+Example export to c:
+```
 #define EXPORT __declspec(dllexport)
 
 extern "C" {
@@ -18,54 +22,4 @@ extern "C" {
   EXPORT void prepare(LoopFunc f, void** a, unsigned int count);
   EXPORT void loop();
 };
-
-struct loopObj {
-  LoopFunc loopFunc = NULL;
-  std::vector<void*> loopArray;
-  using Iterator = decltype(loopArray)::iterator;
-  Iterator it;
-  Iterator start;
-  Iterator end;
-
-  loopObj() {}
-  loopObj(LoopFunc f, void** a, unsigned int count) {
-    loopFunc = f;
-    loopArray = std::vector<void*>(a, a + count);
-    start = loopArray.begin();
-    end = loopArray.end();
-  }
-
-  void loop() {
-    for (it = start; it != end; ++it) loopFunc(*it);
-  }
-};
-
-std::unordered_map<unsigned int, loopObj> loopObjs;
-
-void* createLoop(const unsigned int index, void** a, const unsigned int count, LoopFunc f) {
-  return &(loopObjs[index] = loopObj(f, a, count));
-}
-
-void loopByIndex(const unsigned int index) {
-  const auto& it = loopObjs.find(index);
-  if (it == loopObjs.end()) return;
-  it->second.loop();
-}
-
-void loopByObject(void* iobj) {
-  if(!iobj) return;
-  ((loopObj*)iobj)->loop();
-}
-
-// -------------------------------------------
-
-void prepare(LoopFunc f, void** a, unsigned int count) {
-  renderFun = f;
-  FIELDS = std::vector<void*>(a, a + count);
-  FSTART = FIELDS.begin();
-  FEND = FIELDS.end();
-}
-
-void loop() {
-  for (FIT = FSTART; FIT != FEND; ++FIT) renderFun(*FIT);
-}
+```

@@ -1,25 +1,49 @@
-# mesh.jl
+# [mesh.jl](@id mesh.jl)
 
-Transform
+```@docs
+App.Transform
+```
 
-MeshArray
+```@docs
+App.MeshArray
+```
 
-MeshData
+```@docs
+App.MeshData
+```
 
-setAttributes(this::MeshArray, program, attrb)
+```@docs
+App.setAttributes(this::App.MeshArray, program, attrb)
+```
 
-createBuffers(this::MeshData)
+```@docs
+App.createBuffers(this::App.MeshData)
+```
 
-setAttributes(this::MeshData, program)
+```@docs
+App.setAttributes(this::App.MeshData, program)
+```
 
-setDrawArray(this::MeshData, key::Symbol)
+```@docs
+App.setDrawArray(this::App.MeshData, key::Symbol)
+```
 
-setData(this::MeshArray, data, elems=0)
+```@docs
+App.setData(this::App.MeshArray, data, elems=0)
+```
 
-linkData(this::MeshData, args...)
+```@docs
+App.linkData(this::App.MeshData, args...)
+```
 
-upload(this::MeshArray)
+```@docs
+App.upload(this::App.MeshArray)
+```
 
-upload(this::MeshData)
+```@docs
+App.upload(this::App.MeshData)
+```
 
-upload(this::MeshData, key::Symbol, data::AbstractArray)
+```@docs
+App.upload(this::App.MeshData, key::Symbol, data::AbstractArray)
+```

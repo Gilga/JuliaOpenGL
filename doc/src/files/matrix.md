@@ -1,2 +1,2 @@
-# matrix.jl
+# [matrix.jl](@id matrix.jl)
 

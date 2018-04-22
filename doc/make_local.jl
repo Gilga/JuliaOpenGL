@@ -29,11 +29,8 @@ makedocs(
   pages = Any[ # Compat: `Any` for 0.4 compat
       "Home" => "index.md",
       "Manual" => Any[
-          "manual/install.md",
           "manual/start.md",
-          "manual/szene.md",
           "manual/algorithm.md",
-          "manual/build.md",
           "manual/optimization.md",
           "manual/references.md",
       ],

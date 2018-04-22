@@ -2,154 +2,106 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "files/JuliaOpenGL/#",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "JuliaOpenGL.jl (main.jl)",
+    "page": "JuliaOpenGL.jl",
+    "title": "JuliaOpenGL.jl",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "files/JuliaOpenGL/#JuliaOpenGL.jl-(main.jl)-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "JuliaOpenGL.jl (main.jl)",
+    "location": "files/JuliaOpenGL/#JuliaOpenGL.jl-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "JuliaOpenGL.jl",
     "category": "section",
-    "text": "App"
+    "text": "Definitions\nProgram Init\nSzene Init\nCamera\nMesh\nTextures\nShader\nOther\nRender LoopApp"
 },
 
 {
-    "location": "files/JuliaOpenGL/#INCLUDES-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "INCLUDES",
+    "location": "files/JuliaOpenGL/#Main-Call-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Main Call",
     "category": "section",
-    "text": "include(\"libs.jl\") include(\"shader.jl\")"
+    "text": "function main()\n  App.run()\nend"
 },
 
 {
-    "location": "files/JuliaOpenGL/#COMPILE-C-File-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "COMPILE C File",
+    "location": "files/JuliaOpenGL/#Program-Run-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Program Run",
     "category": "section",
-    "text": "#include(\"compileAndLink.jl\") const compileAndLink = isdefined(:createLoop) setMode(program, name, mode)setFrustumCulling(load=true)chooseRenderMethod(method=RENDER_METHOD)checkForUpdate()useProgram(program)setMatrix(program, name, m)setMVP(program, mvp, old_program=nothing)"
+    "text": "App.run()"
 },
 
 {
-    "location": "files/JuliaOpenGL/#PROGRAM-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "PROGRAM",
+    "location": "files/JuliaOpenGL/#Definitions-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Definitions",
     "category": "section",
-    "text": "run()println(\"––––––––––––––––––––––––––––––––––-\") println(\"Start Program @ \", Dates.time()) versioninfo()"
+    "text": "App.setMode(program, name, mode)App.setFrustumCulling(load)App.chooseRenderMethod(method)App.checkForUpdate()App.useProgram(program)App.setMatrix(program, name, m)App.setMVP(program, mvp, old_program)"
 },
 
 {
-    "location": "files/JuliaOpenGL/#OS-X-specific-GLFW-hints-to-initialize-the-correct-version-of-OpenGL-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "OS X-specific GLFW hints to initialize the correct version of OpenGL",
+    "location": "files/JuliaOpenGL/#Program-Init-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Program Init",
     "category": "section",
-    "text": "GLFW.Init()"
+    "text": "Output Program Info (Print)\nOS X-specific GLFW hints to initialize the correct version of OpenGL\nCreate a windowed mode window and its OpenGL context\nMake the window\'s context current\nSet windows size and viewport - seems to be necessary to guarantee that window > 0\nWindow settings - SwapInterval - intervall between canvas images (min. 2 images)\nGraphcis Settings - show opengl debug report\nSet OpenGL Version (Major,Minor) - 4.6\nSet OpenGL Event Callbacks\nShow window\nOutput OpenGL Info (Print)"
 },
 
 {
-    "location": "files/JuliaOpenGL/#Create-a-windowed-mode-window-and-its-OpenGL-context-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "Create a windowed mode window and its OpenGL context",
+    "location": "files/JuliaOpenGL/#szene-init-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Szene Init",
     "category": "section",
-    "text": "global window = GLFW.CreateWindow(WIDTH, HEIGHT, \"OpenGL Example\")"
+    "text": "Chooses render methodApp.chooseRenderMethod"
 },
 
 {
-    "location": "files/JuliaOpenGL/#Make-the-window\'s-context-current-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "Make the window\'s context current",
+    "location": "files/JuliaOpenGL/#Camera-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Camera",
     "category": "section",
-    "text": "GLFW.MakeContextCurrent(window)GLFW.SetWindowSize(window, WIDTH, HEIGHT) # Seems to be necessary to guarantee that window > 0 rezizeWindow(WIDTH,HEIGHT)"
+    "text": "Sets Camera position\nSets Camera projection\nCreates/Sets Frustum\nUpdates Camera"
 },
 
 {
-    "location": "files/JuliaOpenGL/#Window-settings-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "Window settings",
+    "location": "files/JuliaOpenGL/#Mesh-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Mesh",
     "category": "section",
-    "text": "GLFW.SwapInterval(0) # intervall between canvas images (min. 2 images)"
+    "text": "Creates and Links Mesh Data"
 },
 
 {
-    "location": "files/JuliaOpenGL/#Graphcis-Settings-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "Graphcis Settings",
+    "location": "files/JuliaOpenGL/#Textures-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Textures",
     "category": "section",
-    "text": "GLFW.WindowHint(GLFW.OPENGL_DEBUG_CONTEXT,true) #show debug #GLFW.WindowHint(GLFW.SAMPLES,4)"
+    "text": "uploads this texture."
 },
 
 {
-    "location": "files/JuliaOpenGL/#OpenGL-Version-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "OpenGL Version",
+    "location": "files/JuliaOpenGL/#Shader-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Shader",
     "category": "section",
-    "text": "GLFW.WindowHint(GLFW.CONTEXT_VERSION_MAJOR,4) GLFW.WindowHint(GLFW.CONTEXT_VERSION_MINOR,6)GLFW.SetCursorPosCallback(window, OnCursorPos) GLFW.SetKeyCallback(window, OnKey) GLFW.SetMouseButtonCallback(window, OnMouseKey)#setEventCallbacks(OnCursorPos,OnKey,OnMouseKey)GLFW.ShowWindow(window)glinfo = createcontextinfo()println(\"OpenGL displayInRed(glinfo[:gl_version])\") println(\"GLSL glinfo[:glsl_version]\") println(\"Vendor displayInRed(glinfo[:gl_vendor])\") println(\"Renderer displayInRed(glinfo[:gl_renderer])\") println(\"––––––––––––––––––––––––––––––––––-\")"
+    "text": "Creates Shader\nSets Shader Attributes\nSets Uniform Variables (like MVP from Camera)"
 },
 
 {
-    "location": "files/JuliaOpenGL/#CAMERA-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "CAMERA",
+    "location": "files/JuliaOpenGL/#Other-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Other",
     "category": "section",
-    "text": "setPosition(CAMERA,[0f0,0,0]) setProjection(CAMERA, projection_perspective(FOV, RATIO, CLIP_NEAR, CLIP_FAR))global fstm = Frustum() SetFrustum(fstm, FOV, RATIO, CLIP_NEAR, 1000f0) SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))Update(CAMERA)#––––––––––––––––––––––––––––––––––––––––––program = 0#––––––––––––––––––––––––––––––––––––––––––global chunkData = MeshData() global planeData = MeshData()#––––––––––––––––––––––––––––––––––––––––––"
+    "text": "Sets OpenGL Render Options"
 },
 
 {
-    "location": "files/JuliaOpenGL/#TEXTURES-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "TEXTURES",
+    "location": "files/JuliaOpenGL/#render-loop-1",
+    "page": "JuliaOpenGL.jl",
+    "title": "Render Loop",
     "category": "section",
-    "text": "uploadTexture(\"blocks.png\")"
-},
-
-{
-    "location": "files/JuliaOpenGL/#LOAD-DEFAULT-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "LOAD DEFAULT",
-    "category": "section",
-    "text": "chooseRenderMethod()#––––––––––––––––––––––––––––––––––––––––––linkData(planeData,  :vertices=>getVertices(fstm))#chunkData.arrays[:vertices].count #n = length(cubeVertices_small) / 3#function compileShaderPrograms()"
-},
-
-{
-    "location": "files/JuliaOpenGL/#global-program_chunks,-program_normal-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "global program_chunks, program_normal",
-    "category": "section",
-    "text": "global program_normal = createShaderProgram(VSH, FSH) #, createShader(GSH, GL_GEOMETRY_SHADER)setAttributes(planeData, program_normal) setMVP(program_normal, CAMERA.MVP)#end#compileShaderPrograms()global location_position = -1 global location_texindex = -1#––––––––––––––––––––––––––––––––––––––––––function updateBlocks()   #const mmvp = SMatrix{4,4,Float32}(CAMERA.MVP)   #setMVP(CAMERA.MVP)   #glUniform3fv(location_shift, 1, CAMERA.position)   #glUniform3fv(location_shift, 1, shiftposition)   #for b in blocks; b.mvp=mmvp*b.model; end end#––––––––––––––––––––––––––––––––––––––––––glEnable(GL_DEPTH_TEST) glEnable(GL_BLEND) glEnable(GL_CULL_FACE) #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) #glBlendEquation(GL_FUNC_ADD) #glFrontFace(GL_CCW) glCullFace(GL_BACK) #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)#GL_FILL,GL_LINE glClearColor(0.0, 0.0, 0.0, 1.0)"
-},
-
-{
-    "location": "files/JuliaOpenGL/#Loop-until-the-user-closes-the-window-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "Loop until the user closes the window",
-    "category": "section",
-    "text": "render = function(x)   #mvp = mmvpMMatrix{4,4,Float32}(unsafe_wrap(Array, mvp, (4,4)))   #setMVP(CAMERA.MVPtranslation([c.x,c.y,c.z]))#glUniformMatrix4fv(location_mvp, 1, false, x.mvp)   #glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL )   #glDrawArrays(GL_TRIANGLES, 0, chunkData.draw.count)   nothing end#= if use_geometry_shader   const loopBlocks() = render(mychunk.childs[1]) else   if compileAndLink     objptr = createLoop(1,refblocks,render) #compileAndLink     const loopBlocks() = loopByObject(objptr) #compileAndLink   else     const loopBlocks() = for b in mychunk.childs; render(b); end   end end =#cam_updated=falseconst SLEEP=0 #1f0/200i=0 while !GLFW.WindowShouldClose(window)   showFrames()   UpdateCounters()if OnUpdate(CAMERA)     setMVP(program_chunks, CAMERA.MVP)     #setMVP(program_normal, CAMERA.MVP)     cam_updated=true   endcheckForUpdate()   if cam_updated cam_updated=false end"
-},
-
-{
-    "location": "files/JuliaOpenGL/#Pulse-the-background-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "Pulse the background",
-    "category": "section",
-    "text": "#c=0.5 * (1 + sin(i * 0.01)); i+=1   #glClearColor(c, c, c, 1.0)   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)#print(\"loopBlocks \"); @time   #loopBlocks()if isValid(mychunk)      useProgram(program_chunks)     #glCheckError(\"useProgram\")     glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)     glBindVertexArray(chunkData.vao)     #glCheckError(\"glBindVertexArray bind\")if RENDER_METHOD == 1 glDrawArraysInstanced(GL_POINTS, 0, 1, mychunk.fileredCount) #GL_TRIANGLE_STRIP\nelseif RENDER_METHOD == 2 glDrawArraysInstanced(GL_TRIANGLES, 0, chunkData.draw.count, mychunk.fileredCount)\nelseif RENDER_METHOD == 3 glDrawElementsInstanced(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL, mychunk.fileredCount)\n#glDrawElementsInstancedBaseVertex(GL_TRIANGLES, chunkData.draw.count / 6, GL_UNSIGNED_INT, C_NULL, mychunk.count, 0)\nelseif RENDER_METHOD > 3\n  #* thats slow! (glDrawElements ~60 fps, glDrawElementsInstanced ~ 200 fps !!!)\n  for b in getFilteredChilds(mychunk)\n    if location_texindex > -1 glUniform1f(location_texindex, b.typ) end\n    if location_position > -1 glUniform3fv(location_position, 1, b.pos) end\n    glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL )\n    #glCheckError(\"glDrawElements\")\n  end\nend\nglBindVertexArray(0)\n#glCheckError(\"glBindVertexArray unbind\")end#=   useProgram(program_normal)   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)glBindVertexArray(planeData.vao)   #glDrawElements(GL_TRIANGLES, planeData.draw.count, GL_UNSIGNED_INT, C_NULL )   glDrawArrays(GL_TRIANGLES, 0, planeData.draw.count)   glBindVertexArray(0)   =#"
-},
-
-{
-    "location": "files/JuliaOpenGL/#Swap-front-and-back-buffers-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "Swap front and back buffers",
-    "category": "section",
-    "text": "GLFW.SwapBuffers(window)"
-},
-
-{
-    "location": "files/JuliaOpenGL/#Poll-for-and-process-events-1",
-    "page": "JuliaOpenGL.jl (main.jl)",
-    "title": "Poll for and process events",
-    "category": "section",
-    "text": "GLFW.PollEvents()if SLEEP>0 Libc.systemsleep(SLEEP) end endGLFW.DestroyWindow(window) GLFW.Terminate()endendfunction main()   App.run() end"
+    "text": "Begin Render Loop while (window is open)\nEvent OnUpdate -> setMVP\nShow frames\nupdate counters/timers\nClear szene background\nBind Shader Program\nWirefram Option\nBind Vertex Array\nDraw:if isValid(mychunk) \n  (...)\n  if RENDER_METHOD == 1 glDrawArraysInstanced(GL_POINTS)  # + geometry shader => very fast!\n  elseif RENDER_METHOD == 2 glDrawArraysInstanced(GL_TRIANGLES)  # fast\n  elseif RENDER_METHOD == 3 glDrawElementsInstanced(GL_TRIANGLES)  # faster than 2 (only useful for groups)\n  elseif RENDER_METHOD > 3\n    for b in getFilteredChilds(mychunk)  # thats slow!\n      glDrawElements(GL_TRIANGLES)\n    end\n  end\n  (...)For more information about render algorithms look here.Unbind Vertex Array\nSwap front and back buffers\nPoll for and process events\nSleep function\nEnd Render Loop\ndestroy Window \nterminate"
 },
 
 {
@@ -261,7 +213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "lib_math.jl",
     "title": "lib_math.jl",
     "category": "section",
-    "text": "using Quaternions using StaticArrays #using ArrayFireinclude(\"matrix.jl\") include(\"vector.jl\")frustum{T}(left::T, right::T, bottom::T, top::T, znear::T, zfar::T)projection_perspective{T}(fovy::T, aspect::T, znear::T, zfar::T)projection_orthographic{T}(left::T,right::T,bottom::T,top::T,znear::T,zfar::T)translation{T}(t::Array{T,1})rotation{T}(r::Array{T,1})rotation{T}(q::Quaternion{T})computeRotation{T}(r::Array{T,1})scaling{T}(s::Array{T})transform{T}(t::Array{T,1},r::Array{T,1},s::Array{T,1})ViewRH{T}(eye::Array{T,1}, yaw::T, pitch::T)lookat{T}(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1})forward{T}(m::Array{T, 2})right{T}(m::Array{T, 2})up{T}(m::Array{T, 2})"
+    "text": "libs:Quaternions\nStaticArraysincludes:matrix.jl\nvector.jlApp.frustum{T}(left::T, right::T, bottom::T, top::T, znear::T, zfar::T)App.projection_perspective{T}(fovy::T, aspect::T, znear::T, zfar::T)App.projection_orthographic{T}(left::T,right::T,bottom::T,top::T,znear::T,zfar::T)App.translation{T}(t::Array{T,1})App.rotation{T}(r::Array{T,1})App.rotation{T}(q::Quaternions.Quaternion{T})App.computeRotation{T}(r::Array{T,1})App.scaling{T}(s::Array{T})App.transform{T}(t::Array{T,1},r::Array{T,1},s::Array{T,1})App.ViewRH{T}(eye::Array{T,1}, yaw::T, pitch::T)App.lookat{T}(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1})App.forward{T}(m::Array{T, 2})App.right{T}(m::Array{T, 2})App.up{T}(m::Array{T, 2})"
 },
 
 {
@@ -277,7 +229,7 @@ var documenterSearchIndex = {"docs": [
     "page": "lib_opengl.jl",
     "title": "lib_opengl.jl",
     "category": "section",
-    "text": "using ModernGLglGenOne(glGenFn)glGenBuffer() = glGenOne(glGenBuffers) glGenVertexArray() = glGenOne(glGenVertexArrays) glGenTexture() = glGenOne(glGenTextures)glGetIntegerv_e(name::GLenum) = begin r=GLint[0]; glGetIntegerv(name,r); r[] endgetInfoLog(obj::GLuint)validateShader(shader)glErrorMessage()glCheckError(actionName=\"\")compileShader(name, shader,source)createShader(source::Tuple{Symbol,String}, typ)createShaderProgram(vertexShader, fragmentShader, geometryShader=nothing)createcontextinfo()get_glsl_version_string()"
+    "text": "using ModernGLglGenOne(glGenFn)glGenBuffer() glGenVertexArray() glGenTexture()glGetIntegerv_e()get_glsl_version_string()glErrorMessage()glCheckError()App.getInfoLog(obj::ModernGL.GLuint)App.validateShader(shader)App.compileShader(name, shader,source)App.createShader(source::Tuple{Symbol,String}, typ)App.createShaderProgram(vertexShader, fragmentShader, geometryShader=nothing)App.createcontextinfo()"
 },
 
 {
@@ -293,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "lib_time.jl",
     "title": "lib_time.jl",
     "category": "section",
-    "text": "GetTimer(key)SetTimer(key, time::Number) SetTimer(\"FRAME_TIMER\", Dates.time())UpdateTimers()OnTime(milisec::Number)OnTime(milisec::Number, prevTime::Ref{Float64}, time)"
+    "text": "GetTimer(key)SetTimer(key, time::Number) SetTimer(\"FRAME_TIMER\", Dates.time())App.UpdateTimers()App.OnTime(milisec::Number)App.OnTime(milisec::Number, prevTime::Ref{Float64}, time)"
 },
 
 {
@@ -325,7 +277,7 @@ var documenterSearchIndex = {"docs": [
     "page": "libs.jl",
     "title": "libs.jl",
     "category": "section",
-    "text": "using Compat: uninitialized, Nothing, Cvoid, AbstractDict using Images using ImageMagickdisplayInYellow(s) = string(\"\\x1b[93m\",s,\"\\x1b[0m\") displayInRed(s) = string(\"\\x1b[91m\",s,\"\\x1b[0m\")include(\"lib_window.jl\") include(\"lib_opengl.jl\") include(\"lib_math.jl\") include(\"lib_time.jl\")waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1)fileGetContents(path::String, tryCount=100, tryWait=0.1)UpdateCounters()showFrames()include(\"cubeData.jl\") include(\"camera.jl\") include(\"frustum.jl\") include(\"chunk.jl\") include(\"mesh.jl\") include(\"texture.jl\")"
+    "text": "using Compat: uninitialized, Nothing, Cvoid, AbstractDict using Images using ImageMagickdisplayInYellow(s) = string(\"\\x1b[93m\",s,\"\\x1b[0m\") displayInRed(s) = string(\"\\x1b[91m\",s,\"\\x1b[0m\")include(\"lib_window.jl\") include(\"lib_opengl.jl\") include(\"lib_math.jl\") include(\"lib_time.jl\")include(\"cubeData.jl\") include(\"camera.jl\") include(\"frustum.jl\") include(\"chunk.jl\") include(\"mesh.jl\") include(\"texture.jl\")App.waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1)App.fileGetContents(path::String, tryCount=100, tryWait=0.1)App.UpdateCounters()App.showFrames()"
 },
 
 {
@@ -357,7 +309,7 @@ var documenterSearchIndex = {"docs": [
     "page": "mesh.jl",
     "title": "mesh.jl",
     "category": "section",
-    "text": "TransformMeshArrayMeshDatasetAttributes(this::MeshArray, program, attrb)createBuffers(this::MeshData)setAttributes(this::MeshData, program)setDrawArray(this::MeshData, key::Symbol)setData(this::MeshArray, data, elems=0)linkData(this::MeshData, args...)upload(this::MeshArray)upload(this::MeshData)upload(this::MeshData, key::Symbol, data::AbstractArray)"
+    "text": "App.TransformApp.MeshArrayApp.MeshDataApp.setAttributes(this::App.MeshArray, program, attrb)App.createBuffers(this::App.MeshData)App.setAttributes(this::App.MeshData, program)App.setDrawArray(this::App.MeshData, key::Symbol)App.setData(this::App.MeshArray, data, elems=0)App.linkData(this::App.MeshData, args...)App.upload(this::App.MeshArray)App.upload(this::App.MeshData)App.upload(this::App.MeshData, key::Symbol, data::AbstractArray)"
 },
 
 {
@@ -373,7 +325,7 @@ var documenterSearchIndex = {"docs": [
     "page": "shader.jl",
     "title": "shader.jl",
     "category": "section",
-    "text": "loadShaders()"
+    "text": "App.loadShaders()"
 },
 
 {
@@ -405,7 +357,7 @@ var documenterSearchIndex = {"docs": [
     "page": "texture.jl",
     "title": "texture.jl",
     "category": "section",
-    "text": "uploadTexture(path)"
+    "text": "App.uploadTexture(path)"
 },
 
 {
@@ -453,7 +405,7 @@ var documenterSearchIndex = {"docs": [
     "page": "JuliaOpenGL",
     "title": "Manual",
     "category": "section",
-    "text": "Install\nStart\nSzene"
+    "text": "Start\nInstall\nSzene"
 },
 
 {
@@ -477,55 +429,79 @@ var documenterSearchIndex = {"docs": [
     "page": "Algorithm",
     "title": "Algorithm",
     "category": "section",
-    "text": ""
+    "text": "For this project i use an advanced OpenGL technique and two algorithm to render up to 128³ blocks with 100 or more FPS.OpenGL\nFrustum Culling\nOutside Only\nAll together\nNext step\nWhy not use?"
 },
 
 {
-    "location": "manual/build/#",
-    "page": "Build",
-    "title": "Build",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "manual/build/#build-1",
-    "page": "Build",
-    "title": "Build",
+    "location": "manual/algorithm/#OpenGL-1",
+    "page": "Algorithm",
+    "title": "OpenGL",
     "category": "section",
-    "text": ""
+    "text": "glDrawElementsInstanced and glDrawArraysInstanced to render many objects at once\nGPU Geometry shader to adjust amount of vertices given by input. No need to create vertices on CPU side. Geometry shader example:void createSide(Vertex v, int side) {\n  for(int i=0;i<4;++i) {\n    (...)\n    gl_Position = iMVP * v.world_pos;\n    EmitVertex();\n  }\n  EndPrimitive();\n}\n\nvoid main() {\n  (...)\n  if((sides & 0x1) > 0) createSide(v, 4);  // LEFT\n  if((sides & 0x2) > 0) createSide(v, 5);  // RIGHT\n  if((sides & 0x4) > 0) createSide(v, 0);  // TOP\n  if((sides & 0x8) > 0) createSide(v, 1);  // BOTTOM\n  if((sides & 0x10) > 0) createSide(v, 2);  // FRONT\n  if((sides & 0x20) > 0) createSide(v, 3);  // BACK\n  (...)\n}"
 },
 
 {
-    "location": "manual/install/#",
-    "page": "Installation",
-    "title": "Installation",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "manual/install/#install-1",
-    "page": "Installation",
-    "title": "Installation",
+    "location": "manual/algorithm/#Frustum-Culling-1",
+    "page": "Algorithm",
+    "title": "Frustum Culling",
     "category": "section",
-    "text": ""
+    "text": "Frustum culling is 3d geometric object (a cone with top and bottom sliced off). In code frustum has six planes (top,bottom,right,left,near,far) in total where each plane measure the distance between itself and a given object. For visual demonstration look Frustum Culling Video by AlwaysGeeky.Code:type Plane\n position  :: Vector\n normal    :: Vector\n distance  :: Value\nendtype Frustum\n  planes :: Array\n  \n  nearDistance  :: Value\n  farDistance   :: Value\n  nearWidth     :: Value\n  nearHeight    :: Value\n  farWidth      :: Value\n  farHeight     :: Value\n  ratio         :: Value\n  angle         :: Value\n  tang          :: Value\n  \n  nearTopLeft     :: Vector\n  nearTopRight    :: Vector\n  nearBottomLeft  :: Vector\n  nearBottomRight :: Vector\n  farTopLeft      :: Vector\n  farTopRight     :: Vector\n  farBottomLeft   :: Vector\n  farBottomRight  :: Vector\nendSet Camera is called in main script and sets the view for the frustum App.SetCamera(this::App.Frustum, pos::App.Vec3f, target::App.Vec3f, up::App.Vec3f)Set Frustum is almost similiar to set camera execpt its sets ratio, angle, far and near values App.SetFrustum(this::App.Frustum, angle::Float32, ratio::Float32, nearD::Float32, farD::Float32)GetPointDistance gets the distance between current plane and a point App.GetPointDistance(this::App.Plane3D, lPoint::App.Vec3f)checkSphere is a batter option than checkCube because its faster App.checkSphere(this::App.Frustum, pos::App.Vec3f, radius::Number)checkInFrustum is called in when blocks are created / updated App.checkInFrustum(this::App.Chunk, fstm::App.Frustum)"
+},
+
+{
+    "location": "manual/algorithm/#Outside-Only-1",
+    "page": "Algorithm",
+    "title": "Outside Only",
+    "category": "section",
+    "text": "Is a simple algorithm to filter objects which are surrounded by other objects and are not visible from the outside. It hides not only the objects itself but its non-visible sides too. Those objects are cubes so we have only six sides to check for visibility.The algorithm App.hideUnseen(this::App.Chunk)"
+},
+
+{
+    "location": "manual/algorithm/#All-together-1",
+    "page": "Algorithm",
+    "title": "All together",
+    "category": "section",
+    "text": "Combining OpenGL technique and those two algorithm gives high quality results.This gets us a filtered list of objects where those algorithms were applied to App.getFilteredChilds(this::App.Chunk)"
+},
+
+{
+    "location": "manual/algorithm/#Next-step-1",
+    "page": "Algorithm",
+    "title": "Next step",
+    "category": "section",
+    "text": "Next step is to filter objects which are not seen due to interference of other objects (blocking the view). An approach could be using a raytracer but maybe there is an even better solution to that or it has yet to been found. Since we only have cubes we can avoid complicated stuff most of the time."
+},
+
+{
+    "location": "manual/algorithm/#Why-not-use?-1",
+    "page": "Algorithm",
+    "title": "Why not use?",
+    "category": "section",
+    "text": "Why not use glDrawElementsInstanced + geometry shader instead of glDrawArraysInstanced + geometry shader? glDrawElementsInstanced is only useful for groups but we use points here for each object (cube), so we will have to think how we want to group our objects first. Currently glDrawArraysInstanced is the way to go."
 },
 
 {
     "location": "manual/optimization/#",
-    "page": "JuliaOptimizer",
-    "title": "JuliaOptimizer",
+    "page": "Optimization",
+    "title": "Optimization",
     "category": "page",
     "text": ""
 },
 
 {
     "location": "manual/optimization/#optimization-1",
-    "page": "JuliaOptimizer",
+    "page": "Optimization",
+    "title": "Optimization",
+    "category": "section",
+    "text": "Optimization can be done know how to write your code following the rules of julia page ()[].Another option to optimize is to use write c-code, use gcc compiler to compile a lib (dll) file and link to its c-functions in julia.If you wanna use on Windows Visual Studio\'s famous C++ Compiler you can do this aswell, just keep in mind to export your c++ functions to c."
+},
+
+{
+    "location": "manual/optimization/#JuliaOptimizer-1",
+    "page": "Optimization",
     "title": "JuliaOptimizer",
     "category": "section",
-    "text": "(main.h, main.cpp)#pragma once#include <array> #include <unordered_map>typedef void(LoopFunc)(void); typedef void(LoopFunc2)(float);#define EXPORT __declspec(dllexport)extern \"C\" {   EXPORT void* createLoop(const unsigned int, void** a, const unsigned int, LoopFunc);   EXPORT void loopByIndex(const unsigned int);   EXPORT void loopByObject(void*);   EXPORT void prepare(LoopFunc f, void** a, unsigned int count);   EXPORT void loop(); };struct loopObj {   LoopFunc loopFunc = NULL;   std::vector<void*> loopArray;   using Iterator = decltype(loopArray)::iterator;   Iterator it;   Iterator start;   Iterator end;loopObj() {}   loopObj(LoopFunc f, void** a, unsigned int count) {     loopFunc = f;     loopArray = std::vector<void*>(a, a + count);     start = loopArray.begin();     end = loopArray.end();   }void loop() {     for (it = start; it != end; ++it) loopFunc(*it);   } };std::unordered_map<unsigned int, loopObj> loopObjs;void* createLoop(const unsigned int index, void** a, const unsigned int count, LoopFunc f) {   return &(loopObjs[index] = loopObj(f, a, count)); }void loopByIndex(const unsigned int index) {   const auto& it = loopObjs.find(index);   if (it == loopObjs.end()) return;   it->second.loop(); }void loopByObject(void* iobj) {   if(!iobj) return;   ((loopObj*)iobj)->loop(); }// –––––––––––––––––––––-void prepare(LoopFunc f, void** a, unsigned int count) {   renderFun = f;   FIELDS = std::vector<void*>(a, a + count);   FSTART = FIELDS.begin();   FEND = FIELDS.end(); }void loop() {   for (FIT = FSTART; FIT != FEND; ++FIT) renderFun(*FIT); }"
+    "text": "Is one approach to use the C++ of Visual Studio (Windows)Files main.h and main.cpp contains examples where you can pass data from julia to C++ or C++ to julia.Example export to c:#define EXPORT __declspec(dllexport)\n\nextern \"C\" {\n  EXPORT void* createLoop(const unsigned int, void** a, const unsigned int, LoopFunc);\n  EXPORT void loopByIndex(const unsigned int);\n  EXPORT void loopByObject(void*);\n  EXPORT void prepare(LoopFunc f, void** a, unsigned int count);\n  EXPORT void loop();\n};"
 },
 
 {
@@ -545,6 +521,22 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "manual/references/#Julia-vs-Python-1",
+    "page": "References",
+    "title": "Julia vs Python",
+    "category": "section",
+    "text": "I found articles about this topic. First one was against julia but it had somewhat poor evidence for julia downsides. The last two articles i found favour julia over python for various situations by demonstrating benchmarks or code examples in comparison with python.Against Julia - \'Giving up on Julia\' and \'Python Benchmarks\'\nFavour Julia - \'An Updated Analysis for the \"Giving Up on Julia\" Blog Post\'\nFavour Julia - \'Python vs Julia Observations\'"
+},
+
+{
+    "location": "manual/references/#Honorable-mentions-1",
+    "page": "References",
+    "title": "Honorable mentions",
+    "category": "section",
+    "text": "Since knowlegde does not grow on trees. I decide to put my sources here as honorable mentions because those websites helped me allot:Let\'s Make a Voxel Engine\n...\n...\n..."
+},
+
+{
     "location": "manual/start/#",
     "page": "Start",
     "title": "Start",
@@ -557,23 +549,47 @@ var documenterSearchIndex = {"docs": [
     "page": "Start",
     "title": "Start",
     "category": "section",
-    "text": ""
+    "text": "Download\nInstallation\nInfo\nBuild\nSzene"
 },
 
 {
-    "location": "manual/szene/#",
-    "page": "Szene",
-    "title": "Szene",
-    "category": "page",
-    "text": ""
+    "location": "manual/start/#download-1",
+    "page": "Start",
+    "title": "Download",
+    "category": "section",
+    "text": "Julia 0.6\nJulia OpenGL"
 },
 
 {
-    "location": "manual/szene/#szene-1",
-    "page": "Szene",
+    "location": "manual/start/#install-1",
+    "page": "Start",
+    "title": "Installation",
+    "category": "section",
+    "text": "Run Julia 0.6 setup\nInstall Packages:Pkg.add(\"Compat\")\nPkg.add(\"Images\")\nPkg.add(\"ImageMagick\")\nPkg.add(\"ModernGL\")\nPkg.add(\"GLFW\")\nPkg.add(\"Quaternions\")"
+},
+
+{
+    "location": "manual/start/#Info-1",
+    "page": "Start",
+    "title": "Info",
+    "category": "section",
+    "text": "Tested on:Operating System: Windows 10 Home 64-bit\nProcessor: Intel(R) Core(TM) i7-4510U CPU @ 2.00GHz (4 CPUs), 2.0GHz\nMemory: 8192MB RAM\nGraphics Card 1: Intel(R) HD Graphics Family\nGraphics Card 2: NVIDIA GeForce 840M (Was mostly used for better FPS values)"
+},
+
+{
+    "location": "manual/start/#build-1",
+    "page": "Start",
+    "title": "Build",
+    "category": "section",
+    "text": "With BuildExecutable.jl script you can build a executable on your os systems (currently only for windows). For more information look build.jl."
+},
+
+{
+    "location": "manual/start/#szene-1",
+    "page": "Start",
     "title": "Szene",
     "category": "section",
-    "text": ""
+    "text": "For information about szene initialization look here.\nFor information about render loop look here.\nFor information about render algorithms look here.Rendermethods: Arrays Instanced + Points\nArrays Instanced + Triangles\nElements Instanced + Triangles\nElements + TrianglesKey Command/Description\nk Show Keys\nq Wireframe (Enable/Disable)\nt Texture (Enable/Disable)\nl Light (Enable/Disable)\nf Frustum Culling (Enable/Disable)\no Outside Only Cubes (Enable/Disable)\nr Reload\nF1-F4 Rendermethod 1 - 4\n0-9 Chunk Size 1-64 ^ 3 (0 = 64)\nß´^ Chunk Size > 64 (72, 96, 128)\nb Szene: Single Block\nn Szene: Blocks (Full Chunk)\nm Szene: Terrain\nv Set Camera Vew (Frustum)\np Set Camera Position (Frustum)\nWASD Move Camera (Forward,Left,Back,Right,Up,Down)\nSpace Move Camera (Up)\nCtrl/c Move Camera (Down)\nLShift Hold left shift to speedUp Camera Movement\nHMK Hold any mouse key to rotate view(Image: statusPic)"
 },
 
 ]}

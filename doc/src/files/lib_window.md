@@ -1,4 +1,4 @@
-# lib_window.jl
+# [lib_window.jl](@id lib_window.jl)
 
 using GLFW
 
