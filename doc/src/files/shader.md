@@ -1,3 +1,0 @@
-# shader.jl
-
-loadShaders()

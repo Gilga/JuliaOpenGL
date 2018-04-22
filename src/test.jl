@@ -1,2 +1,0 @@
-include("JuliaOpenGL.jl")
-main()
