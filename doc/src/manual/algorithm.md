@@ -96,6 +96,11 @@ checkInFrustum is called in when blocks are created / updated
 Is a simple algorithm to filter objects which are surrounded by other objects and are not visible from the outside.
 It hides not only the objects itself but its non-visible sides too. Those objects are cubes so we have only six sides to check for visibility.
 
+This algorithm has some similiarities to [Occlusion culling](https://en.wikipedia.org/wiki/Hidden_surface_determination#Occlusion_culling) but its different.
+Occlusion culling is when objects are entirely behind other opaque objects may be culled.
+This differs from Outside Only algorithm because each object looks around itself if it has visible neighbour objects or not.
+If its entirely surrounded by other object then it wont be "culled".
+
 The algorithm
 [`App.hideUnseen(this::App.Chunk)`](@ref)
 
