@@ -11,6 +11,13 @@ The last two articles i found favour julia over python for various situations by
 ## Honorable mentions
 Since knowlegde does not grow on trees. I decide to put my sources here as honorable mentions because those websites helped me allot:
 * [Let's Make a Voxel Engine](https://sites.google.com/site/letsmakeavoxelengine/)
-* ...
-* ...
-* ...
+* [MineCraft-One-Week-Challenge](https://github.com/Hopson97/MineCraft-One-Week-Challenge)
+* [Vox](https://github.com/AlwaysGeeky/Vox)
+
+## Helpful Sites
+
+* [Setting up Your Julia Environment](https://lectures.quantecon.org/jl/getting_started.html)
+* [Julia By Example](https://juliabyexample.helpmanual.io/)
+* [Test Driven Development in Julia](http://abelsiqueira.github.io/blog/test-driven-development-in-julia/)
+* [Making/compiling C functions for use in Julia on Windows](https://www.codementor.io/zhuojiadai/making-compiling-c-functions-for-use-in-julia-on-windows-f9lwa5i43)
+* [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl)
