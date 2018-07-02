@@ -24,12 +24,12 @@ struct iLight {
 } light;
 
 void main() {
-  if(v.flags.x < 0) { discard; return; } //texture index
+  if(v.flags.x < 0) { discard; return; } //discard
   //int glow = v.texindex==15;
   
   vec4 color = vec4(0,0,0,1);
   
-  if(!iUseTexture) color = v.color; //color.w = color.x*color.y*color.z;
+  if(!iUseTexture || v.flags.y < 0) color = v.color; //color.w = color.x*color.y*color.z;
   else {
     vec2 UV = getUV(v.pos.xyz)*0.25f;
     vec2 texUV = v.uvs.zw;

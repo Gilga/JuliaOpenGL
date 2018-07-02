@@ -25,16 +25,41 @@ program_chunks = 0
 SCENE = 2
 fstm = nothing
 planeData = nothing
+boxData = nothing
 CHUNK_SIZE = 64
-
+current_program = 0
 load_once = true
+
+"""
+TODO
+"""
+function use_program(program, f)
+  if program != current_program
+    glUseProgram(program)
+    glCheckError("glUseProgram")
+  end
+  f()
+  if program != current_program
+    glUseProgram(current_program)
+    glCheckError("glUseProgram")
+  end
+end
 
 """
 sets a mode in a shader.
 """
-function setMode(program, name, mode)
-  l = glGetUniformLocation(program, name)
-  if l>-1 glUniform1i(l, mode) end
+function setMode(program, name, value, mode="")
+  use_program(program, () -> begin
+    l = glGetUniformLocation(program, name)
+    if l>-1
+      if isa(value, Integer) glUniform1i(l, value)
+      elseif isa(value, AbstractFloat) glUniform1f(l, value)
+      elseif isa(value, AbstractArray) glUniform1fv(l, 1, value)
+      else warn("MODE("*displayInYellow(mode)*") for "*typeof(value)*" is not implemented yet.")
+      end
+    end
+  if mode != "" println("MODE(",displayInYellow(mode),"): ",displayInYellow(value)) end
+  end)
 end
 
 """
@@ -57,7 +82,10 @@ function setFrustumCulling(load=true)
     update(mychunk)
     global BLOCK_COUNT = mychunk.fileredCount
     upload(chunkData, :instances, getData(mychunk))
-    if FRUSTUM_CULLING upload(planeData, :vertices, getVertices(fstm)) end
+    if FRUSTUM_CULLING
+      upload(planeData, :vertices, getVertices(fstm))
+      upload(boxData, :vertices, getBox(fstm))
+    end
   end
 end
 
@@ -69,10 +97,17 @@ function chooseRenderMethod(method=RENDER_METHOD)
   if method == 1 name="INSTANCES of POINTS + GEOMETRY SHADER"
   elseif method == 2  name="INSTANCES of TRIANGLES"
   elseif method == 3 name="INSTANCES of TRIANGLES + INDICIES"
-  elseif method > 3 name="TRIANGLES + INDICIES"
+  elseif method == 4 name="TRIANGLES + INDICIES"
+  elseif method == 5 name="TRIANGLES"
+  elseif method == 6 name="TRIANGLES"
+  else name="NOT DEFINED"
   end
   
-  println(displayInYellow(name))
+  global RENDER_METHOD = method
+  
+  println("METHOD(",method,"): ",displayInYellow(name))
+  
+  if name == "NOT DEFINED" return end
 
   info("Create chunk & create blocks...")
   
@@ -91,7 +126,6 @@ function chooseRenderMethod(method=RENDER_METHOD)
   
   update(mychunk)
   
-  global RENDER_METHOD = method
   global BLOCK_COUNT = mychunk.fileredCount
   #global VERT_COUNT = mychunk.verticesCount
   
@@ -101,7 +135,8 @@ function chooseRenderMethod(method=RENDER_METHOD)
   if method == 1 linkData(chunkData, :instances=>getData(mychunk))
   elseif method == 2 linkData(chunkData, :vertices=>(DATA_CUBE,3), :instances=>getData(mychunk))
   elseif method == 3 linkData(chunkData, :vertices=>(DATA_CUBE_VERTEX,3), :indicies=>(DATA_CUBE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>getData(mychunk))
-  elseif method > 3 linkData(chunkData, :vertices=>(DATA_CUBE_VERTEX,3), :indicies=>(DATA_CUBE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
+  elseif method == 4 linkData(chunkData, :vertices=>(DATA_CUBE_VERTEX,3), :indicies=>(DATA_CUBE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
+  elseif method > 4 linkData(chunkData, :vertices=>(DATA_CUBE,3))
   end
   
   global program_chunks
@@ -113,11 +148,13 @@ function chooseRenderMethod(method=RENDER_METHOD)
     glCheckError("glDeleteProgram")
   end
    
-  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH, FSH, GSH) = loadShaders()
+  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH) = loadShaders()
 
   if method == 1 program_chunks = createShaderProgram(INST_VSH_GSH, INST_FSH, INST_GSH)
   elseif method > 1 && method <= 3 program_chunks = createShaderProgram(INST_VSH, INST_FSH)
-  elseif method > 3 program_chunks = createShaderProgram(VSH, INST_FSH)
+  elseif method == 4 program_chunks = createShaderProgram(VSH_TEXTURE, INST_FSH)
+  elseif method == 5 program_chunks = createShaderProgram(VSH_TEXTURE, INST_FSH)
+  elseif method > 5 program_chunks = createShaderProgram(VSH, FSH)
   end
   
   info("Compile Shader Programs...")
@@ -153,23 +190,17 @@ function checkForUpdate()
       
     elseif keyValue == 84 #t
       global TEXTUREMODE=!TEXTUREMODE
-      setMode(program_chunks, "iUseTexture", TEXTUREMODE)
+      setMode(program_chunks, "iUseTexture", TEXTUREMODE, "TEXTURE")
       
     elseif keyValue == 76 #l
       global LIGHTMODE=!LIGHTMODE
-      setMode(program_chunks, "iUseLight", LIGHTMODE)
+      setMode(program_chunks, "iUseLight", LIGHTMODE, "LIGHT")
 
     elseif keyValue == 82 #r
       chooseRenderMethod()
       
-    elseif keyValue == 290 #F1
-      chooseRenderMethod(1)
-    elseif keyValue == 291 #F2
-      chooseRenderMethod(2)
-    elseif keyValue == 292 #F3
-      chooseRenderMethod(3)
-    elseif keyValue == 293 #F4
-      chooseRenderMethod(4)
+    elseif (keyValue >= 290 && keyValue <= 301) # F1 - F12
+      chooseRenderMethod(keyValue - 289)
       
     elseif keyValue == 49 #1
       global CHUNK_SIZE = 1
@@ -260,15 +291,11 @@ setMatrix(program, name, m) = begin const cm = SMatrix{4,4,Float32}(m); glUnifor
 """
 TODO
 """
-function setMVP(program, mvp, old_program=nothing)
-  glUseProgram(program)
-  glCheckError("glUseProgram")
-  setMatrix(program, "iMVP", mvp)
-  glCheckError("setMatrix")
-  if old_program!=nothing
-    glUseProgram(old_program)
-    glCheckError("glUseProgram")
-  end
+function setMVP(program, mvp)
+  use_program(program, () -> begin
+    setMatrix(program, "iMVP", mvp)
+    glCheckError("setMatrix")
+  end)
 end
 
 #setMVP(mvp) = setMatrix(program, "iMVP", mvp)
@@ -342,6 +369,7 @@ program = 0
 
 global chunkData = MeshData()
 global planeData = MeshData()
+global boxData = MeshData()
 
 #------------------------------------------------------------------------------------
 
@@ -356,6 +384,7 @@ chooseRenderMethod()
 
 #linkData(chunkData, :vertices=>(DATA_PLANE_VERTEX,3), :indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>getData(mychunk))
 linkData(planeData,  :vertices=>getVertices(fstm))
+linkData(boxData,  :vertices=>getBox(fstm))
 
 #chunkData.arrays[:vertices].count
 #n = length(cubeVertices_small) / 3
@@ -366,6 +395,8 @@ linkData(planeData,  :vertices=>getVertices(fstm))
 global program_normal = createShaderProgram(VSH, FSH) #, createShader(GSH, GL_GEOMETRY_SHADER)
 
 setAttributes(planeData, program_normal)
+setAttributes(boxData, program_normal)
+
 setMVP(program_normal, CAMERA.MVP)
 
 #end
@@ -436,7 +467,7 @@ while !GLFW.WindowShouldClose(window)
   
   if OnUpdate(CAMERA)
     setMVP(program_chunks, CAMERA.MVP)
-    #setMVP(program_normal, CAMERA.MVP)
+    setMVP(program_normal, CAMERA.MVP)
     cam_updated=true
   end
   
@@ -451,13 +482,15 @@ while !GLFW.WindowShouldClose(window)
   #print("loopBlocks "); @time
   #loopBlocks()
   
+  glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
+  
   """
   TODO
   """
-  if isValid(mychunk) 
+  if isValid(mychunk)
     useProgram(program_chunks)
     #glCheckError("useProgram")
-    glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
+    #glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
     glBindVertexArray(chunkData.vao)
     #glCheckError("glBindVertexArray bind")
     
@@ -465,7 +498,7 @@ while !GLFW.WindowShouldClose(window)
     elseif RENDER_METHOD == 2 glDrawArraysInstanced(GL_TRIANGLES, 0, chunkData.draw.count, mychunk.fileredCount)
     elseif RENDER_METHOD == 3 glDrawElementsInstanced(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL, mychunk.fileredCount)
     #glDrawElementsInstancedBaseVertex(GL_TRIANGLES, chunkData.draw.count / 6, GL_UNSIGNED_INT, C_NULL, mychunk.count, 0)
-    elseif RENDER_METHOD > 3
+    elseif RENDER_METHOD == 4
       #* thats slow! (glDrawElements ~60 fps, glDrawElementsInstanced ~ 200 fps !!!)
       for b in getFilteredChilds(mychunk)
         if location_texindex > -1 glUniform1f(location_texindex, b.typ) end
@@ -473,20 +506,31 @@ while !GLFW.WindowShouldClose(window)
         glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL )
         #glCheckError("glDrawElements")
       end
+    elseif RENDER_METHOD == 5
+      glDrawArrays(GL_TRIANGLES, 0, chunkData.draw.count)
     end
     glBindVertexArray(0)
     #glCheckError("glBindVertexArray unbind")
   end
   
-  #=
+  #################################
+
   useProgram(program_normal)
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+  
+  #setMode(program_normal, "color", Vec3f(1,0,0))
+  
+  glBindVertexArray(boxData.vao)
+  glDrawArrays(GL_TRIANGLES, 0, boxData.draw.count)
+  glBindVertexArray(0)
 
+  #setMode(program_normal, "color", Vec3f(1,1,0))
+  
   glBindVertexArray(planeData.vao)
-  #glDrawElements(GL_TRIANGLES, planeData.draw.count, GL_UNSIGNED_INT, C_NULL )
   glDrawArrays(GL_TRIANGLES, 0, planeData.draw.count)
   glBindVertexArray(0)
-  =#
+
+  #################################
 
   # Swap front and back buffers
   GLFW.SwapBuffers(window)

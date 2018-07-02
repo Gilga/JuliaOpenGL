@@ -1,19 +1,32 @@
-"""
-TODO
-"""
-struct HeptaOrder{T} <: FieldVector{6, T}
-  front::Union{T,Void}
-  back::Union{T,Void}
+
+type Neighbours6{T} <: FieldVector{6, T}
   left::Union{T,Void}
   right::Union{T,Void}
+  front::Union{T,Void}
+  back::Union{T,Void}
   top::Union{T,Void}
   bottom::Union{T,Void}
+  
+  Neighbours6{T}() where T = new(nothing,nothing,nothing,nothing,nothing,nothing)
 end
 
-"""
-TODO
-"""
-type Block
+abstract type INode end
+abstract type IBlock end
+abstract type IChunk end
+#RChunk = Union{Void,IChunk}
+
+const NodeNeighbours6 = Neighbours6{INode}
+const BlockNeighbours = Neighbours6{IBlock}
+
+type Node6{T} <: INode
+  value::Union{T,Void}
+  next::NodeNeighbours6
+  
+  Node6{T}() where T = new(nothing,NodeNeighbours6())
+  Node6{T}(value::T) where T = new(value,NodeNeighbours6())
+end
+
+type Block <: IBlock
   typ::Int32
   pos::Vec3f
   flags::UInt32
@@ -21,46 +34,32 @@ type Block
   visible::Bool
   surrounded::Bool
   sides::Array{UInt32,1}
-  friends::HeptaOrder{Block}
+  
+  parent::IChunk
+  next::BlockNeighbours
+  
+  Block(parent::IChunk, pos=Vec3f,typ=0) = new(typ,pos,0,true,true,false,resetSides(),parent,BlockNeighbours()) #,zeros(Mat4x4f),zeros(Mat4x4f))
 end
 
-const BlockOrder = HeptaOrder{Block}
+#Base.isless{T}(a::Ref{T}, b::Ref{T}) = a.x < b.x
+Base.isless(a::Block, b::Block) = a.pos < b.pos
 
-
-"""
-TODO
-"""
-BlockOrder() = HeptaOrder{Block}(nothing,nothing,nothing,nothing,nothing,nothing)
-
-"""
-TODO
-"""
-Block(pos=Vec3f,typ=0) = Block(typ,pos,0,true,true,false,resetSides(),BlockOrder()) #,zeros(Mat4x4f),zeros(Mat4x4f))
-
-"""
-TODO
-"""
-type Chunk
+type Chunk <: IChunk
   active::Bool
   len::UInt32
   childs::Array{Block,3}
   filtered::Array{Block,1}
   count::UInt32
   fileredCount::UInt32
-end
   
-"""
-TODO
-"""
-function Chunk(len::Integer)
-  this = Chunk(true,len,Array{Block,3}(len,len,len),Block[],0,0)
-  for x=1:len; for y=1:len; for z=1:len; this.childs[x,y,z] = Block(Vec3f(x,y,z)); end; end; end
-  this
+  function Chunk(len::Integer)
+    this = new(true,len,Array{Block,3}(len,len,len),Block[],0,0)
+    createBlocks(this)
+    linkBlockNeighbours(this)
+    this
+  end
 end
 
-"""
-TODO
-"""
 function clean(this::Union{Void,Chunk})
   if this == nothing return end
   this.childs = Array{Block,3}(0,0,0)
@@ -68,236 +67,298 @@ function clean(this::Union{Void,Chunk})
   gc() # force garbage collection, free memory
 end
 
-"""
-TODO
-"""
 isType(this::Block, typ) = this.typ == typ
 
-"""
-TODO
-"""
 isValid(this::Chunk) = this.count > 0 && this.fileredCount > 0
 
-"""
-TODO
-"""
 isSeen(this::Block) = isActive(this) && isVisible(this) && this.typ > 0
 
-MAX_SIDES = 6
+i=0
+i+=1; const LEFT_SIDE = i #0x1
+i+=1; const RIGHT_SIDE = i #0x2
+i+=1; const TOP_SIDE = i #0x4
+i+=1; const BOTTOM_SIDE = i #0x8
+i+=1; const FRONT_SIDE = i #0x10
+i+=1; const BACK_SIDE = i #0x20
+const MAX_SIDES = i
 
-LEFT_SIDE = 1 #0x1
-RIGHT_SIDE = 2 #0x2
-TOP_SIDE = 3 #0x4
-BOTTOM_SIDE = 4 #0x8
-FRONT_SIDE = 5 #0x10
-BACK_SIDE = 6 #0x20
-
-"""
-TODO
-"""
 resetSides() = fill(UInt32(1),MAX_SIDES)
-
-"""
-TODO
-"""
 resetSides(this::Block) = this.sides=resetSides()
 
-"""
-TODO
-"""
-function hideUnseen(this::Chunk)
+function createBlocks(this::Chunk)
+  len = this.len
+  for x=1:len; for y=1:len; for z=1:len; this.childs[x,y,z] = Block(this,Vec3f(x,y,z)); end; end; end
+end
+
+function linkBlockNeighbours(this::Chunk)
   a = this.childs
   len = this.len
+  for x=1:len; for y=1:len; for z=1:len; 
+    pos = (x,y,z)
+    b = getBlock(this,pos)
+    b.next.left = getBlock(this,pos,LEFT_SIDE)
+    b.next.right = getBlock(this,pos,RIGHT_SIDE)
+    b.next.bottom = getBlock(this,pos,BOTTOM_SIDE)
+    b.next.top = getBlock(this,pos,TOP_SIDE)
+    b.next.back = getBlock(this,pos,BACK_SIDE)
+    b.next.front = getBlock(this,pos,FRONT_SIDE)
+  end; end; end
+end
 
-  for x=1:len; for y=1:len; for z=1:len;
-  
-    b=a[x,y,z]
+function getBlock(this::Chunk, pos::Tuple{Integer,Integer,Integer}, side=0)
+  a = this.childs
+  len = this.len
+  (x,y,z) = pos
+  b = nothing
+  if side == LEFT_SIDE
+    b=x>1?a[x-1,y,z]:nothing
+  elseif side == RIGHT_SIDE
+    b=x<len?a[x+1,y,z]:nothing
+  elseif side == BOTTOM_SIDE
+    b=y>1?a[x,y-1,z]:nothing
+  elseif side == TOP_SIDE
+    b=y<len?a[x,y+1,z]:nothing
+  elseif side == BACK_SIDE
+    b=z>1?a[x,y,z-1]:nothing
+  elseif side == FRONT_SIDE
+    b=z<len?a[x,y,z+1]:nothing
+  else
+    b=x>=1&&x<=len&&y>=1&&y<=len&&z>=1&&z<=len?a[x,y,z]:nothing
+  end
+  b
+end
 
+function hideUnseen(this::Chunk)
+  for b in this.childs
     if !isSeen(b) continue end # skip invisible
-    #if  x==1 || y==1 || z==1 || x==len || y==len || z==len continue end  # skip border
-    
+
     blocked=0
-    
-    if x>1
-      r=b.sides[LEFT_SIDE]=!isSeen(a[x-1,y,z])
+
+    if (next=b.next.left) != nothing
+      r=b.sides[LEFT_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
     
-    if x<len
-      r=b.sides[RIGHT_SIDE]=!isSeen(a[x+1,y,z])
+    if (next=b.next.right) != nothing
+      r=b.sides[RIGHT_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
  
-    if y>1
-      r=b.sides[BOTTOM_SIDE]=!isSeen(a[x,y-1,z])
+    if (next=b.next.bottom) != nothing
+      r=b.sides[BOTTOM_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
     
-    if y<len
-      r=b.sides[TOP_SIDE]=!isSeen(a[x,y+1,z])
+    if (next=b.next.top) != nothing
+      r=b.sides[TOP_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
     
-    if z>1
-      r=b.sides[BACK_SIDE]=!isSeen(a[x,y,z-1])
+    if (next=b.next.back) != nothing
+      r=b.sides[BACK_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
     
-    if z<len
-      r=b.sides[FRONT_SIDE]=!isSeen(a[x,y,z+1])
+    if (next=b.next.front) != nothing
+      r=b.sides[FRONT_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
     
     setSurrounded(b,blocked >= 6)
-    
-  end; end; end
+  end
 end
 
-"""
-TODO
-"""
 function setFlag(this::Block, flag::Unsigned, add::Bool)
-    if add this.flags |= flag
-    else this.flags ⊻= flag #⊻ = xor and is not shown on windows...
-    end
+  if add this.flags |= flag
+  else this.flags ⊻= flag #⊻ = xor and is not shown on windows...
+  end
 end
 
-"""
-TODO
-"""
 isActive(this::Block) = this.active
-
-"""
-TODO
-"""
 isVisible(this::Block) = this.visible
-
-"""
-TODO
-"""
 isSurrounded(this::Block) = this.surrounded
 
-"""
-TODO
-"""
 isValid(this::Block) = isActive(this) && isVisible(this) && !isSurrounded(this) && this.typ > 0
 
-"""
-TODO
-"""
 setActive(this::Block, active::Bool) = this.active = active
-
-"""
-TODO
-"""
 setVisible(this::Block, visible::Bool) = this.visible = visible
-
-"""
-TODO
-"""
 setSurrounded(this::Block, surrounded::Bool) = this.surrounded = surrounded
 
-"""
-TODO
-"""
 hideType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; setVisible(b,false); end; end
-
-"""
-TODO
-"""
 removeType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; setActive(b,false); end; end
 
-"""
-TODO
-"""
 showAll(this::Chunk) = for b in this.childs
   setVisible(b,true)
   setSurrounded(b,false)
   resetSides(b)
 end
 
-"""
-TODO
-"""
-checkInFrustum(this::Chunk, fstm::Frustum) = for b in this.childs setVisible(b,checkSphere(fstm, b.pos, 1.5) != 0) end
+const FrustumNode = Node6{Tuple{Block,Any}}
+
+printList(list,n=1) = begin
+  n = round(n)
+  if n<1 error("n < 1 is invalid!") end
+  println(typeof(list)," with ",length(list)," entries shows each ",n,n==1?"st":(n==2?"nd":(n==3?"rd":"th"))," element:")
+  i=0; for (k,v) in list; i+=1; if i == n i=0; println(" ",k) end; end
+  println()
+  
+  #a = collect(keys(list))[1:X:end]
+  #Base.showarray(STDOUT,a,false)
+  #show(STDOUT, "text/plain", a)
+  #display(a)
+  #whos()
+end
+
+function checkInFrustum(this::Chunk, fstm::Frustum)
+  pos = getNearPosition(fstm)
+  list = SortedDict()
+  
+  
+  open("frustum.txt", "w") do f
+
+  for b in this.childs
+    result = checkSphere(fstm, b.pos, 1.5)
+    clist = result[2]
+    visible = result[1] != :FRUSTUM_OUTSIDE
+    setVisible(b,visible)
+    
+    # sort
+    if visible
+      (x,y,z) = (clist[:X],clist[:Y],clist[:Z])
+      write(f, string("[",x,", ",y,", ",z,"]")*"\n")
+      
+      rx=round(x)
+      ry=round(y)
+      rz=round(z)
+      
+      if rx % 2 != 0
+        rx+=1;
+      end
+
+      k = (rx,ry)
+      
+      if (abs(x) <= 1 && abs(y) <= 1 && abs(z) <= 1) || z < 0
+        setVisible(b,false)
+      else
+        kv=z=>b
+        if haskey(list,k)
+        
+          p = first(list[k])
+          list[k][z] = b
+          q = first(list[k])
+          
+          if p[1] == q[1] kv=p[1]=>p[2] else b=p[2] end
+          setVisible(b,false)
+        end
+        list[k] = SortedDict(kv)
+      end
+    end
+    
+    #=
+    if visible && false
+      current = FrustumNode((b,clist))
+      parent = nothing
+      if parent == nothing parent = current
+      else
+        nlist = parent.value[2]
+        while true
+          lt = clist[:FRUSTUM_LEFT] > clist[:FRUSTUM_TOP]
+          l = nlist[:FRUSTUM_LEFT] > clist[:FRUSTUM_LEFT]
+          r = nlist[:FRUSTUM_RIGHT] < clist[:FRUSTUM_RIGHT]
+          t = nlist[:FRUSTUM_TOP] > clist[:FRUSTUM_TOP]
+          b = nlist[:FRUSTUM_BOTTOM] < clist[:FRUSTUM_BOTTOM]
+          n = nlist[:FRUSTUM_NEAR] < clist[:FRUSTUM_NEAR]
+          f = nlist[:FRUSTUM_FAR] > clist[:FRUSTUM_FAR]
+          
+          #lr = l>r?l:r
+          #tb = t>b?t:b
+          #nf = n<f?n:f
+        
+          if lt
+            if l
+              next = parent.next.left
+              if next == nothing parent.next.left = current
+              else parent = next
+              end
+            elseif r
+              next = parent.next.right
+              if next == nothing parent.next.right = current
+              else parent = next
+              end
+            end
+          else
+            if t
+              next = parent.next.top
+              if next == nothing parent.next.top = current
+              else parent = next
+              end
+            elseif b
+              next = parent.next.bottom
+              if next == nothing parent.next.bottom = current
+              else parent = next
+              end
+            end
+          end
+        end
+        
+      end 
+    end
+    =#
+    
+  end
+  end
+    
+  #printList(list,length(list)/10)
+
+  #for (k,z) in list
+    #p = k1 + Vec3f(0,0,0)
+    #l = k1 + Vec3f(-1,-1,-1)
+    #r = k1 + Vec3f(1,1,1)
+    
+    #skip = true
+    #for (k2,b) in z
+      #if skip skip=false; continue end
+      #if k2 == nothing continue end
+      #if p.z - 10 >= k2.z continue end
+      #if p.y + 1 >= k2.y continue end
+      #if p.y - 1 <= k2.y continue end
+      #if l.x <= k2.x continue end
+      #if r.x >= k2.x continue end
+      #setVisible(b,false)
+    #end
+  #end
+ 
+end
 
 #------------------------------------------------------------------------------------
 
-"""
-TODO
-"""
 setFilteredChilds(this::Chunk, r::Array{Block,1}) = begin this.filtered = r; this.fileredCount = length(r); r end
-
-"""
-TODO
-"""
 getFilteredChilds(this::Chunk) = this.filtered
 
-"""
-TODO
-"""
 getActiveChilds(this::Chunk) = filter(b->isActive(b),this.childs)
-
-"""
-TODO
-"""
 getVisibleChilds(this::Chunk) = filter(b->isVisible(b),this.childs)
-
-"""
-TODO
-"""
 getValidChilds(this::Chunk) = filter(b->isValid(b),this.childs)
 
-"""
-TODO
-"""
 function getData(this::Block)
-  
-  sides=0
-  if this.sides[LEFT_SIDE] > 0 sides |= 0x1 end
-  if this.sides[RIGHT_SIDE] > 0 sides |= 0x2 end
-  if this.sides[TOP_SIDE] > 0 sides |= 0x4 end
-  if this.sides[BOTTOM_SIDE] > 0 sides |= 0x8 end
-  if this.sides[FRONT_SIDE] > 0 sides |= 0x10 end
-  if this.sides[BACK_SIDE] > 0 sides |= 0x20 end
-  
   # get visible sides
-  #i=0; sides=0
-  #for side in this.sides
-  #  if side > 0 sides |= (0x1 << i) end
-  #  i+=1
-  #end
+  i=0; sides=0
+  for side in this.sides
+    if side > 0 sides |= (0x1 << i) end
+    i+=1
+  end
+  
+  #if this.sides[LEFT_SIDE] > 0 sides |= 0x1 end
+  #if this.sides[RIGHT_SIDE] > 0 sides |= 0x2 end
+  #if this.sides[TOP_SIDE] > 0 sides |= 0x4 end
+  #if this.sides[BOTTOM_SIDE] > 0 sides |= 0x8 end
+  #if this.sides[FRONT_SIDE] > 0 sides |= 0x10 end
+  #if this.sides[BACK_SIDE] > 0 sides |= 0x20 end
 
-  #count = MAX_SIDES*5
-  #a=fill(0f0,count)
-  #i=1
-  
-  #for side in this.sides
-  #  for p in this.pos a[i] = p; i+=1 end
-  #  a[i] = this.typ; i +=1
-  #  a[i] = side; i +=1
-  #end
-   
-  #SVector(Float32[
-  #  this.pos...,this.typ,0,sides
-  #  this.pos...,this.typ,1,sides
-  #  this.pos...,this.typ,2,sides
-  #  this.pos...,this.typ,3,sides
-  #  this.pos...,this.typ,4,sides
-  #  this.pos...,this.typ,5,sides
-  #]...)
-  
   SVector(Float32[this.pos...,this.typ,sides]...)
 end
 
-"""
-TODO
-"""
 getData(this::Chunk) = isValid(this)?vec((b->getData(b)).(getFilteredChilds(this))):Float32[]
 
-"""
-TODO
-"""
 function update(this::Chunk)
   this.count = length(this.childs)
   setFilteredChilds(this, getValidChilds(this))
@@ -307,16 +368,12 @@ function update(this::Chunk)
   #for b in this.childs push!(refblocks, pointer_from_objref(b)) end
 end
 
-"""
-TODO
-"""
 function createSingle(this::Chunk)
-  this.childs[1,1,1] = Block(Vec3f(0, 0, -10),1) 
+  b=this.childs[1,1,1]
+  b.pos=Vec3f(0, 0, -10)
+  b.typ=1
 end
 
-"""
-TODO
-"""
 function createExample(this::Chunk)
   const DIST = Vec3f(2,2,2); #Vec3f(3,5,3) #r = 1f0/30 #0.005f0
   const START = Vec3f(-(this.len*DIST.x) / 2.0f0, -(this.len*DIST.y) / 2.0f0, (this.len*DIST.z) / 2.0f0)
@@ -326,7 +383,9 @@ function createExample(this::Chunk)
   x=1; y=1; z=1;
 
   for i=1:(this.len^3)
-    this.childs[i] = b = Block(translate(x-1,y-1,z-1),rand(1:16))
+    b = this.childs[i];
+    b.pos=translate(x-1,y-1,z-1)
+    b.typ=rand(1:16)
     #model = Mat4x4f(translation(Array(b.pos)))
     #push!(refblocks, pointer_from_objref(b))
     
@@ -339,9 +398,6 @@ function createExample(this::Chunk)
   end
 end
 
-"""
-TODO
-"""
 function createLandscape(this::Chunk)
   #Texture* heightTexture = m_pRenderer->GetTexture(m_pChunkManager->GetHeightMapTexture());
   
@@ -376,7 +432,8 @@ function createLandscape(this::Chunk)
         #id = y*this.len^2+z*this.len+x
         #c = this.childs[id]
         #c.active = true
-        b = Block(translate(x-1,y-1,z-1))
+        b = this.childs[x,y,z]
+        b.pos = translate(x-1,y-1,z-1)
         #if y >= level_air b.typ = 0 # air or nothing
         if y >= level_grass  b.typ = 2 #grass
         elseif y >= level_dirt b.typ = 1 #dirt
@@ -384,11 +441,12 @@ function createLandscape(this::Chunk)
         elseif y >= level_stone b.typ = 4 #stone
         elseif y >= level_lava b.typ = 15 #lava
         end
-        if b.typ > 0 this.childs[x,y,z]=b end #push!(this.childs,b) end
       end
     end
   end
    
   h=1 #UInt32(trunc(this.len/2))
-  this.childs[h,h,h] = Block(Vec3f(0,0,0),7)
+  b = this.childs[h,h,h]
+  b.pos=Vec3f(0,0,0)
+  b.typ=7
 end

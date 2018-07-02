@@ -2,8 +2,24 @@ const zerosVector3f = [0f0,0,0]
 const onesVector3f = [1f0,1,1]
 
 #-------------------------------------------------------------------------------------------------
+# Base implementations for StaticArray
+
+Base.isless{N,T<:Number}(a::StaticArray{Tuple{N},T,1}, b::StaticArray{Tuple{N},T,1}) = begin
+  for i=N:-1:1
+    if a[i] < b[i] return true
+    elseif a[i] > b[i] return false
+    end
+  end
+  false
+end
+
+#-------------------------------------------------------------------------------------------------
 
 VectorType{N, T} = FieldVector{N, T}
+
+struct Vector1{T} <: VectorType{1, T}
+  x::T
+end
 
 struct Vector2{T} <: VectorType{2, T}
   x::T
@@ -61,6 +77,9 @@ Base.:/{N, T<:Number}(v1::VectorType{N, T}, v2::VectorType{N, T}) = Vector{N, T}
 Base.:\{N, T<:Number}(v1::VectorType{N, T}, v2::VectorType{N, T}) = Vector{N, T}(Base.:\.(v1,v2))
 Base.:^{N, T<:Number}(v1::VectorType{N, T}, v2::VectorType{N, T}) = Vector{N, T}(Base.:^.(v1,v2))
 Base.:%{N, T<:Number}(v1::VectorType{N, T}, v2::VectorType{N, T}) = Vector{N, T}(Base.:%.(v1,v2))
+
+#normalize
+#normalize{N, T<:Number}(v::VectorType{N, T}) = Vector{N, T}(normalize(v))
 
 #-------------------------------------------------------------------------------------------------
 
