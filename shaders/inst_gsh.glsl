@@ -52,14 +52,14 @@ void main()
   
   v = iv[0];
   
-  if(v.flags.x >= 0) {
-    uint sides = uint(floor(v.flags.y));
+  if(v.flags.x < 0) return; // discard
+  
+  uint sides = uint(floor(v.flags.z));
     
-    if((sides & 0x1) > 0) createSide(v, 4);  // LEFT
-    if((sides & 0x2) > 0) createSide(v, 5);  // RIGHT
-    if((sides & 0x4) > 0) createSide(v, 0);  // TOP
-    if((sides & 0x8) > 0) createSide(v, 1);  // BOTTOM
-    if((sides & 0x10) > 0) createSide(v, 2);  // FRONT
-    if((sides & 0x20) > 0) createSide(v, 3);  // BACK
-  }
+  if((sides & 0x1) > 0) createSide(v, 4);  // LEFT
+  if((sides & 0x2) > 0) createSide(v, 5);  // RIGHT
+  if((sides & 0x4) > 0) createSide(v, 0);  // TOP
+  if((sides & 0x8) > 0) createSide(v, 1);  // BOTTOM
+  if((sides & 0x10) > 0) createSide(v, 2);  // FRONT
+  if((sides & 0x20) > 0) createSide(v, 3);  // BACK
 }

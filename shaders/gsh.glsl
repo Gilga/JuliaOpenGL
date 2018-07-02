@@ -14,17 +14,21 @@ void main()
   float dist = 2;
   float center = 0; //(max/2)*dist;
   
-  float x=0,y=0,z=0;
+  float x=0,y=0,z=0,c=0;
   for(int c=0; c<count; ++c)
   {
+    c=0;
     for(int i=0; i<gl_in.length(); ++i)
     {
-      gl_Position = mvp * (gl_in[i].gl_Position + vec4(-center+x*dist,-center+y*dist,-center+z*dist,0));
       vcolor = vcolors[i];
-      EmitVertex();
+      if(vcolor.w > 0) {
+        gl_Position = mvp * (gl_in[i].gl_Position + vec4(-center+x*dist,-center+y*dist,-center+z*dist,0));
+        EmitVertex();
+        c++;
+      } // else discard
     }
     
-    EndPrimitive();
+    if(c>0) EndPrimitive(); // else discard
     
     ++x;
     if(x>=max) {
