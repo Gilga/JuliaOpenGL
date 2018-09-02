@@ -1,6 +1,9 @@
-Compat
 Images
 ImageMagick
 ModernGL
 GLFW
+#WinRPM
+
 Quaternions
+StaticArrays
+Distances
