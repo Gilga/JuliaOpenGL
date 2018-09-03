@@ -6,31 +6,35 @@ export Thread
 export ThreadPool
 export ThreadID
 export thread_call
-export thread_sleep
 export thread_id
-export thread_push
-export thread_print
 export thread_println
-export thread_info
-export thread_warn
-export thread_error
+export thread_sleep
+export thread_pool
 
 export close
 export run
 export log
 export init
-export pool
+export start
+export set
 export id
 
 ##############################################################################
 
-Mutex = Threads.Mutex()
+DebugPrint = false
+
+ThreadMutex = Threads.Mutex()
+PrintMutex = Threads.Mutex()
+
 ThreadID() = Threads.threadid()
 THREAD_POOL = nothing
 
+setPrintMutex(mutex::Threads.Mutex) = begin PrintMutex = mutex end
+setDebugPrint(on::Bool) = begin DebugPrint = on end
+
 ##############################################################################
 
-function thread_call(f::Function, args...; mutex::Threads.Mutex=Mutex)
+function thread_call(f::Function, args...;mutex::Threads.Mutex=ThreadMutex)
 	Threads.lock(mutex)
 	result = f(args...)
 	Threads.unlock(mutex)
@@ -38,16 +42,7 @@ function thread_call(f::Function, args...; mutex::Threads.Mutex=Mutex)
 end
 
 thread_id() = string("T",ThreadID())
-
-thread_info(args...) = thread_call(() -> LoggerManager.info(args...))
-thread_warn(args...) = thread_call(() -> LoggerManager.warn(args...))
-thread_error(args...) = thread_call(() -> LoggerManager.error(args...))
-
-thread_print(args...) = thread_call(() -> LoggerManager.print(args...))
-thread_println(args...) = thread_call(() -> LoggerManager.println(args...))
-
-thread_push(args...; mutex::Threads.Mutex=Mutex) = thread_call(() -> Base.push!(args...); mutex=mutex)
-
+thread_println(args...) = if DebugPrint thread_call(() -> LoggerManager.println(args...);mutex=PrintMutex) end
 thread_sleep(sec) = Libc.systemsleep(sec)
 
 ##############################################################################
@@ -74,7 +69,7 @@ end
 
 ##############################################################################
 
-function pool(numberOfThreads=0; idleTime=1)
+function thread_pool(numberOfThreads=0; idleTime=1)
     global THREAD_POOL
     
     JULIA_NUM_THREADS = parse(Int32,ENV["JULIA_NUM_THREADS"])
@@ -107,7 +102,7 @@ end
 count(this::ThreadPool) = length(this.list)
 
 function start(this::ThreadPool)
-  thread_println("Start Threads...")
+  ThreadManager.println("Start Threads...")
 
 	global Mutex = Threads.Mutex()
 	max=Threads.nthreads()
@@ -120,7 +115,17 @@ function start(this::ThreadPool)
   end
 end
 
-function run(this::ThreadPool, f::Function, name::String="")
+function start(this::Thread, list::Array{Function,1})
+	global Mutex = Threads.Mutex()
+	max=Threads.nthreads()
+	i=0; Threads.@threads for f in list
+    f(this)
+		if i >= max break end
+    i+=1
+  end
+end
+
+function set(this::ThreadPool, f::Function, name::String="")
   id=ThreadID()
 
   for t in this.list
@@ -134,15 +139,6 @@ function run(this::ThreadPool, f::Function, name::String="")
   nothing
 end
 
-function run(this::Thread, list::Array{Function,1})
-	global Mutex = Threads.Mutex()
-	max=Threads.nthreads()
-	i=0; Threads.@threads for f in list
-    f(this)
-		if i >= max break end
-    i+=1
-  end
-end
 
 ##############################################################################
 
@@ -177,12 +173,12 @@ end
 
 set(this::Thread, f::Function, name::String="") = begin this.run = init(this, f, name) end
 
-log(this::Thread, f::Function, args...) = begin; try; f(this, args...); catch err; thread_call(logException,err,id(this)); end; end
+log(this::Thread, f::Function, args...) = begin; try; f(this, args...); catch err; thread_call(LoggerManager.logException,err,id(this)); end; end
 
 function init(this::Thread, f::Function, name::String="")
   this.name = name
   (this::Thread) -> begin
-    thread_println(msg(:Debug, ThreadManager.id(this), name, "start"))
+    thread_println(LoggerManager.msg(:Debug, ThreadManager.id(this), name, "start"))
     log(this, f)
   end
 end
