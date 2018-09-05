@@ -21,34 +21,44 @@ PushMutex = Threads.Mutex()
 push!(args...) = thread_call(() -> Base.push!(args...);mutex=PushMutex)
 
 sleep(sec) = thread_sleep(sec)
-error(args...) = thread_call(() -> LoggerManager.error(args...);mutex=PrintMutex)
 
 ######################################################
 
 info(args...) = thread_call(() -> LoggerManager.info(args...);mutex=PrintMutex)
+debug(args...) = thread_call(() -> LoggerManager.debug(args...);mutex=PrintMutex)
 warn(args...) = thread_call(() -> LoggerManager.warn(args...);mutex=PrintMutex)
+error(args...) = thread_call(() -> LoggerManager.error(args...);mutex=PrintMutex)
 
 ######################################################
 
 Messages = String[] #shared object among threads
-clearMessages() = (global Messages = Array{String,1}())
-getMessages() = Messages
-
-pushMsg(mode, name, msg) = begin global Messages; push!(Messages, LoggerManager.msg(mode , thread_id(), name, msg)) end
-pushMsg(name, msg)   = pushMsg("", name, msg)
-pushInfo(name, msg)  = pushMsg(:Info, name, msg)
-pushDebug(name, msg) = pushMsg(:Debug, name, msg)
-pushError(name, msg) = pushMsg(:Error, name, msg)
-pushWarn(name, msg)  = pushMsg(:Warning, name, msg)
-
-showMessages() = thread_call(function()
+function message(this::Thread, args... ;mode="", title="", lineBreak=true) 
   global Messages
-  if length(Messages) > 0
-    LoggerManager.println("---[Messages]---")
-    for msg in Messages LoggerManager.print(msg) end
-    LoggerManager.println("----------------")
-    clearMessages()
-  end
-end)
+  push!(Messages, LoggerManager.msg(args... ;time=true, name=thread_id()*":"*this.name, mode=mode, title=title, lineBreak=lineBreak))
+end
+
+function showMessages()
+  global Messages
+  msgs = String[]
+  
+  # copy & clear messages
+  thread_call(() -> begin msgs = deepcopy(Messages); Messages = Array{String,1}() end ;mutex=PushMutex)
+
+  thread_call(function()
+    if length(msgs) > 0
+      LoggerManager.println("---[Messages]---")
+      for msg in msgs LoggerManager.print(msg) end
+      LoggerManager.println("----------------")
+    end
+  end ;mutex=PrintMutex)
+end
 
 ######################################################
+
+print(this::Thread, args... ;title="") = message(this, args... ;title=title, lineBreak=false)
+println(this::Thread, args... ;title="") = message(this, args... ;title=title)
+
+info(this::Thread, args... ;title="") = message(this, args... ;mode=:Info, title=title)
+debug(this::Thread, args... ;title="") = message(this, args... ;mode=:Debug, title=title)
+warn(this::Thread, args... ;title="") = message(this, args... ;mode=:Warning, title=title)
+error(this::Thread, args... ;title="") = message(this, args... ;mode=:Error, title=title)
