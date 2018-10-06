@@ -35,6 +35,7 @@ begin println(xs...;stream=stdout) = open(f -> (Base.println(f, programTimeStr()
 begin info(xs...) = open(f -> (Base.println(f, programTimeStr(), " INFO: ", xs...); Base.println("INFO: ",xs...;stream=stdout)), LOGGER_OUT, "a+") end
 begin error(xs...) = open(f -> (Base.println(f, programTimeStr()," ERROR: ",xs...); error(stderr,xs...)), LOGGER_ERROR, "a+") end
 begin warn(xs...) = open(f -> (Base.println(f, programTimeStr(), " WARNING: ",xs...); Base.println("WARNING: ",xs...;stream=stderr)), LOGGER_ERROR, "a+") end
+begin debug(xs...) = open(f -> (Base.println(f, programTimeStr(), " DEBUG: ",xs...); Base.println("DEBUG: ",xs...;stream=stderr)), LOGGER_ERROR, "a+") end
 
 function logException(ex::Exception, title="")
 	time=programTimeStr()
@@ -55,14 +56,15 @@ end
 
 log(title, f::Function, args...) = try; f(args...); catch err; logException(err,title); end
 
-msg(msg::String;lineBreak=true) = string(programTimeStr(), " ",  msg, lineBreak ? "\n" : "")
-
-function msg(mode::Union{Symbol,String}, title::Union{Symbol,String}, name::Union{Symbol,String}, msg::String;lineBreak=true)
-  title=title!="" ? string("(",title,") ") : ""
-  mode=mode!="" ? string("[",mode,"] ") : ""
-  name=name!="" ? string("'",name,"' ") : ""
-  lb=lineBreak ? "\n" : ""
-  string(programTimeStr(), " $mode$title$name$msg$lb")
+function msg(args... ;time=true, name="", mode="", title="", lineBreak=true)
+  m=""
+  if time m *= programTimeStr()*" " end
+  if name!="" m *= string("(",name,") ") end
+  if mode!="" m *= string("[",mode,"] ") end
+  if title!="" m *= string("'",title,"' ") end
+  m *= string(args...)
+  if lineBreak m *= "\n" end
+  m
 end
 
 end #LoggerManager

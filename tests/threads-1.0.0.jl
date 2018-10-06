@@ -6,7 +6,7 @@ function thread_printer(this::Thread)
   while true
     global Messages
     
-    pushMsg(this.name, "PRINT $i")
+    println(this, i ;title="PRINT")
     showMessages()
     
     sleep(1)
@@ -20,9 +20,7 @@ function thread_compute(this::Thread)
   i=0
   while true
     if OnTime(0.25, timeRef)
-      global Messages
-      #thread_println("thread_compute")
-      pushMsg(this.name, "CALC $i")
+      info(this, i ;title="CALC")
       i+=1
     end
     sleep(0.001)
@@ -35,7 +33,7 @@ function thread_renderer(this::Thread)
   i=0
   while true
     if OnTime(0.5, timeRef)
-      pushMsg(this.name, "RENDER $i")
+      debug(this, i ;title="RENDER")
       i+=1
     end
     sleep(0.01)
@@ -48,10 +46,23 @@ function thread_sound(this::Thread)
   i=0
   while true
     if OnTime(0.75, timeRef)
-      pushMsg(this.name, "SOUND $i")
+      warn(this, i ;title="SOUND")
       i+=1
     end
     sleep(0.1)
+  end
+end
+
+function thread_else(this::Thread)
+  println("thread_else")
+  timeRef = Ref(0.0)
+  i=0
+  while true
+    if OnTime(2.0, timeRef)
+      error(this, i ;title="ELSE")
+      i+=1
+    end
+    sleep(0.5)
   end
 end
 
@@ -61,7 +72,8 @@ function start_pool()
   set(pool, thread_printer, "Printer")
   set(pool, thread_compute, "Compute")
   set(pool, thread_renderer, "Renderer")
-  #set(pool, thread_sound, "Sound")
+  set(pool, thread_sound, "Sound")
+  #set(pool, thread_else, "Else")
   
   #close(pool)
   
@@ -72,10 +84,13 @@ function start_list()
   list=Function[]
   t = ThreadManager.Thread()
   
-  push!(list, init(t, thread_printer, "Printer"))
-  push!(list, init(t, thread_compute, "Compute"))
-  push!(list, init(t, thread_renderer, "Renderer"))
-  push!(list, init(t, thread_sound, "Sound"))
+  Base.println(Threads.nthreads())
+  
+  Base.push!(list, init(t, thread_printer, "Printer"))
+  Base.push!(list, init(t, thread_compute, "Compute"))
+  Base.push!(list, init(t, thread_renderer, "Renderer"))
+  Base.push!(list, init(t, thread_sound, "Sound"))
+  #Base.push!(list, init(t, thread_else, "Else"))
   
   start(t, list)
 end
