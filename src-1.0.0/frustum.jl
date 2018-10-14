@@ -262,7 +262,7 @@ end
 """
 TODO
 """
-function checkPoint(this::Frustum, pos::Vec3f)
+function checkPoint2(this::Frustum, pos::Vec3f)
   result = :FRUSTUM_INSIDE
   distances = Dict{Symbol,Float32}()
   
@@ -298,7 +298,7 @@ end
 """
 TODO
 """
-function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
+function checkSphere2(this::Frustum, pos::Vec3f, radius::Number)
   result = :FRUSTUM_INSIDE
   (_, distances) = checkPoint(this, pos)
 
@@ -306,6 +306,40 @@ function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
     if !haskey(this.planes, k) continue end
 		if distance < -radius result = :FRUSTUM_OUTSIDE
 		elseif distance < radius && result != :FRUSTUM_OUTSIDE result = :FRUSTUM_INTERSECT
+		end
+	end
+
+	(result, distances)
+end
+
+"""
+TODO
+"""
+function checkPoint(this::Frustum, pos::Vec3f)
+  result = :FRUSTUM_INSIDE
+  distances = Dict{Symbol,Float32}()
+  
+  for (k,plane) in this.planes
+    distance = distances[k] = GetPointDistance(plane, pos)
+    if distance < 0 result = :FRUSTUM_OUTSIDE
+    elseif distance == 0 result = :FRUSTUM_INTERSECT
+    end
+  end
+  
+  (result, distances)
+end
+
+"""
+TODO
+"""
+function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
+  result = :FRUSTUM_INSIDE
+  distances = Dict{Symbol,Float32}()
+  
+  for (k,plane) in this.planes
+    distance = distances[k] = GetPointDistance(plane, pos)
+		if distance < -radius result = :FRUSTUM_OUTSIDE
+		elseif distance <= radius && result != :FRUSTUM_OUTSIDE result = :FRUSTUM_INTERSECT
 		end
 	end
 

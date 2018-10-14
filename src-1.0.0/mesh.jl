@@ -99,43 +99,6 @@ function setData(this::MeshArray, data, elems=0)
 end
 
 """
-links data
-"""
-function linkData(this::MeshData, args...)
-  d=Dict(args)
-  
-  this.arrays = Dict()
-  this.draw = nothing
-  
-  for (s,x) in d
-    l=isa(x,Tuple) ? length(x) : 0
-    
-    data = l>0 ? x[1] : x
-    dtyp = eltype(data)
-    elems = l>1 ? x[2] : 1
-    btyp = l>2 ? x[3] : GL_ARRAY_BUFFER
-    draw = l>3 ? x[4] : false
-    
-    if haskey(this.arrays,s)
-      a = this.arrays[s]
-      a.loaded = false
-    else
-      this.arrays[s] = a = MeshArray()
-      a.bufferType = btyp
-    end
-    
-    setData(a, data, elems)
-    
-    if draw this.draw = a
-    elseif this.draw == nothing this.draw = a
-    end
-  end
-
-  createBuffers(this)
-  upload(this)
-end
-
-"""
 uploads data
 """
 function upload(this::MeshArray)
@@ -170,4 +133,41 @@ function upload(this::MeshData, key::Symbol, data::AbstractArray)
   glCheckError("glBindVertexArray")
   upload(a)
   glBindVertexArray(0)
+end
+
+"""
+links data
+"""
+function linkData(this::MeshData, args...)
+  d=Dict(args)
+  
+  this.arrays = Dict()
+  this.draw = nothing
+  
+  for (s,x) in d
+    l=isa(x,Tuple) ? length(x) : 0
+    
+    data = l>0 ? x[1] : x
+    dtyp = eltype(data)
+    elems = l>1 ? x[2] : 1
+    btyp = l>2 ? x[3] : GL_ARRAY_BUFFER
+    draw = l>3 ? x[4] : false
+    
+    if haskey(this.arrays,s)
+      a = this.arrays[s]
+      a.loaded = false
+    else
+      this.arrays[s] = a = MeshArray()
+      a.bufferType = btyp
+    end
+    
+    setData(a, data, elems)
+    
+    if draw this.draw = a
+    elseif this.draw == nothing this.draw = a
+    end
+  end
+
+  createBuffers(this)
+  upload(this)
 end

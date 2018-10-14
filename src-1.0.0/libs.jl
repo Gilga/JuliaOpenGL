@@ -2,6 +2,10 @@ using InteractiveUtils #versioninfo
 using DataStructures #SortedDict
 using Images
 using ImageMagick
+using JLD2
+using Distributed
+using Dates
+using SharedArrays
 
 #https://github.com/shiena/ansicolor/blob/master/README.md
 
@@ -19,7 +23,7 @@ info(s) = println(stringColor(s,:cyan))
 include("lib_window.jl")
 include("lib_opengl.jl")
 include("lib_math.jl")
-include("lib_time.jl")
+#include("TimeManager.jl")
 
 """
 TODO
@@ -50,7 +54,7 @@ function fileGetContents(path::String, tryCount=100, tryWait=0.1)
 end
 
 TITLE = "Julia OpenGL"
-STARTTIME = Dates.time()
+STARTTIME = time()
 PREVTIME = STARTTIME
 FRAMES = 0
 MAX_FRAMES = 0
@@ -76,13 +80,13 @@ TODO
 function showFrames()
   global TITLE, TIMERS, FRAMES, MAX_FRAMES, FPS, MAX_FPS, ITERATION, BLOCK_COUNT, PREVTIME, RENDER_METHOD
   
-  time = Dates.time() #GetTimer("FRAME_TIMER")
+  currenttime = time() #GetTimer("FRAME_TIMER")
   
   ITERATION +=1
-  if !OnTime(1.0, prevTime, time) FRAMES += 1; return end
+  if !OnTime(1.0, prevTime; time=currenttime) FRAMES += 1; return end
 
-  #FPS = FRAMES/(time - PREVTIME)
-  #PREVTIME = time
+  #FPS = FRAMES/(currenttime - PREVTIME)
+  #PREVTIME = currenttime
   #if MAX_FPS < FPS MAX_FPS = FPS end
   #if FPS > 15 COUNT += 1 end
   #fpms = FPS > 0 ? (1000.0 / FPS) : 0
@@ -99,10 +103,3 @@ function showFrames()
   GLFW.SetWindowTitle(window, "$(TITLE) - FPS $(round(fps; digits=2))[$(round(max_fps; digits=2))] | FMPS $(round(fpms; digits=2))[$(round(max_fmps; digits=2))] - Blocks $CHUNK_SIZE^3 ($BLOCK_COUNT) - IT $ITERATION")
   FRAMES = 0
 end
-
-include("cubeData.jl")
-include("camera.jl")
-include("frustum.jl")
-include("chunk.jl")
-include("mesh.jl")
-include("texture.jl")

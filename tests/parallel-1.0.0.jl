@@ -37,11 +37,11 @@ end
 
 @everywhere NOTASK=()->nothing
 
-@everywhere function worker(update::Function, msgs; start=NOTASK,close=NOTASK,tick=0)
+@everywhere function worker(update::Function; start=NOTASK,close=NOTASK,tick=0)
   println(WORKER, "start")
   start()
   running=true
-  while running == true running=update(msgs) end
+  while running == true running=update() end
   println(WORKER, "close")
   close()
   (worker_ids(),"end")
@@ -50,14 +50,14 @@ end
 MESSAGES=RemoteChannel(()->Channel{String}(0))
 #RemoteChannel(()->Channel(messages))
 
-Printer = (msgs)->begin
-  println(take!(msgs))
-  #sleep(2)
+Printer = ()->begin
+  println(take!(MESSAGES))
+  sleep(1)
   true
 end
 
-Writer = (msgs)->begin
-  put!(msgs,"test")
+Writer = ()->begin
+  put!(MESSAGES,"test")
   println("writes")
   sleep(1)
   true
@@ -68,8 +68,8 @@ WORKERS = Future[]
 wp=WorkerPool([2, 3])
 
 print("START")
-push!(WORKERS, remotecall(worker, wp, Printer, MESSAGES)); print(".");
-push!(WORKERS, remotecall(worker, wp, Writer, MESSAGES)); print(".");
+push!(WORKERS, remotecall(worker, wp, Printer)); print(".");
+push!(WORKERS, remotecall(worker, wp, Writer)); print(".");
 #for i=1:length(wp.workers) push!(WORKERS, remotecall(()->worker(i), wp)); print("."); end
 println()
 #=
