@@ -1,6 +1,8 @@
-include("TimeManager-1.0.0.jl")
-include("LogManager-1.0.0.jl")
-include("ThreadManager-1.0.0.jl")
+include("TimeManager.jl")
+include("LogManager.jl")
+include("ThreadManager.jl")
+
+import Base.print, Base.println
 
 using ..TimeManager
 using ..LoggerManager
@@ -18,7 +20,7 @@ print(args...) = thread_call(() -> LoggerManager.print(args...);mutex=PrintMutex
 println(args...) = thread_call(() -> LoggerManager.println(args...);mutex=PrintMutex)
 
 PushMutex = Threads.Mutex()
-push!(args...) = thread_call(() -> Base.push!(args...);mutex=PushMutex)
+thread_push!(args...) = thread_call(() -> Base.push!(args...);mutex=PushMutex)
 
 sleep(sec) = thread_sleep(sec)
 
@@ -34,7 +36,7 @@ error(args...) = thread_call(() -> LoggerManager.error(args...);mutex=PrintMutex
 Messages = String[] #shared object among threads
 function message(this::Thread, args... ;mode="", title="", lineBreak=true) 
   global Messages
-  push!(Messages, LoggerManager.msg(args... ;time=true, name=thread_id()*":"*this.name, mode=mode, title=title, lineBreak=lineBreak))
+  thread_push!(Messages, LoggerManager.msg(args... ;time=true, name=thread_id()*":"*this.name, mode=mode, title=title, lineBreak=lineBreak))
 end
 
 function showMessages()

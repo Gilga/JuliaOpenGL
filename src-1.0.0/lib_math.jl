@@ -55,6 +55,24 @@ end
 """
 TODO
 """
+function projection_orthographic(fovy::T, aspect::T, znear::T, zfar::T) where {T}
+  (znear == zfar) && error("znear ($znear) must be different from tfar ($zfar)")
+
+  #t = tan(fovy * 0.5)
+  h = T(tan(fovy * pi / 360) * znear)
+  w = T(h * aspect)
+
+  left = -w
+  right = w
+  bottom = -h
+  top = h
+
+  projection_orthographic(-w, w, -h, h, znear, zfar)
+end
+
+"""
+TODO
+"""
 function translation(t::Array{T,1}) where {T}
   lt = length(t)
   T[

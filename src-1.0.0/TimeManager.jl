@@ -1,6 +1,24 @@
+module TimeManager
+
+export programStartTime
+export currentTime
+export programTime
+export programTimeStr
+export OnTime
+export GetTimer
+export SetTimer
+export UpdateTimers
+
 using Dates
+using Printf
 
 TIMERS = Dict{Any,Base.RefValue{Float64}}()
+time_start = time()
+
+currentTime(startTime::Real) = (time() - startTime)
+programStartTime() = time_start
+programTime() = currentTime(time_start)
+programTimeStr() = @sprintf("%.3f", programTime())
 
 """
 TODO
@@ -11,8 +29,6 @@ GetTimer(key) = Base.getindex(TIMERS[key])
 TODO
 """
 SetTimer(key, time::Number) = (TIMERS[key] = Ref{Float64}(time))
-
-SetTimer("FRAME_TIMER", Dates.time())
 
 """
 TODO
@@ -48,8 +64,12 @@ end
 """
 TODO
 """
-function OnTime(milisec::Number, prevTime::Ref{Float64}, time)
+function OnTime(milisec::Number, prevTime::Ref{Float64}; time=time()) #RefValue
   r = (time - Base.getindex(prevTime)) >= milisec
   if r Base.setindex!(prevTime,time) end
   r
 end
+
+SetTimer("FRAME_TIMER", time())
+
+end #TimeManager

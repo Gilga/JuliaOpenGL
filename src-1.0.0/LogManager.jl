@@ -30,15 +30,15 @@ end
 
 begin print(xs...;stream=stdout) = open(f -> (Base.print(f, xs...); Base.print(stream, xs...)), LOGGER_OUT, "a+") end
 macro printf(stream=:STDOUT,xs...) open(f -> (:(Base.@printf(f, $xs...)); :(Base.@printf(stream, $xs...))),LOGGER_OUT, "a+") end 
-begin println(xs...;stream=stdout) = open(f -> (Base.println(f, programTimeStr(), " ", xs...); Base.println(stream, xs...)), LOGGER_OUT, "a+") end
+begin println(xs...;stream=stdout) = open(f -> (Base.println(f, TimeManager.programTimeStr(), " ", xs...); Base.println(stream, xs...)), LOGGER_OUT, "a+") end
 
-begin info(xs...) = open(f -> (Base.println(f, programTimeStr(), " INFO: ", xs...); Base.println("INFO: ",xs...;stream=stdout)), LOGGER_OUT, "a+") end
-begin error(xs...) = open(f -> (Base.println(f, programTimeStr()," ERROR: ",xs...); error(stderr,xs...)), LOGGER_ERROR, "a+") end
-begin warn(xs...) = open(f -> (Base.println(f, programTimeStr(), " WARNING: ",xs...); Base.println("WARNING: ",xs...;stream=stderr)), LOGGER_ERROR, "a+") end
-begin debug(xs...) = open(f -> (Base.println(f, programTimeStr(), " DEBUG: ",xs...); Base.println("DEBUG: ",xs...;stream=stderr)), LOGGER_ERROR, "a+") end
+begin info(xs...) = open(f -> (Base.println(f, TimeManager.programTimeStr(), " INFO: ", xs...); Base.println("INFO: ",xs...;stream=stdout)), LOGGER_OUT, "a+") end
+begin error(xs...) = open(f -> (Base.println(f, TimeManager.programTimeStr()," ERROR: ",xs...); error(stderr,xs...)), LOGGER_ERROR, "a+") end
+begin warn(xs...) = open(f -> (Base.println(f, TimeManager.programTimeStr(), " WARNING: ",xs...); Base.println("WARNING: ",xs...;stream=stderr)), LOGGER_ERROR, "a+") end
+begin debug(xs...) = open(f -> (Base.println(f, TimeManager.programTimeStr(), " DEBUG: ",xs...); Base.println("DEBUG: ",xs...;stream=stderr)), LOGGER_ERROR, "a+") end
 
 function logException(ex::Exception, title="")
-	time=programTimeStr()
+	time=TimeManager.programTimeStr()
   m=msg(:Exception, title, "", "See '$LOGGER_ERROR' for more info.")
 	open(f -> println(f, m), LOGGER_OUT, "a+")
 	open(function(f)
@@ -58,7 +58,7 @@ log(title, f::Function, args...) = try; f(args...); catch err; logException(err,
 
 function msg(args... ;time=true, name="", mode="", title="", lineBreak=true)
   m=""
-  if time m *= programTimeStr()*" " end
+  if time m *= TimeManager.programTimeStr()*" " end
   if name!="" m *= string("(",name,") ") end
   if mode!="" m *= string("[",mode,"] ") end
   if title!="" m *= string("'",title,"' ") end

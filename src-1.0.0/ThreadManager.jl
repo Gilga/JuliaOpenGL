@@ -102,7 +102,7 @@ end
 count(this::ThreadPool) = length(this.list)
 
 function start(this::ThreadPool)
-  ThreadManager.println("Start Threads...")
+  println("Start ThreadPool...")
 
 	global Mutex = Threads.Mutex()
 	max=Threads.nthreads()
@@ -150,11 +150,8 @@ function start(this::Thread)
   thread_println("Start "*id(this))
   while this.pool.alive && this.alive
     if this.run != nothing
-      this.run(this)
-      #this.run = nothing
-    else
-      dummy() #bugfix: for some reason threads with no instructions cause some errors
-      #thread_call(()->nothing) 
+      result = this.run(this)
+      if result != true this.run = nothing end
     end
     thread_sleep(this.idleTime)
   end

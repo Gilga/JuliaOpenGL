@@ -1,4 +1,4 @@
-include("Includes-1.0.0.jl")
+include("../src-1.0.0/Includes.jl")
 
 function thread_printer(this::Thread)
   println("thread_printer")
@@ -12,6 +12,7 @@ function thread_printer(this::Thread)
     sleep(1)
     i+=1
   end
+  nothing
 end
 
 function thread_compute(this::Thread)
@@ -38,6 +39,7 @@ function thread_renderer(this::Thread)
     end
     sleep(0.01)
   end
+  nothing
 end
 
 function thread_sound(this::Thread)
@@ -51,6 +53,7 @@ function thread_sound(this::Thread)
     end
     sleep(0.1)
   end
+  nothing
 end
 
 function thread_else(this::Thread)
@@ -64,6 +67,7 @@ function thread_else(this::Thread)
     end
     sleep(0.5)
   end
+  nothing
 end
 
 function start_pool()

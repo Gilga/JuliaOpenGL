@@ -182,6 +182,7 @@ rotates camera
 function rotate(camera::Camera, rotation::AbstractArray)
   camera.rotation += rotation
   camera.moved=true
+  put!(channels[:CAMERA],(camera.position,camera.rotation))
   #println("rotated")
 end
 
@@ -191,6 +192,7 @@ moves camera, adds vector to current position
 function move(camera::Camera, position::AbstractArray)
   camera.position += position
   camera.moved=true
+  put!(channels[:CAMERA],(camera.position,camera.rotation))
   #println("moved")
 end
 
@@ -217,6 +219,7 @@ function setPosition(camera::Camera, position::AbstractArray)
   global oldposition = position
   camera.translateMat = translation(camera.position)
   camera.moved = true
+  put!(channels[:CAMERA],(camera.position,camera.rotation))
 end
 
 """
@@ -249,18 +252,10 @@ update function where camera translation is update only when camera was moved by
 here cameras MVP Matrix is updated aswell
 """
 function Update(camera::Camera)
-  if OnTime(0.01)
-    if keyFB != 0 OnMove(camera, :FORWARD, keyFB) end
-    if keyLR != 0 OnMove(camera, :RIGHT, keyLR) end
-    if keyUD != 0 OnMove(camera, :UP, keyUD) end
-  end
-
-  if camera.moved
-    camera.translateMat = translation(camera.position)
-    camera.rotationMat = computeRotation(camera.rotation)
-    camera.viewMat = camera.scalingMat * camera.rotationMat * camera.translateMat
-    camera.MVP = camera.modelMat * camera.projectionMat * camera.viewMat
-  end
+  camera.translateMat = translation(camera.position)
+  camera.rotationMat = computeRotation(camera.rotation)
+  camera.viewMat = camera.scalingMat * camera.rotationMat * camera.translateMat
+  camera.MVP = camera.modelMat * camera.projectionMat * camera.viewMat
 end
 
 """
@@ -269,7 +264,17 @@ this event resets camera moved state
 """
 function OnUpdate(camera::Camera)
   #if isFocus return end
-  Update(camera)
+  
+  if OnTime(0.01)
+    if keyFB != 0 OnMove(camera, :FORWARD, keyFB) end
+    if keyLR != 0 OnMove(camera, :RIGHT, keyLR) end
+    if keyUD != 0 OnMove(camera, :UP, keyUD) end
+  end
+  
+  if camera.moved
+    Update(camera)
+  end
+  
   r = camera.moved
   camera.moved = false
   r

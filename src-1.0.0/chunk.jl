@@ -209,52 +209,63 @@ printList(list,n=1) = begin
   #whos()
 end
 
-function checkInFrustum(this::Chunk, fstm::Frustum)
+function checkInFrustum2(this::Chunk, fstm::Frustum)
   pos = getNearPosition(fstm)
   list = DataStructures.SortedDict()
   
-  
-  open("frustum.txt", "w") do f
+  #open("frustum.txt", "w") do f
+    for b in this.childs
+      result = checkSphere(fstm, b.pos, 1.5)
+      clist = result[2]
+      visible = result[1] != :FRUSTUM_OUTSIDE
+      setVisible(b,visible)
+      
+      # sort
+      if visible
+        (x,y,z) = (clist[:X],clist[:Y],clist[:Z])
+        write(f, string("[",x,", ",y,", ",z,"]")*"\n")
+        
+        rx=round(x)
+        ry=round(y)
+        rz=round(z)
+        
+        if rx % 2 != 0
+          rx+=1;
+        end
+
+        k = (rx,ry)
+        
+        if (abs(x) <= 1 && abs(y) <= 1 && abs(z) <= 1) || z < 0
+          setVisible(b,false)
+        else
+          kv=z=>b
+          if haskey(list,k)
+          
+            p = first(list[k])
+            list[k][z] = b
+            q = first(list[k])
+            
+            if p[1] == q[1] kv=p[1]=>p[2] else b=p[2] end
+            setVisible(b,false)
+          end
+          list[k] = DataStructures.SortedDict(kv)
+        end
+      end
+    end
+  #end
+end
+
+function checkInFrustum(this::Chunk, fstm::Frustum)
+  pos = getNearPosition(fstm)
+  list = DataStructures.SortedDict()
 
   for b in this.childs
     result = checkSphere(fstm, b.pos, 1.5)
-    clist = result[2]
     visible = result[1] != :FRUSTUM_OUTSIDE
     setVisible(b,visible)
-    
-    # sort
-    if visible
-      (x,y,z) = (clist[:X],clist[:Y],clist[:Z])
-      write(f, string("[",x,", ",y,", ",z,"]")*"\n")
-      
-      rx=round(x)
-      ry=round(y)
-      rz=round(z)
-      
-      if rx % 2 != 0
-        rx+=1;
-      end
-
-      k = (rx,ry)
-      
-      if (abs(x) <= 1 && abs(y) <= 1 && abs(z) <= 1) || z < 0
-        setVisible(b,false)
-      else
-        kv=z=>b
-        if haskey(list,k)
-        
-          p = first(list[k])
-          list[k][z] = b
-          q = first(list[k])
-          
-          if p[1] == q[1] kv=p[1]=>p[2] else b=p[2] end
-          setVisible(b,false)
-        end
-        list[k] = DataStructures.SortedDict(kv)
-      end
-    end
-    
+  
     #=
+    clist = result[2]
     if visible && false
       current = FrustumNode((b,clist))
       parent = nothing
@@ -304,8 +315,6 @@ function checkInFrustum(this::Chunk, fstm::Frustum)
       end 
     end
     =#
-    
-  end
   end
     
   #printList(list,length(list)/10)
@@ -433,6 +442,7 @@ function createLandscape(this::Chunk)
         #c = this.childs[id]
         #c.active = true
         b = this.childs[x,y,z]
+        #b.id=[x,y,z]
         b.pos = translate(x-1,y-1,z-1)
         #if y >= level_air b.typ = 0 # air or nothing
         if y >= level_grass  b.typ = 2 #grass
@@ -449,4 +459,16 @@ function createLandscape(this::Chunk)
   b = this.childs[h,h,h]
   b.pos=Vec3f(0,0,0)
   b.typ=7
+end
+
+function saveChunk(this::Chunk, file::String)
+  #childs=getValidChilds(this)
+  #childs=filter(b->(b.pos, b.typ),childs)
+  r=[(b.pos, b.typ) for b in this.childs]
+  @save file*".jld2" r
+end
+
+function loadChunk(this::Chunk, file::String)
+  @load file*".jld2" r
+  i=1; for c in this.childs; b=r[i]; c.pos=b[1]; c.typ=b[2]; i+=1; end
 end
