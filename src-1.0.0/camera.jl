@@ -182,7 +182,7 @@ rotates camera
 function rotate(camera::Camera, rotation::AbstractArray)
   camera.rotation += rotation
   camera.moved=true
-  put!(channels[:CAMERA],(camera.position,camera.rotation))
+  if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
   #println("rotated")
 end
 
@@ -192,7 +192,7 @@ moves camera, adds vector to current position
 function move(camera::Camera, position::AbstractArray)
   camera.position += position
   camera.moved=true
-  put!(channels[:CAMERA],(camera.position,camera.rotation))
+  if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
   #println("moved")
 end
 
@@ -219,7 +219,7 @@ function setPosition(camera::Camera, position::AbstractArray)
   global oldposition = position
   camera.translateMat = translation(camera.position)
   camera.moved = true
-  put!(channels[:CAMERA],(camera.position,camera.rotation))
+  if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
 end
 
 """

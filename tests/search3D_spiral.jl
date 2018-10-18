@@ -12,7 +12,7 @@ end
   first and last layer (z-axis) full 2D spiral search (whole layer is shell)
   layers in between: search outside (next shell) and already searched area (core) will be skipped
 """
-function search3D_spiral(img, X, Y, Z)
+function search3D_spiral(img, center)
   lastElement = true
   endOflayer = false
   endOflBox = false
@@ -31,6 +31,8 @@ function search3D_spiral(img, X, Y, Z)
   maxlength = 0
   layerElementCount = 0
   layerElementCountPrev =0
+  
+  X, Y, Z = center[2], center[1], center[3]
 
   while true
     if lastElement
@@ -120,6 +122,6 @@ img = Array{Float32}(undef, 31, 31, 31)
 hsz=(x->Int64(round(x/2))).(size(img))
 fill!(img, 1)
 
-search3D_spiral(img,hsz[2],hsz[1],hsz[3])
+search3D_spiral(img,hsz)
 
 showImg(img)

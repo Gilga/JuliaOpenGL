@@ -50,6 +50,7 @@ if compileAndLink
   compileWithGCC()
  end
 
+CAM_LOCK = false
 WIREFRAME = false
 TEXTUREMODE = true
 LIGHTMODE = true
@@ -72,6 +73,7 @@ workPool = nothing
 MVP = nothing
 render_ready = false
 fileredCount = 0
+uploaded = false
 
 #---------------------------------------------
 
@@ -121,6 +123,11 @@ function init()
     global boxData = MeshData()
     presetTextures()
     chooseRenderMethod()
+  end
+  
+  if myid() != 1 || length(procs()) <= 1
+    global mychunk = Chunk()
+    createChunk(mychunk)
   end
 end
 
@@ -173,6 +180,7 @@ end
 TODO
 """
 function setFrustumMode()
+  SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
   updateChunk(mychunk)
   uploadChunk(:UPDATE)
 end
@@ -183,7 +191,7 @@ TODO
 function updateChunk(this::Chunk)
   #global chunkData, chunkData_upload, planeData, boxData
   #println("update Chunk")
-  
+
   if FRUSTUM_CULLING
     #println("checkInFrustum")
     checkInFrustum(this, fstm)
@@ -191,14 +199,6 @@ function updateChunk(this::Chunk)
     #println("showAll")
     showAll(this)
   end
-  
-  if HIDE_UNSEEN_CUBES 
-    #println("hideUnseen")
-    hideUnseen(this)
-  end
- 
-  #println("update")
-  update(this)
   
   #println("setChunkInstances")
   setChunkInstances(getData(this))
@@ -209,40 +209,46 @@ function updateChunk(this::Chunk)
   #global VERT_COUNT = this.verticesCount
   
   #println("send Chunk data")
-  remotecall(setChunkInstances, 1, chunk_instances)
+   if myid() != 1 remotecall(setChunkInstances, 1, chunk_instances) end
 end
 
-function createChunk()
-  global mychunk, SCENE
+function createChunk(this::Chunk)
+  global SCENE
   
   #println("create Chunk")
+  info("Create chunk & create blocks...")
   
-  sz=channels[:SCENE]
-  if isready(sz) SCENE=take!(sz) end
+  if myid() != 1
+    sz=channels[:SCENE]
+    if isready(sz) SCENE=take!(sz) end
+  end
   
-  clean(mychunk) # free memory
-
-  mychunk = Chunk(CHUNK_SIZE)
+  reset(this; size=CHUNK_SIZE)
   
   #println("Set Chunk scenery")
     
-  if SCENE == 0 createSingle(mychunk)
-  elseif SCENE == 1 createExample(mychunk)
-  else createLandscape(mychunk)
+  if SCENE == 0 createSingle(this)
+  elseif SCENE == 1 createExample(this)
+  else createLandscape(this)
   end
   
-  updateChunk(mychunk)
+  update(this; unseen=HIDE_UNSEEN_CUBES)
+  
+  updateChunk(this)
   uploadChunk(:CREATE)
 end
 
 function uploadChunk(s)
+  global uploaded = s
+  if myid() == 1 return end
   #println("upload Chunk")
   #@save "chunk.jld2" chunk_instances
   put!(channels[:UPLOAD],s)
 end
 
 function loadChunk()
-  global chunk_instances
+  if length(procs()) <= 1 return uploaded end
+
   upload=channels[:UPLOAD]
   if !isready(upload) return :NOTHING end
   #println("load Chunk")
@@ -271,13 +277,12 @@ function chooseRenderMethod(method=RENDER_METHOD)
   
   if name == "NOT DEFINED" return end
 
-  info("Create chunk & create blocks...")
-  put!(channels[:SCENE],SCENE)
-  #createChunk()
+  if myid() != 1 put!(channels[:SCENE],SCENE) end
+  #createChunk(mychunk)
 end
 
 function uploadData()
-  global mychunk, render_ready
+  global render_ready
 
   m=loadChunk()
   if m == :NOTHING return end
@@ -363,6 +368,7 @@ function uploadData()
   setMode(program_chunks, "iUseTexture", TEXTUREMODE)
   
   if !render_ready render_ready = true end
+  global uploaded=:NOTHING
 end
 
 function fetchlast!(c::Distributed.AbstractRemoteRef)
@@ -370,7 +376,7 @@ function fetchlast!(c::Distributed.AbstractRemoteRef)
 end
 
 function waitAndUpdateChunks()
-  global fstm, mychunk, CAMERA, FRUSTUM_CULLING, HIDE_UNSEEN_CUBES
+  global CAMERA, FRUSTUM_CULLING, HIDE_UNSEEN_CUBES
   
   println("Presets")
   
@@ -378,10 +384,7 @@ function waitAndUpdateChunks()
   bools=channels[:BOOL]
 
   init()
-
-  createChunk()
   
-  loadOnce=true
   trigger=false
   
   println("start update")
@@ -390,7 +393,6 @@ function waitAndUpdateChunks()
     if (data=fetchlast!(cameradata)) != nothing
       CAMERA.position, CAMERA.rotation = data
       Update(CAMERA)
-      SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
       #println("updated Camera")
     end
     
@@ -417,7 +419,7 @@ end
 TODO
 """
 function checkForUpdate()
-  global keyPressed, keyValue, cam_updated, FRUSTUM_KEY, ALL_KEY, CAMERA, mychunk, chunkData, fstm, planeData
+  global keyPressed, keyValue, cam_updated, FRUSTUM_KEY, ALL_KEY, CAMERA
   #channels["KEYS"]
   
   uploadData()
@@ -507,7 +509,8 @@ function checkForUpdate()
       chooseRenderMethod()
       
     elseif keyValue == 70 #f
-      put!(channels[:BOOL], (:NOTHING, false))
+      #put!(channels[:BOOL], (:NOTHING, false))
+      global CAM_LOCK = !CAM_LOCK
     elseif keyValue == 86 #v
       global FRUSTUM_CULLING = !FRUSTUM_CULLING
       put!(channels[:BOOL], (:FRUSTUM_CULLING, FRUSTUM_CULLING))
@@ -686,9 +689,13 @@ function run()
   
   function checkCamera()
     if OnUpdate(CAMERA)
-      setMVP(program_chunks, CAMERA.MVP)
-      setMVP(program_normal, CAMERA.MVP)
-      put!(channels[:BOOL], (:NOTHING, false))
+      if !CAM_LOCK
+        setMVP(program_chunks, CAMERA.MVP)
+        setMVP(program_normal, CAMERA.MVP)
+      end
+      if length(procs()) > 1 put!(channels[:BOOL], (:NOTHING, false))
+      else setFrustumMode()
+      end
       cam_updated=true
     end
   end
@@ -787,11 +794,13 @@ function start(use_procs::Bool)
 end
 
 function start_processes()
-  # Processes
-  pool=WorkerPool([2, 3])
-  createProcess(pool)
-  println("addJob")
-  addJob(waitAndUpdateChunks)
+  p=procs()
+  popfirst!(p)
+  if length(p) > 0
+    pool=WorkerPool(p)
+    createProcess(pool)
+    addJob(waitAndUpdateChunks)
+  end
   run()
   waitToEnd()
 end
