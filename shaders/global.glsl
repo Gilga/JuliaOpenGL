@@ -4,6 +4,10 @@
 #define UVHALF 0.57735
 #define UVFULL (1-0.000001)
 
+uniform bool frustum = false;
+uniform vec3 frustum_dirs[6] = vec3[6](vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0));
+uniform float frustum_dists[6] = float[6](0,0,0,0,0,0);
+
 struct Vertex
 {
 	vec4 pos;
@@ -111,4 +115,21 @@ Vertex _preset(vec3 pos, vec3 world){
 
 Vertex preset(vec3 pos){
   return _preset(pos, vec3(0,0,0));
+}
+
+float getDistance(float dist, vec3 normal, vec3 pos){
+  return dist + dot(normal, pos);
+}
+
+int checkSphere(vec3 pos, float radius){
+  int result = 1;
+  float dist = 0;
+  
+  for (int i=0; i<6; i++){
+    dist = getDistance(frustum_dists[i], frustum_dirs[i], pos);
+		if (dist < -radius) result = -1;
+		else if(dist <= radius && result != -1) result = 0;
+	}
+
+	return result;
 }

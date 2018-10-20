@@ -114,10 +114,13 @@ BackupSource=Dict{Symbol,Dict{GLuint,String}}()
 """
 TODO
 """
-function createShader(source::Tuple{Symbol,String}, typ)
-  if typ == GL_VERTEX_SHADER name="GL_VERTEX_SHADER" end
-  if typ == GL_FRAGMENT_SHADER name="GL_FRAGMENT_SHADER" end
-  if typ == GL_GEOMETRY_SHADER name="GL_GEOMETRY_SHADER" end
+function createShader(source::Tuple{Symbol,Symbol,String})
+  name, typ, source = source; err=false
+
+  if typ == :VSH typ = GL_VERTEX_SHADER; typname="GL_VERTEX_SHADER" end
+  if typ == :FSH typ = GL_FRAGMENT_SHADER; typname="GL_FRAGMENT_SHADER" end
+  if typ == :GSH typ = GL_GEOMETRY_SHADER; typname="GL_GEOMETRY_SHADER" end
+  if typ == :CSH typ = GL_COMPUTE_SHADER; typname="GL_COMPUTE_SHADER" end
 
   # Create the shader
   shader = glCreateShader(typ)::GLuint
@@ -128,7 +131,6 @@ function createShader(source::Tuple{Symbol,String}, typ)
   end
   
   # Compile the shader
-  name=source[1]; source=source[2]; err=false
   
   try
     compileShader(name, shader,source)
@@ -138,7 +140,7 @@ function createShader(source::Tuple{Symbol,String}, typ)
     BackupSource[name][typ]=source
 
   catch(ex)
-    Base.showerror(STDERR, ex, catch_backtrace())
+    Base.showerror(stderr, ex, catch_backtrace())
     err=true
     
     # get backup
@@ -148,14 +150,14 @@ function createShader(source::Tuple{Symbol,String}, typ)
   end
 
   # Check for errors
-  info("Shader $name initalized.")
+  info("Shader $name of type $typname is initalized.")
   shader
 end
 
 """
 TODO
 """
-function createShaderProgram(vertexShader, fragmentShader, geometryShader=nothing)
+function createShaderProgram(shaders::Array{Tuple{Symbol,Symbol,String},1})
   # Create, link then return a shader program for the given shaders.
   # Create the shader program
   prog = glCreateProgram()
@@ -166,28 +168,36 @@ function createShaderProgram(vertexShader, fragmentShader, geometryShader=nothin
   # attributes
   #glBindAttribLocation(prog,0,"iVertex") # bind attribute always
   
-  vertexShader = createShader(vertexShader, GL_VERTEX_SHADER)
-  fragmentShader = createShader(fragmentShader, GL_FRAGMENT_SHADER)
+  shaderIDs = Int32[]
   
-  # Attach the vertex shader
-  glAttachShader(prog, vertexShader)
-  glCheckError("attaching vertex shader")
-  # Attach the fragment shader
-  glAttachShader(prog, fragmentShader)
-  glCheckError("attaching fragment shader")
-  # Attach the geometry shader
-  if geometryShader != nothing
-    geometryShader = createShader(geometryShader, GL_GEOMETRY_SHADER)
-    glAttachShader(prog, geometryShader)
-    glCheckError("attaching geometry shader")
+  for shader in shaders
+    shaderID = createShader(shader)
+    glAttachShader(prog, shaderID)
+    glCheckError("attaching shader")
+    push!(shaderIDs)
   end
+  
+  #vertexShader = createShader(vertexShader, GL_VERTEX_SHADER)
+  #fragmentShader = createShader(fragmentShader, GL_FRAGMENT_SHADER)
+
+  #glAttachShader(prog, vertexShader)
+  #glCheckError("attaching vertex shader")
+  #glAttachShader(prog, fragmentShader)
+  #glCheckError("attaching fragment shader")
+  #if geometryShader != nothing
+  #  geometryShader = createShader(geometryShader, GL_GEOMETRY_SHADER)
+  #  glAttachShader(prog, geometryShader)
+  #  glCheckError("attaching geometry shader")
+  #end
   
   # Finally, link the program and check for errors.
   glLinkProgram(prog)
   
-  glDeleteShader(vertexShader)
-  glDeleteShader(fragmentShader)
-  if geometryShader != nothing glDeleteShader(geometryShader) end
+  for shaderID in shaderIDs glDeleteShader(shaderID) end
+  
+  #glDeleteShader(vertexShader)
+  #glDeleteShader(fragmentShader)
+  #if geometryShader != nothing glDeleteShader(geometryShader) end
   
   status = GLint[0]
   glGetProgramiv(prog, GL_LINK_STATUS, status)
@@ -196,7 +206,7 @@ function createShaderProgram(vertexShader, fragmentShader, geometryShader=nothin
     glDeleteProgram(prog)
     error("Error linking shader: ", msg)
   end
-  info("Shader Program $prog initalized.")
+  info("Shader Program $prog is initalized.")
   prog
 end
 

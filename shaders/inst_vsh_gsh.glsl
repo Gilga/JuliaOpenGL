@@ -9,6 +9,11 @@ void main() {
   Vertex v = _Vertex();
 
   v.flags = vec4(0,(iInstanceFlags.x-1),iInstanceFlags.y,0);
+  
+  if (frustum) {
+    int result = checkSphere(iInstancePos.xyz, 1.5);
+    if (result < 0) { v.flags.x = -1; }
+  }
 
   if(v.flags.x >= 0) { //texture index
     v.world_center  = vec4(iInstancePos.xyz+iPosition,1);
