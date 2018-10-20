@@ -14,6 +14,11 @@ void main() {
 
   v.flags = vec4(0,(iInstanceFlags.x-1),iInstanceFlags.y,0);
   
+  if (frustum) {
+    int result = checkSphere(iInstancePos.xyz, 1.5);
+    if (result < 0) { v.flags.x = -1; }
+  }
+  
   if(v.flags.x >= 0) {
     v.world_center  = vec4(iInstancePos.xyz+iPosition,1);
     v.world_pos.xyz  += v.world_center.xyz;

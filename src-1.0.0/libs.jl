@@ -14,11 +14,13 @@ function stringColor(s,color=:yellow)
   if color == :yellow colorstr="\x1b[93m"
   elseif color == :red colorstr="\x1b[91m"
   elseif color == :cyan colorstr="\x1b[96m"
+  elseif color == :magenta colorstr="\x1b[95m"
   end
   return string(colorstr,s,"\x1b[0m")
 end
 
 info(s) = println(stringColor(s,:cyan))
+warn(s) = println(stringColor(s,:magenta))
 
 include("lib_window.jl")
 include("lib_opengl.jl")

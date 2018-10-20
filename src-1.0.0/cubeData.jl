@@ -1,6 +1,6 @@
-const DATA_DUMMY = GLfloat[0,0,0]
+const DATA_DUMMY = Float32[0,0,0]
 
-const DATA_CUBE = GLfloat[
+const DATA_CUBE = Float32[
   # Bottom
   -1.0, -1.0, -1.0,
   1.0, -1.0, -1.0,
@@ -50,7 +50,7 @@ const DATA_CUBE = GLfloat[
   1.0, 1.0, 1.0,
 ]
 
-const DATA_CUBE_VERTEX = [
+const DATA_CUBE_VERTEX = Float32[
   1f0,  1,  1,  # 0
   -1,  1,  1,   # 1
   -1, -1,  1,   # 2
@@ -61,7 +61,7 @@ const DATA_CUBE_VERTEX = [
   1,  1, -1,    # 7
 ]
 
-const DATA_CUBE_INDEX = GLuint[
+const DATA_CUBE_INDEX = UInt32[
   0, 1, 2, 2, 3, 0, # Front face
   7, 4, 5, 5, 6, 7, # Back face
   6, 5, 2, 2, 1, 6, # Left face
@@ -70,15 +70,16 @@ const DATA_CUBE_INDEX = GLuint[
   3, 2, 5, 5, 4, 3  # Bottom face
 ]
 
-const DATA_PLANE_VERTEX  = [
+const DATA_PLANE_VERTEX  = Float32[
   1f0,  0,  1,  # 0
   1, 0, -1,     # 1
   -1,  0,  1,   # 2
   -1, 0, -1     # 3
 ]
 
-const DATA_PLANE_INDEX = GLuint[
+const DATA_PLANE_INDEX = UInt32[
   0, 1, 2, 3 #GL_TRIANGLE_STRIP
   #0, 1, 2, 2, 1, 3 #GL_TRIANGLES
 ]
 
+const DATA_PLANE2D_VERTEX_STRIP = Float32[-1, -1, 1, -1, -1, 1, 1, 1]

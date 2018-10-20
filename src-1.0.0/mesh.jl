@@ -38,7 +38,7 @@ gltypes=Dict(Float32=>GL_FLOAT,Float64=>GL_DOUBLE,UInt32=>GL_UNSIGNED_INT,Int32=
 """
 set attributes for shader 
 """
-function setAttributes(this::MeshArray, program, attrb)
+function setAttributes(this::MeshArray, program, attrb; flexible=false)
   if this.count == 0 return end
   
   STRIDE = GLsizei(length(attrb)<=1 ? 0 : reduce(+, (x->sizeof(x[2])*x[3]).(attrb)))
@@ -46,10 +46,15 @@ function setAttributes(this::MeshArray, program, attrb)
   
   glBindBuffer(this.bufferType, this.bufferID)
 
+  index=-1
   for (name,typ,elems,inst) in attrb
+    index+=1
     atr = glGetAttribLocation(program, name)
     glCheckError("glGetAttribLocation")
-    if atr > -1
+    if flexible && atr <= -1 atr=index end
+    if  atr > -1
+      #typ = nothing; old = this.data
+      #while true typ = eltype(old); if typ == old break; else old=typ; end; end
       glEnableVertexAttribArray(atr)
       glCheckError("glEnableVertexAttribArray")
       glVertexAttribPointer(atr, elems, gltypes[typ], GL_FALSE, STRIDE, OFFSET)
@@ -74,11 +79,11 @@ end
 """
 sets attributes for shader 
 """
-function setAttributes(this::MeshData, program)
+function setAttributes(this::MeshData, program; flexible=false)
   glBindVertexArray(this.vao)
   glCheckError("glBindVertexArray")
-  if haskey(this.arrays,:vertices) setAttributes(this.arrays[:vertices], program, [("iVertex",Float32,3,0)]) end
-  if haskey(this.arrays,:instances) setAttributes(this.arrays[:instances], program, [("iInstancePos",Float32,3,1),("iInstanceFlags",Float32,2,1)]) end
+  if haskey(this.arrays,:vertices) list=this.arrays[:vertices]; setAttributes(list, program, [("iVertex",Float32,list.elements,0)]) end
+  if haskey(this.arrays,:instances) list=this.arrays[:instances]; setAttributes(list, program, [("iInstancePos",Float32,3,1),("iInstanceFlags",Float32,2,1)]) end
   glBindVertexArray(0)
 end
 

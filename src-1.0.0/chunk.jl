@@ -382,10 +382,13 @@ isValid(this::Block) = isActive(this) && isVisible(this) && !isSurrounded(this) 
 hideType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; setVisible(b,false); end; end
 removeType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; setActive(b,false); end; end
 
-showAll(this::Chunk) = for b in this.childs
-  setVisible(b,true)
-  setSurrounded(b,false)
-  resetSides(b)
+function showAll(this::Chunk)
+  for b in this.childs
+    setVisible(b,true)
+    #setSurrounded(b,false)
+    #resetSides(b)
+  end
+  setFilteredChilds(this,getValidChilds(this))
 end
 
 setFilteredChilds(this::Chunk, r::Array{Block,1}) = begin this.filtered = r; this.fileredCount = length(r); r end
