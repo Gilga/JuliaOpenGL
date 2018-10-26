@@ -1,10 +1,6 @@
 layout(location = 0) in Vertex v;
 layout(location = 0) out vec4 outColor;
 
-uniform float time;
-uniform bool iUseLight = true;
-uniform bool iUseTexture = true;
-
 uniform sampler2D tex;
 
 struct iMaterial {
@@ -24,12 +20,15 @@ struct iLight {
 } light;
 
 void main() {
-  if(v.flags.x < 0) { discard; return; } //discard
+  if(v.flags.x < 0 || (iUseTexture && v.flags.y < 0)) { discard; return; } //discard
   //int glow = v.texindex==15;
   
   vec4 color = vec4(0,0,0,1);
   
-  if(!iUseTexture || v.flags.y < 0) color = v.color; //color.w = color.x*color.y*color.z;
+  bool UseLight = false;
+  bool UseTexture = iUseTexture;
+
+  if(!UseTexture) color = v.color; //color.w = color.x*color.y*color.z;
   else {
     vec2 UV = getUV(v.pos.xyz)*0.25f;
     vec2 texUV = v.uvs.zw;
@@ -43,7 +42,7 @@ void main() {
       color = texture(tex, vec2(UV.y, UV.x));
   }
   
-  if(iUseLight){ //use phong?
+  if(UseLight){ //use phong?
     float alpha = radians(0);
     
     light.color = vec4(1,1,1,1);

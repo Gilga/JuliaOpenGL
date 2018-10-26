@@ -4,9 +4,16 @@
 #define UVHALF 0.57735
 #define UVFULL (1-0.000001)
 
+uniform mat4 iMVP = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+uniform vec3 iPosition = vec3(0);
+
 uniform bool frustum = false;
 uniform vec3 frustum_dirs[6] = vec3[6](vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0));
 uniform float frustum_dists[6] = float[6](0,0,0,0,0,0);
+
+uniform float time;
+uniform bool iUseLight = true;
+uniform bool iUseTexture = true;
 
 struct Vertex
 {

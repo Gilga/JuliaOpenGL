@@ -1,3 +1,14 @@
+#module MeshManager
+
+export Transform
+export MeshArray
+export MeshData
+export update
+export upload
+export linkData
+export setAttributes
+export setDrawArray
+
 
 """
 object which holds a transformation matrix and a model reference
@@ -69,11 +80,21 @@ function setAttributes(this::MeshArray, program, attrb; flexible=false)
 end
 
 """
-creates gpu buffer
+creates gpu buffers
 """
 function createBuffers(this::MeshData)
   if this.vao == 0 this.vao = glGenVertexArray() end
   for (s,a) in this.arrays if a.bufferID == 0 && a.count > 0 a.bufferID = glGenBuffer() end end 
+end
+
+"""
+deletes gpu buffers
+"""
+function deleteBuffers(this::MeshData)
+  if this.vao != 0 glDeleteVertexArray(this.vao); this.vao=0 end
+  for (s,a) in this.arrays if a.bufferID != 0 glDeleteBuffer(a.bufferID) end end 
+  this.arrays = Dict()
+  this.draw = nothing
 end
 
 """
@@ -83,6 +104,7 @@ function setAttributes(this::MeshData, program; flexible=false)
   glBindVertexArray(this.vao)
   glCheckError("glBindVertexArray")
   if haskey(this.arrays,:vertices) list=this.arrays[:vertices]; setAttributes(list, program, [("iVertex",Float32,list.elements,0)]) end
+  if haskey(this.arrays,:points) list=this.arrays[:points]; setAttributes(list, program, [("iInstancePos",Float32,3,0),("iInstanceFlags",Float32,2,0)]) end
   if haskey(this.arrays,:instances) list=this.arrays[:instances]; setAttributes(list, program, [("iInstancePos",Float32,3,1),("iInstanceFlags",Float32,2,1)]) end
   glBindVertexArray(0)
 end
@@ -106,14 +128,21 @@ end
 """
 uploads data
 """
-function upload(this::MeshArray)
+function upload(this::MeshArray, usage=GL_STATIC_DRAW) #GL_DYNAMIC_COPY
   if this.loaded || this.count == 0 return end
-  data = this.data
   glBindBuffer(this.bufferType, this.bufferID)
-  glCheckError("glBindBuffer")
-  glBufferData(this.bufferType, sizeof(data), data, GL_STATIC_DRAW)
-  glCheckError("glBufferData")
+  glBufferData(this.bufferType, sizeof(this.data), this.data, usage)
   this.loaded=true
+end
+
+"""
+reset part data
+"""
+function resetPart(this::MeshArray, id=1; default=0)
+  glBindBuffer(this.bufferType, this.bufferID)
+  part=this.data[id]
+  glBufferSubData(this.bufferType , 0, sizeof(part), typeof(part)[default])
+  glBindBuffer(this.bufferType, 0)
 end
 
 """
@@ -121,7 +150,6 @@ uploads data
 """
 function upload(this::MeshData)
   glBindVertexArray(this.vao)
-  glCheckError("glBindVertexArray")
   for (s,a) in this.arrays upload(a) end
   glBindVertexArray(0)
 end
@@ -135,7 +163,6 @@ function upload(this::MeshData, key::Symbol, data::AbstractArray)
   setData(a, data)
   a.loaded = false
   glBindVertexArray(this.vao)
-  glCheckError("glBindVertexArray")
   upload(a)
   glBindVertexArray(0)
 end
@@ -146,8 +173,7 @@ links data
 function linkData(this::MeshData, args...)
   d=Dict(args)
   
-  this.arrays = Dict()
-  this.draw = nothing
+  deleteBuffers(this)
   
   for (s,x) in d
     l=isa(x,Tuple) ? length(x) : 0
@@ -176,3 +202,5 @@ function linkData(this::MeshData, args...)
   createBuffers(this)
   upload(this)
 end
+
+#end #MeshManager

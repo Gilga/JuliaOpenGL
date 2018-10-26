@@ -1,6 +1,3 @@
-uniform mat4 iMVP = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
-uniform vec3 iPosition = vec3(0);
-
 layout (location = 0) in vec3 iVertex;
 layout (location = 1) in vec3 iInstancePos;
 layout (location = 2) in vec2 iInstanceFlags;
@@ -19,7 +16,7 @@ void main() {
     if (result < 0) { v.flags.x = -1; }
   }
   
-  if(v.flags.x >= 0) {
+  if(v.flags.x >= 0 && !(iUseTexture && v.flags.y < 0)) {
     v.world_center  = vec4(iInstancePos.xyz+iPosition,1);
     v.world_pos.xyz  += v.world_center.xyz;
     v.world_pos  = normalize(v.world_pos);

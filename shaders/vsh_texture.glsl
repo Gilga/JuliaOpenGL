@@ -1,5 +1,3 @@
-uniform mat4 iMVP = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
-uniform vec3 iPosition = vec3(0);
 uniform float iTexIndex = 0;
 
 layout (location = 0) in vec3 iVertex;
