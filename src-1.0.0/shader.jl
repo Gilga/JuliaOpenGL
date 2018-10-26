@@ -5,6 +5,7 @@ function loadShaders()
   CONTENT_SH = fileGetContents("shaders/global.glsl")
   CONTENT_INST_VSH = fileGetContents("shaders/inst_vsh.glsl")
   CONTENT_INST_VSH_GSH = fileGetContents("shaders/inst_vsh_gsh.glsl")
+  CONTENT_INST_CSH_VSH_GSH = fileGetContents("shaders/inst_csh_vsh_gsh.glsl")
   CONTENT_INST_GSH = fileGetContents("shaders/inst_gsh.glsl")
   CONTENT_INST_FSH = fileGetContents("shaders/inst_fsh.glsl")
   CONTENT_VSH_TEXTURE = fileGetContents("shaders/vsh_texture.glsl")
@@ -12,9 +13,10 @@ function loadShaders()
   CONTENT_FSH = fileGetContents("shaders/fsh.glsl")
   CONTENT_GSH = fileGetContents("shaders/gsh.glsl")
   CONTENT_CSH = fileGetContents("shaders/csh.glsl")
+  CONTENT_INST_CSH = fileGetContents("shaders/inst_csh.glsl")
   CONTENT_SCREEN_VSH = fileGetContents("shaders/screen_vsh.glsl")
   CONTENT_SCREEN_FSH = fileGetContents("shaders/screen_fsh.glsl")
-
+  
   GLOBAL_CONTENT_SH = """
   $(get_glsl_version_string())
   $CONTENT_SH
@@ -30,6 +32,11 @@ function loadShaders()
   global INST_VSH_GSH = (:INST_VSH_GSH, :VSH, """
   $GLOBAL_CONTENT_SH
   $CONTENT_INST_VSH_GSH
+  """)
+  
+  global INST_CSH_VSH_GSH = (:INST_CSH_VSH_GSH, :VSH, """
+  $GLOBAL_CONTENT_SH
+  $CONTENT_INST_CSH_VSH_GSH
   """)
 
   global INST_GSH = (:INST_GSH, :GSH, """
@@ -67,6 +74,11 @@ function loadShaders()
   $CONTENT_CSH
   """)
   
+  global INST_CSH = (:INST_CSH, :CSH, """
+  $GLOBAL_CONTENT_SH
+  $CONTENT_INST_CSH
+  """)
+  
   global SCREEN_VSH = (:PLANE_VSH, :VSH, """
   $(get_glsl_version_string())
   $CONTENT_SCREEN_VSH
@@ -77,5 +89,5 @@ function loadShaders()
   $CONTENT_SCREEN_FSH
   """)
 
-  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH)
+  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH, INST_CSH, INST_CSH_VSH_GSH)
 end

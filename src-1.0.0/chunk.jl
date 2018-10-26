@@ -1,3 +1,20 @@
+#module ChunkManager
+
+#using StaticArrays
+
+export Block
+export Chunk
+export ChunkNode
+export reset
+export update
+export createSingle
+export createExample
+export createLandscape
+export checkInFrustum
+export getActiveChilds
+export getVisibleChilds
+export getValidChilds
+export getFilteredChilds
 
 mutable struct Neighbours6{T} <: FieldVector{6, T}
   left::Union{T,Nothing}
@@ -76,7 +93,14 @@ function init(this::Chunk, size::Integer)
     this.count = size^3
     this.childs = Array{Block}(undef,size,size,size)
     createBlocks(this)
+    createChunkNodes(this)
     linkBlockNeighbours(this)
+end
+
+function update(this::Chunk;unseen=true)
+  updateChunkNodePos(this)
+  if unseen hideUnseen(this) end
+  #r=create_spiral3D_searchlist(this)
 end
 
 function reset(this::Chunk; size=64)
@@ -153,10 +177,11 @@ function getIndex(i, depth, vindex)
 end
 
 function createChunkNodes(this::Chunk)
+  SIZE=size(this.childs)[1]
   this.nodes=Array{ChunkNode}(undef,8)
-  depths=[0,0,0,0,0,0]
-  scale=[32,16,8,4,2,1]
+  depths=zeros(UInt,round(UInt,log(2,SIZE)))
   max_depth = length(depths)
+  scale=[2^(max_depth-i) for i=1:max_depth] #[32,16,8,4,2,1]
   depth=1
   count = 0
   len=length(this.childs)
@@ -184,22 +209,17 @@ function createChunkNodes(this::Chunk)
   end
 end
 
-function itranslate(this::INode)
+function itranslate(this::INode, SIZE::Integer)
   x,z,y = this.index
-  X, Y, Z = 64, 64, 64
+  X, Y, Z = SIZE, SIZE, SIZE
   DIST = Vec3f(2,2,2); #Vec3f(3,5,3) #r = 1f0/30 #0.005f0
   START = Vec3f(-(X*DIST.x) / 2.0f0, -(Y*DIST.y) / 2.0f0, (Z*DIST.z) / 2.0f0)
   Vec3f(START.x+(x-1)*DIST.x, START.y+(y-1)*DIST.y, START.z-(z-1)*DIST.z)
 end
 
-function update(this::Chunk;unseen=true)
-  updateChunkNodePos(this)
-  if unseen hideUnseen(this) end
-  r=create_spiral3D_searchlist(this)
-end
-
 function updateChunkNodePos(this::Chunk)
-  depths=[0,0,0,0,0,0]
+  SIZE=size(this.childs)[1]
+  depths=zeros(UInt,round(UInt,log(2,SIZE)))
   max_depth = length(depths)
   depth=1
   count = 0
@@ -213,14 +233,14 @@ function updateChunkNodePos(this::Chunk)
       node.index = Vec3f();
       for child in node.nodes node.index += child.index end
       node.index /= 8
-      node.pos = itranslate(node)
+      node.pos = itranslate(node, SIZE)
       depths[depth]=0
       depth-=1
       node=node.parent
       continue
     end
     child = node.nodes[index]
-    if depth < max_depth depth+=1; node=child; else count+=1; child.pos = itranslate(child); end
+    if depth < max_depth depth+=1; node=child; else count+=1; child.pos = itranslate(child, SIZE); end
   end
 end
 
@@ -287,7 +307,6 @@ end
 function createBlocks(this::Chunk)
   X, Y, Z = size(this.childs)
   for y=1:Y; for z=1:Z; for x=1:X; this.childs[x,z,y] = Block(this,Vec3f(x,y,z)); end; end; end
-  createChunkNodes(this)
 end
 
 function linkBlockNeighbours(this::Chunk)
@@ -388,6 +407,7 @@ function showAll(this::Chunk)
     #setSurrounded(b,false)
     #resetSides(b)
   end
+  #setFilteredChilds(this,filter(b->true,this.childs))
   setFilteredChilds(this,getValidChilds(this))
 end
 
@@ -416,7 +436,10 @@ function getData(this::Block)
   SVector(Float32[this.pos...,this.typ,sides]...)
 end
 
+getPos(this::Block) = SVector(Float32[this.pos...]...)
+
 getData(this::Chunk) = isValid(this) ? vec((b->getData(b)).(getFilteredChilds(this))) : Float32[]
+getPos(this::Chunk) = isValid(this) ? vec((b->getPos(b)).(getFilteredChilds(this))) : Float32[]
 
 #fill copies references
 #refblocks = Ptr{Nothing}[]
@@ -430,9 +453,9 @@ end
 
 function createExample(this::Chunk)
   X, Y, Z = sz = size(this.childs)
-  DIST = Vec3f(2,2,2); #Vec3f(3,5,3) #r = 1f0/30 #0.005f0
-  START = Vec3f(-(X*DIST.x) / 2.0f0, -(Y*DIST.y) / 2.0f0, (Z*DIST.z) / 2.0f0)
-  translate(x,y,z) = Vec3f(START.x+(x-1)*DIST.x, START.y+(y-1)*DIST.y, START.z-(z-1)*DIST.z)
+  #DIST = Vec3f(2,2,2); #Vec3f(3,5,3) #r = 1f0/30 #0.005f0
+  #START = Vec3f(-(X*DIST.x) / 2.0f0, -(Y*DIST.y) / 2.0f0, (Z*DIST.z) / 2.0f0)
+  #translate(x,y,z) = Vec3f(START.x+(x-1)*DIST.x, START.y+(y-1)*DIST.y, START.z-(z-1)*DIST.z)
 
   x=1; y=1; z=1;
 
@@ -450,6 +473,10 @@ function createExample(this::Chunk)
       end
     end
   end
+  
+  h=round(UInt,X/2)
+  b = this.childs[h,h,h]
+  b.typ=7
 end
 
 function createLandscape(this::Chunk)
@@ -465,16 +492,14 @@ function createLandscape(this::Chunk)
   w = imgwidth/X
   h = imgheight/Y
   
-  DIST = Vec3f(2,2,2)
-  START = Vec3f(-(X*DIST.x) / 2.0f0, -(Y*DIST.y) / 2.0f0, (Z*DIST.z) / 2.0f0)
-  
-  translate(x,y,z) = Vec3f(START.x+x*DIST.x, START.y+y*DIST.y, START.z-z*DIST.z)
+  #DIST = Vec3f(2,2,2)
+  #START = Vec3f(-(X*DIST.x) / 2.0f0, -(Y*DIST.y) / 2.0f0, (Z*DIST.z) / 2.0f0)
+  #translate(x,y,z) = Vec3f(START.x+x*DIST.x, START.y+y*DIST.y, START.z-z*DIST.z)
   
   for z=1:Z
     for x=1:X
       # Use the height map texture to get the height value of x, z
       height = (imgMatrix[UInt32(trunc(z*h)), UInt32(trunc(x*w))] / 0xFF)* 1.25 * Y
-      if height >= Y height=Y end
       
       level_air = height * 0.95
       level_grass = height * 0.9
@@ -483,7 +508,8 @@ function createLandscape(this::Chunk)
       level_stone = height * 0.4
       level_lava = height * 0
 
-      for y=1:UInt32(round(height))
+      for y=1:Y
+        if y > height break end
         #id = y*X*Y+z*Z+x
         #c = this.childs[id]
         #c.active = true
@@ -501,7 +527,7 @@ function createLandscape(this::Chunk)
     end
   end
    
-  h=32 #UInt32(trunc(X/2))
+  h=round(UInt, X/2)
   b = this.childs[h,h,h]
   #b.pos=Vec3f(0,0,0)
   b.typ=7
@@ -527,7 +553,7 @@ end
   layers in between: search outside (next shell) and already searched area (core) will be skipped
 """
 function create_spiral3D_searchlist(this::Chunk)
-  info("Spiral 3D Search List")
+  println("Spiral 3D Search List")
 
   Z, Y, X = sz = size(this.childs)
   MAX = length(sz)
@@ -715,7 +741,7 @@ function checkInFrustum2(this::Chunk, fstm::Frustum)
 end
 
 function checkInFrustum3(this::Chunk, fstm::Frustum)
-  info("checkInFrustum")
+  println("checkInFrustum")
   pos = getNearPosition(fstm)
   list = DataStructures.SortedDict()
 
@@ -806,4 +832,4 @@ function checkInFrustum3(this::Chunk, fstm::Frustum)
  
 end
 
-#------------------------------------------------------------------------------------
+#end #ChunkManager

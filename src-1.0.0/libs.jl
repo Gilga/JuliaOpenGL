@@ -9,18 +9,20 @@ using SharedArrays
 
 #https://github.com/shiena/ansicolor/blob/master/README.md
 
-function stringColor(s,color=:yellow)
+function stringColor(s...;color=:yellow)
   colorstr="\x1b[0m"
   if color == :yellow colorstr="\x1b[93m"
   elseif color == :red colorstr="\x1b[91m"
   elseif color == :cyan colorstr="\x1b[96m"
   elseif color == :magenta colorstr="\x1b[95m"
   end
-  return string(colorstr,s,"\x1b[0m")
+  return string(colorstr,s...,"\x1b[0m")
 end
 
-info(s) = println(stringColor(s,:cyan))
-warn(s) = println(stringColor(s,:magenta))
+info(s...) = println(stringColor(s...;color=:yellow))
+debug(s...) = println("DEBUG: ",stringColor(s...;color=:cyan))
+warn(s...) = println("WARNING: ",stringColor(s...;color=:magenta))
+error(s...) = Base.error(stringColor(s...;color=:red))
 
 include("lib_window.jl")
 include("lib_opengl.jl")

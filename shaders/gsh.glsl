@@ -5,8 +5,6 @@ layout(location = 0) in vec4 vcolors[];
 out vec4 vcolor;
 //layout(location = 0) in Vertex vertex[];
 
-uniform mat4 mvp = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
-
 void main()
 {
   int max = 3;
@@ -22,7 +20,7 @@ void main()
     {
       vcolor = vcolors[i];
       if(vcolor.w > 0) {
-        gl_Position = mvp * (gl_in[i].gl_Position + vec4(-center+x*dist,-center+y*dist,-center+z*dist,0));
+        gl_Position = iMVP * (gl_in[i].gl_Position + vec4(-center+x*dist,-center+y*dist,-center+z*dist,0));
         EmitVertex();
         c++;
       } // else discard

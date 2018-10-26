@@ -5,8 +5,6 @@ layout(triangle_strip, max_vertices=24) out; // 128 is hardware max
 layout(location = 0) in Vertex iv[];
 layout(location = 0) out Vertex ov;
 
-uniform mat4 iMVP = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
-
 const vec3 cube[6][4] = {
   {vec3(1,1,1),vec3(1,1,-1),vec3(-1,1,1),vec3(-1,1,-1)},
   {vec3(-1,-1,1),vec3(-1,-1,-1),vec3(1,-1,1),vec3(1,-1,-1)},
@@ -52,7 +50,7 @@ void main()
   
   v = iv[0];
   
-  if(v.flags.x < 0) return; // discard
+  if(v.flags.x < 0 || (iUseTexture && v.flags.y < 0)) return; // discard
   
   uint sides = uint(floor(v.flags.z));
     

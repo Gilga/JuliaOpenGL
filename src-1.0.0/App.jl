@@ -56,19 +56,25 @@ TEXTUREMODE = true
 LIGHTMODE = true
 FRUSTUM_CULLING = true
 HIDE_UNSEEN_CUBES = true
-RENDER_METHOD = 1
+RENDER_METHOD = 8
 mychunk = nothing
 program_chunks = 0
+program_compute = 0
 program_screen = 0
+program_compute_instances = 0
+program_indirect_chunks = 0
 SCENE = 2
 fstm = nothing
+
 chunkData = nothing
 chunkData_upload = nothing
 chunk_instances = nothing
 planeData = nothing
 screenData = nothing
 boxData = nothing
-CHUNK_SIZE = 64
+indirectData = nothing
+
+CHUNK_SIZE = 128
 current_program = 0
 load_once = true
 workPool = nothing
@@ -127,6 +133,7 @@ function init()
     global planeData = MeshData()
     global screenData = MeshData()
     global boxData = MeshData()
+    global indirectData = MeshData()
     presetTextures()
     chooseRenderMethod()
   end
@@ -154,15 +161,13 @@ end
 """
 TODO
 """
-function use_program(program, f)
+function use_program(program, f::Function)
   if program != current_program
-    glUseProgram(program)
-    glCheckError("glUseProgram")
+    glCheck(glUseProgram(program))
   end
-  f()
+  glCheck(f())
   if program != current_program
-    glUseProgram(current_program)
-    glCheckError("glUseProgram")
+    glCheck(glUseProgram(current_program))
   end
 end
 
@@ -176,10 +181,10 @@ function setMode(program, name, value, mode="")
       if isa(value, Integer) glUniform1i(l, value)
       elseif isa(value, AbstractFloat) glUniform1f(l, value)
       elseif isa(value, AbstractArray) glUniform1fv(l, 1, value)
-      else warn("MODE("*stringColor(mode,:yellow)*") for "*typeof(value)*" is not implemented yet.")
+      else warn("MODE("*stringColor(mode;color=:yellow)*") for "*typeof(value)*" is not implemented yet.")
       end
     end
-  if mode != "" println("MODE(",stringColor(mode,:yellow),"): ",stringColor(value,:yellow)) end
+  if mode != "" println("MODE(",stringColor(mode;color=:yellow),"): ",stringColor(value;color=:yellow)) end
   end)
 end
 
@@ -224,8 +229,7 @@ end
 function createChunk(this::Chunk)
   global SCENE
   
-  #println("create Chunk")
-  info("Create chunk & create blocks...")
+  println("Create chunk & create blocks...")
   
   if myid() != 1
     sz=channels[:SCENE]
@@ -273,17 +277,21 @@ function chooseRenderMethod(method=RENDER_METHOD)
   global RENDER_METHOD
   if method != RENDER_METHOD RENDER_METHOD = method end
   
-  if method == 1 name="INSTANCES of POINTS + GEOMETRY SHADER"
-  elseif method == 2  name="INSTANCES of TRIANGLES"
-  elseif method == 3 name="INSTANCES of TRIANGLES + INDICIES"
-  elseif method == 4 name="TRIANGLES + INDICIES"
-  elseif method == 5 name="TRIANGLES"
-  elseif method == 6 name="TRIANGLES"
-  elseif method == 7 name="COMPUTED"
-  else name="NOT DEFINED"
-  end
+  name =
+  method == 1 ? "INSTANCES of POINTS + GEOMETRY SHADER" :
+  method == 2 ? "INSTANCES of TRIANGLES" :
+  method == 3 ? "INSTANCES of TRIANGLES + INDICIES" :
+  method == 4 ? "TRIANGLES + INDICIES" :
+  method == 5 ? "TRIANGLES" :
+  method == 6 ? "TRIANGLES" :
+  method == 7 ? "COMPUTED" :
+  method == 8 ? "COMPUTED + INSTANCES" :
+                "NOT DEFINED"
   
-  println("METHOD(",method,"): ",stringColor(name,:yellow))
+  
+  println("CHUNK SIZE: ",stringColor(string(CHUNK_SIZE,"³");color=:yellow))
+  println("SCENE: ",stringColor(SCENE;color=:yellow))
+  println("METHOD(",stringColor(method;color=:yellow),"): ",stringColor(method," = ", name; color=:yellow))
   
   if name == "NOT DEFINED" return end
 
@@ -294,8 +302,40 @@ function chooseRenderMethod(method=RENDER_METHOD)
   global render_ready = false
 end
 
+
+render_init = false
+
+struct IndirectCommand
+  count::GLuint
+  primCount::GLuint
+  firstIndex::GLuint
+  baseVertex::GLuint
+  baseInstance::GLuint
+  
+  IndirectCommand(count=0, primCount=0) = new(count,primCount,0,0,0)
+end
+
+indirect_command = GLuint[0,1,0,0,0]
+DISPATCHSIZE = 0
+
+function createInstanceBuffer()
+  global DISPATCHSIZE = round(UInt32,Float32(length(chunk_instances)) / 128)
+
+  indirectData.arrays[:indirect].bufferType=GL_DRAW_INDIRECT_BUFFER
+  
+  use_program(program_compute_instances, () -> begin
+    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].bufferID)
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].bufferID)
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
+  end)
+ 
+  nothing
+end
+
 function uploadData()
-  global render_ready
+  glCheck()
+  
+  global render_init, render_ready
 
   m=loadChunk()
   if m == :NOTHING return end
@@ -307,88 +347,96 @@ function uploadData()
   global fileredCount = length(chunk_instances)
 
   if m == :UPDATE
+    println("Upload data...")
     upload(chunkData, :instances, chunk_instances)
     if FRUSTUM_CULLING
       upload(planeData, :vertices, plane_vertices)
       upload(boxData, :vertices, box_vertices)
     end
+    glCheck()
     return
   end
     
   method = RENDER_METHOD
   
-  info("Upload data...")
-  glCheckError("Upload data")
-  
   println("Link data...")
-  if method == 1 linkData(chunkData, :instances=>chunk_instances)
+  if method == 1 linkData(chunkData, :points=>chunk_instances)
   elseif method == 2 linkData(chunkData, :vertices=>(DATA_CUBE,3), :instances=>chunk_instances)
   elseif method == 3 linkData(chunkData, :vertices=>(DATA_CUBE_VERTEX,3), :indicies=>(DATA_CUBE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>chunk_instances)
   elseif method == 4 linkData(chunkData, :vertices=>(DATA_CUBE_VERTEX,3), :indicies=>(DATA_CUBE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
   elseif method > 4 && method < 7 linkData(chunkData, :vertices=>(DATA_CUBE,3))
   end
   
-  if !render_ready && method == 7
-     linkData(screenData,  :vertices=>(DATA_PLANE2D_VERTEX_STRIP,2)) #, :indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
-  end
-  
-  if !render_ready && method < 7
+  if !render_init
     #linkData(chunkData, :vertices=>(DATA_PLANE_VERTEX,3), :indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>chunk_instances)
     linkData(planeData,  :vertices=>plane_vertices)
     linkData(boxData,  :vertices=>box_vertices)
+    linkData(screenData,  :vertices=>(DATA_PLANE2D_VERTEX_STRIP,2)) #, :indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
+    linkData(indirectData, :points=>zeros(Float32,sizeof(Float32)*5*CHUNK_SIZE^3), :points_default=>chunk_instances, :indirect=>indirect_command)
   end
   
-  println("Use shader program...")
+  println("Load shader files...")
+  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH, INST_CSH, INST_CSH_VSH_GSH) = loadShaders()
+  
   global program_chunks
-  
-  if program_chunks != 0
-    println("Unbind & Delete previous program")
-    glUseProgram(0)
-    glDeleteProgram(program_chunks)
-    glCheckError("glDeleteProgram")
+  if method < 7
+    if program_chunks != 0
+      println("Unbind & Delete previous program")
+      glCheck(glUseProgram(program_chunks))
+      glCheck(glDeleteProgram(program_chunks))
+      program_chunks = 0
+    end
   end
-   
-  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH) = loadShaders()
+  
+  println("Create & Compile shader programs...")
 
-  println("Create shader program...")
-  if method == 1 program_chunks = createShaderProgram([INST_VSH_GSH, INST_FSH, INST_GSH])
-  elseif method > 1 && method <= 3 program_chunks = createShaderProgram([INST_VSH, INST_FSH])
-  elseif method == 4 program_chunks = createShaderProgram([VSH_TEXTURE, INST_FSH])
-  elseif method == 5 program_chunks = createShaderProgram([VSH_TEXTURE, INST_FSH])
-  elseif method == 6 program_chunks = createShaderProgram([VSH, FSH])
-  elseif method == 7 program_chunks = createShaderProgram([CSH])
+  if method < 7
+    if method == 1 program_chunks = createShaderProgram([INST_VSH_GSH, INST_FSH, INST_GSH])
+    elseif method > 1 && method <= 3 program_chunks = createShaderProgram([INST_VSH, INST_FSH])
+    elseif method == 4 program_chunks = createShaderProgram([VSH_TEXTURE, INST_FSH])
+    elseif method == 5 program_chunks = createShaderProgram([VSH_TEXTURE, INST_FSH])
+    elseif method == 6 program_chunks = createShaderProgram([VSH, FSH])
+    end
+    
+    if program_chunks <= 0 error("No Program") end
   end
   
-  if !render_ready
-    if method < 7 global program_normal = createShaderProgram([VSH, FSH]) end #, createShader(GSH, GL_GEOMETRY_SHADER)
-    if method == 7 global program_screen = createShaderProgram([SCREEN_VSH, SCREEN_FSH]) end
+  if !render_init
+    global program_normal = createShaderProgram([VSH, FSH])#, createShader(GSH, GL_GEOMETRY_SHADER)
+    global program_screen = createShaderProgram([SCREEN_VSH, SCREEN_FSH])
+    global program_compute = createShaderProgram([CSH])
+    global program_compute_instances = createShaderProgram([INST_CSH])
+    global program_indirect_chunks = createShaderProgram([INST_CSH_VSH_GSH, INST_FSH, INST_GSH])
+    
+    createInstanceBuffer()
   end
   
-  info("Compile Shader Programs...")
+  println("set Attributes and Uniforms...")
   
-  if program_chunks <= 0 error("No Program") end
-  glUseProgram(program_chunks)
-  glCheckError("glUseProgram")
-  
-  if method < 7 setAttributes(chunkData, program_chunks) end
-  
-  if !render_ready && method == 7 setAttributes(screenData, program_screen) end
-  
-  if !render_ready && method < 7
+  if !render_init
+    setAttributes(indirectData, program_indirect_chunks)
     setAttributes(planeData, program_normal)
     setAttributes(boxData, program_normal)
+    setAttributes(screenData, program_screen)
+    
+    setMVP(program_indirect_chunks, MVP)
   end
   
+   println("Continue...")
   
-  setMatrix(program_chunks, "iMVP", MVP)
-  glCheckError("setMatrix")
+   if method < 7 
+    setAttributes(chunkData, program_chunks)
+
+    setMVP(program_chunks, MVP)
+    
+    global location_position = glGetUniformLocation(program_chunks, "iPosition")
+    global location_texindex = glGetUniformLocation(program_chunks, "iTexIndex")
+    
+    setMode(program_chunks, "iUseLight", LIGHTMODE)
+    setMode(program_chunks, "iUseTexture", TEXTUREMODE)
+  end
   
-  global location_position = glGetUniformLocation(program_chunks, "iPosition")
-  global location_texindex = glGetUniformLocation(program_chunks, "iTexIndex")
-  
-  setMode(program_chunks, "iUseLight", LIGHTMODE)
-  setMode(program_chunks, "iUseTexture", TEXTUREMODE)
-  
+  if !render_init render_init = true end
   if !render_ready render_ready = true end
   global uploaded=:NOTHING
 end
@@ -447,15 +495,13 @@ function checkForUpdate()
   uploadData()
   
   if RENDER_METHOD == 7
-    use_program(program_chunks, () -> begin
-      glUniform1i(glGetUniformLocation(program_chunks, "destTex"), 0);
-      glUniform1f(glGetUniformLocation(program_chunks, "roll"), FRAMES*0.01f0);
-      glCheckError("glUniform1i")
+    use_program(program_compute, () -> begin
+      glCheck(glUniform1i(glGetUniformLocation(program_compute, "destTex"), 0))
+      glCheck(glUniform1f(glGetUniformLocation(program_compute, "roll"), FRAMES*0.01f0))
     end)
     
     use_program(program_screen, () -> begin
-      glUniform1i(glGetUniformLocation(program_screen, "srcTex"), 0);
-      glCheckError("glUniform1i")
+      glCheck(glUniform1i(glGetUniformLocation(program_screen, "srcTex"), 0))
     end)
   end
   
@@ -466,13 +512,16 @@ function checkForUpdate()
       
     elseif keyValue == 81 #q
       global WIREFRAME=!WIREFRAME
+      info("WIREFRAME: $WIREFRAME")
       
     elseif keyValue == 84 && render_ready #t
       global TEXTUREMODE=!TEXTUREMODE
+      info("TEXTUREMODE: $TEXTUREMODE")
       setMode(program_chunks, "iUseTexture", TEXTUREMODE, "TEXTURE")
       
     elseif keyValue == 76 && render_ready #l
       global LIGHTMODE=!LIGHTMODE
+      info("LIGHTMODE: $LIGHTMODE")
       setMode(program_chunks, "iUseLight", LIGHTMODE, "LIGHT")
 
     elseif keyValue == 82 #r
@@ -574,8 +623,7 @@ TODO
 """
 function setMVP(program, mvp)
   use_program(program, () -> begin
-    setMatrix(program, "iMVP", mvp)
-    glCheckError("setMatrix")
+    glCheck(setMatrix(program, "iMVP", mvp))
   end)
 end
 
@@ -583,12 +631,11 @@ function setFrustum(program)
   use_program(program, () -> begin
     dirs=[x.mNormal for (_,x) in fstm.planes] #getDirections(fstm)
     dists=[x.d for (_,x) in fstm.planes]  #getDistances(fstm)
-    glUniform1i(glGetUniformLocation(program, "frustum"), true)
+    glCheck(glUniform1i(glGetUniformLocation(program, "frustum"), true))
     if !CAM_LOCK
-      glUniform3fv(glGetUniformLocation(program, "frustum_dirs"), length(dirs), dirs)
-      glUniform1fv(glGetUniformLocation(program, "frustum_dists"), length(dists), dists)
+      glCheck(glUniform3fv(glGetUniformLocation(program, "frustum_dirs"), length(dirs), dirs))
+      glCheck(glUniform1fv(glGetUniformLocation(program, "frustum_dists"), length(dists), dists))
     end
-    glCheckError("setMatrix")
   end)
 end
 
@@ -670,6 +717,7 @@ function run()
   #setEventCallbacks(OnCursorPos,OnKey,OnMouseKey)
 
   GLFW.ShowWindow(window)
+  glDebug(true) # set debugging
 
   glinfo = createcontextinfo()
 
@@ -742,9 +790,15 @@ function run()
   function checkCamera()
     if OnUpdate(CAMERA)
       #if !CAM_LOCK
-        setMVP(program_chunks, CAMERA.MVP)
-        setMVP(program_normal, CAMERA.MVP)
-        setFrustum(program_chunks)
+        if RENDER_METHOD < 7 
+          setMVP(program_chunks, CAMERA.MVP)
+          setMVP(program_normal, CAMERA.MVP)
+          setFrustum(program_chunks)
+        end
+        if RENDER_METHOD == 8
+          setMVP(program_indirect_chunks, CAMERA.MVP)
+          setFrustum(program_compute_instances)
+        end
       #end
       if length(procs()) > 1 put!(channels[:BOOL], (:NOTHING, false))
       else setFrustumMode()
@@ -752,7 +806,7 @@ function run()
       cam_updated=true
     end
   end
-
+  
   """
   TODO
   """
@@ -775,18 +829,16 @@ function run()
       checkCamera()
       if cam_updated cam_updated=false end
     
-      if RENDER_METHOD < 7 
+      if RENDER_METHOD < 7
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, texture_blocks)
       
         if fileredCount > 0 #isValid(mychunk)
           useProgram(program_chunks)
-          #glCheckError("useProgram")
           #glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
           glBindVertexArray(chunkData.vao)
-          #glCheckError("glBindVertexArray bind")
           
-          if RENDER_METHOD == 1 glDrawArraysInstanced(GL_POINTS, 0, 1, fileredCount) #GL_TRIANGLE_STRIP
+          if RENDER_METHOD == 1 glDrawArrays(GL_POINTS, 0, fileredCount) #GL_TRIANGLE_STRIP
           elseif RENDER_METHOD == 2 glDrawArraysInstanced(GL_TRIANGLES, 0, chunkData.draw.count, fileredCount)
           elseif RENDER_METHOD == 3 glDrawElementsInstanced(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL, fileredCount)
           #glDrawElementsInstancedBaseVertex(GL_TRIANGLES, chunkData.draw.count / 6, GL_UNSIGNED_INT, C_NULL, mychunk.count, 0)
@@ -795,15 +847,12 @@ function run()
             for b in getFilteredChilds(mychunk)
               if location_texindex > -1 glUniform1f(location_texindex, b.typ) end
               if location_position > -1 glUniform3fv(location_position, 1, b.pos) end
-              glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL )
-              #glCheckError("glDrawElements")
+              glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL)
             end
           elseif RENDER_METHOD == 5
             #glDrawArrays(GL_TRIANGLES, 0, chunkData.draw.count)
-            #glCheckError("glDrawArrays")
           end
           glBindVertexArray(0)
-          #glCheckError("glBindVertexArray unbind")
         end
 
         ##############################################
@@ -825,18 +874,51 @@ function run()
       end
       
       if RENDER_METHOD == 7
+        useProgram(program_compute)
+        glBindVertexArray(0)
+        
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, texture_screen)
-      
-        useProgram(program_chunks)
-        glDispatchCompute(512/16, 512/16, 1)
+
+        glDispatchCompute(512/1, 512/1, 1)
         
         useProgram(program_screen)
         glBindVertexArray(screenData.vao)
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) # make sure writing to image has finished before read
         glDrawArrays(GL_TRIANGLE_STRIP, 0, screenData.draw.count)
+        
+        glBindVertexArray(0)
       end
       
+      if RENDER_METHOD == 8
+        useProgram(program_compute_instances)
+        
+        buffer = indirectData.arrays[:indirect]
+        
+        resetPart(buffer)
+        
+        glDispatchCompute(DISPATCHSIZE, 1, 1)
+      
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT) # GL_ATOMIC_COUNTER_BARRIER_BIT GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
+        
+        glActiveTexture(GL_TEXTURE0)
+        glBindTexture(GL_TEXTURE_2D, texture_blocks)
+      
+        useProgram(program_indirect_chunks)
+        
+        glBindVertexArray(indirectData.vao)
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, buffer.bufferID)
+
+        #glDrawElementsIndirect(GL_POINTS, GL_UNSIGNED_INT, Ptr{Nothing}(0))
+        glDrawArraysIndirect(GL_POINTS, Ptr{Nothing}(0))
+
+        glBindVertexArray(0)
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0)
+      end
+      
+      #ptr = Ptr{GLuint}(glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0,1*sizeof(GLuint),  GL_MAP_READ_BIT|GL_MAP_WRITE_BIT))
+      #counter = convert(GLuint, unsafe_load(ptr))
+      #println(counter)
     end 
 
     # Swap front and back buffers
