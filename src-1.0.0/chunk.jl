@@ -93,11 +93,14 @@ function init(this::Chunk, size::Integer)
     this.count = size^3
     this.childs = Array{Block}(undef,size,size,size)
     createBlocks(this)
+    
+    if GPU_CHUNKS return end
     createChunkNodes(this)
     linkBlockNeighbours(this)
 end
 
 function update(this::Chunk;unseen=true)
+  if GPU_CHUNKS return end
   updateChunkNodePos(this)
   if unseen hideUnseen(this) end
   #r=create_spiral3D_searchlist(this)
@@ -402,13 +405,14 @@ hideType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; set
 removeType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; setActive(b,false); end; end
 
 function showAll(this::Chunk)
+  if GPU_CHUNKS return end
   for b in this.childs
     setVisible(b,true)
     #setSurrounded(b,false)
     #resetSides(b)
   end
-  #setFilteredChilds(this,filter(b->true,this.childs))
-  setFilteredChilds(this,getValidChilds(this))
+  setFilteredChilds(this,filter(b->true,this.childs))
+  #setFilteredChilds(this,getValidChilds(this))
 end
 
 setFilteredChilds(this::Chunk, r::Array{Block,1}) = begin this.filtered = r; this.fileredCount = length(r); r end

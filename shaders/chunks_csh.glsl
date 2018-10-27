@@ -83,15 +83,16 @@ float hide(vec3 pos){
 void main() {
   uint ident  = gl_GlobalInvocationID.x; //get_invocation();
   
-  Data data = inputset.data[ident];
+  if(ident == 0) atomicCounterExchange(instanceCount, 0);
   
-  vec3 pos =  translate(ident);
+  Data data = inputset.data[ident];
   
   if (data.flags[0] < 0) return;
   
-  data.flags[1] = hide(pos);
+  vec3 pos =  translate(ident);
+  float flags = hide(pos);
   
-  if (data.flags[1] < 0) return;
+  if (flags < 0) return;
   
   data.pos[0] = pos.x; 
   data.pos[1] = pos.y; 

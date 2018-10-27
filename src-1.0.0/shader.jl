@@ -13,6 +13,7 @@ function loadShaders()
   CONTENT_FSH = fileGetContents("shaders/fsh.glsl")
   CONTENT_GSH = fileGetContents("shaders/gsh.glsl")
   CONTENT_CSH = fileGetContents("shaders/csh.glsl")
+  CONTENT_CHUNKS_CSH = fileGetContents("shaders/chunks_csh.glsl")
   CONTENT_INST_CSH = fileGetContents("shaders/inst_csh.glsl")
   CONTENT_SCREEN_VSH = fileGetContents("shaders/screen_vsh.glsl")
   CONTENT_SCREEN_FSH = fileGetContents("shaders/screen_fsh.glsl")
@@ -74,6 +75,11 @@ function loadShaders()
   $CONTENT_CSH
   """)
   
+  global CHUNKS_CSH = (:CHUNKS_CSH, :CSH, """
+  $GLOBAL_CONTENT_SH
+  $CONTENT_CHUNKS_CSH
+  """)
+  
   global INST_CSH = (:INST_CSH, :CSH, """
   $GLOBAL_CONTENT_SH
   $CONTENT_INST_CSH
@@ -89,5 +95,5 @@ function loadShaders()
   $CONTENT_SCREEN_FSH
   """)
 
-  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH, INST_CSH, INST_CSH_VSH_GSH)
+  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH, INST_CSH, CHUNKS_CSH, INST_CSH_VSH_GSH)
 end
