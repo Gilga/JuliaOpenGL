@@ -26,11 +26,12 @@ mutable struct MeshArray
   count::UInt32
   bufferID::GLuint
   bufferType::GLenum
+  bufferUsage::GLenum
   loaded::Bool
 
   data::AbstractArray
   
-  MeshArray() = new(1,0,0,GL_ARRAY_BUFFER,false,[])
+  MeshArray() = new(1,0,0,GL_ARRAY_BUFFER,GL_STATIC_DRAW,false,[])
 end
 
 """
@@ -128,7 +129,7 @@ end
 """
 uploads data
 """
-function upload(this::MeshArray, usage=GL_STATIC_DRAW) #GL_DYNAMIC_COPY
+function upload(this::MeshArray, usage=this.bufferUsage)
   if this.loaded || this.count == 0 return end
   glBindBuffer(this.bufferType, this.bufferID)
   glBufferData(this.bufferType, sizeof(this.data), this.data, usage)
@@ -138,10 +139,11 @@ end
 """
 reset part data
 """
-function resetPart(this::MeshArray, id=1; default=0)
+function resetPart(this::MeshArray, id=1, value=0)
+  if id < 1 || id > length(this.data) return error("Invalid index for data") end
   glBindBuffer(this.bufferType, this.bufferID)
   part=this.data[id]
-  glBufferSubData(this.bufferType , 0, sizeof(part), typeof(part)[default])
+  glBufferSubData(this.bufferType , 0, sizeof(part), typeof(part)[value])
   glBindBuffer(this.bufferType, 0)
 end
 
@@ -182,7 +184,8 @@ function linkData(this::MeshData, args...)
     dtyp = eltype(data)
     elems = l>1 ? x[2] : 1
     btyp = l>2 ? x[3] : GL_ARRAY_BUFFER
-    draw = l>3 ? x[4] : false
+    usage = l>3 ? x[4] : GL_STATIC_DRAW
+    draw = l>4 ? x[5] : false
     
     if haskey(this.arrays,s)
       a = this.arrays[s]
@@ -190,6 +193,7 @@ function linkData(this::MeshData, args...)
     else
       this.arrays[s] = a = MeshArray()
       a.bufferType = btyp
+      a.bufferUsage = usage
     end
     
     setData(a, data, elems)

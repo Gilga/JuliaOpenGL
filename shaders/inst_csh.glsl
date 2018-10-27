@@ -32,6 +32,8 @@ bool is_visible(vec3 pos)
 void main() {
   uint ident  = gl_GlobalInvocationID.x;
   
+  if(ident == 0) atomicCounterExchange(instanceCount, 0);
+  
   Data data = inputset.data[ident];
   
   vec3 pos =  vec3(data.pos[0],data.pos[1],data.pos[2]);

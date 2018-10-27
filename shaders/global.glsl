@@ -1,3 +1,4 @@
+//#extension GL_ARB_shader_atomic_counter_ops : require
 #define PI 3.14159265359
 #define HALF (0.5 + 1/PI)
 #define RADIUS (1 - 0.01/PI)
