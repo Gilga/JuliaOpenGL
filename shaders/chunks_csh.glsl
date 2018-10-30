@@ -87,18 +87,18 @@ void main() {
   
   Data data = inputset.data[ident];
   
-  if (data.flags[0] < 0) return;
-  
+  //if (data.flags[0] < 0) return;
+  /*
   vec3 pos =  translate(ident);
   float flags = hide(pos);
   
-  if (flags < 0) return;
+  //if (flags < 0) return;
   
   data.pos[0] = pos.x; 
   data.pos[1] = pos.y; 
   data.pos[2] = pos.z;
   data.flags[1] = flags;
-  
+  */
   uint unique  = atomicCounterIncrement(instanceCount);
   outputset.data[unique] = data; 
 }
