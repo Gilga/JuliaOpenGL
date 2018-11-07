@@ -1,9 +1,5 @@
-module Math
-
-using LinearAlgebra
 using Quaternions
 using StaticArrays
-using Distances #euclidean
 #using ArrayFire
 
 include("matrix.jl")
@@ -12,8 +8,8 @@ include("vector.jl")
 """
 TODO
 """
-function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where {T}
-  (right == left || bottom == top || znear == zfar) && return eye(T,4,4)
+function frustum{T}(left::T, right::T, bottom::T, top::T, znear::T, zfar::T)
+  (right == left || bottom == top || znear == zfar) && return eye(Mat4x4(T))
   T[
     2*znear/(right-left) 0 0 0
     0 2*znear/(top-bottom) 0 0
@@ -22,12 +18,10 @@ function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where 
   ]
 end
 
-export frustum
-
 """
 TODO
 """
-function projection_perspective(fovy::T, aspect::T, znear::T, zfar::T) where {T}
+function projection_perspective{T}(fovy::T, aspect::T, znear::T, zfar::T)
   (znear == zfar) && error("znear ($znear) must be different from tfar ($zfar)")
   zfn = 1/(zfar-znear)
 
@@ -43,13 +37,11 @@ function projection_perspective(fovy::T, aspect::T, znear::T, zfar::T) where {T}
   frustum(-w, w, -h, h, znear, zfar)
 end
 
-export projection_perspective
-
 """
 TODO
 """
-function projection_orthographic(left::T,right::T,bottom::T,top::T,znear::T,zfar::T) where {T}
-  (right == left || bottom == top || znear == zfar) && return eye(T,4,4)
+function projection_orthographic{T}(left::T,right::T,bottom::T,top::T,znear::T,zfar::T)
+  (right==left || bottom==top || znear==zfar) && return eye(Mat4x4(T))
   T[
     2/(right-left) 0 0 0
     0 2/(top-bottom) 0 0
@@ -58,60 +50,36 @@ function projection_orthographic(left::T,right::T,bottom::T,top::T,znear::T,zfar
   ]
 end
 
-export projection_orthographic
-
 """
 TODO
 """
-function projection_orthographic(fovy::T, aspect::T, znear::T, zfar::T) where {T}
-  (znear == zfar) && error("znear ($znear) must be different from tfar ($zfar)")
-
-  #t = tan(fovy * 0.5)
-  h = T(tan(fovy * pi / 360) * znear)
-  w = T(h * aspect)
-
-  left = -w
-  right = w
-  bottom = -h
-  top = h
-
-  projection_orthographic(-w, w, -h, h, znear, zfar)
-end
-
-"""
-TODO
-"""
-function translation(t::Array{T,1}) where {T}
+function translation{T}(t::Array{T,1})
   lt = length(t)
   T[
-    1 0 0 (lt < 1 ? 0 : t[1])
-    0 1 0 (lt < 2 ? 0 : t[2])
-    0 0 1 (lt < 3 ? 0 : t[3])
-    0 0 0 (lt < 4 ? 1 : t[4])
+    1 0 0 (lt<1?0:t[1])
+    0 1 0 (lt<2?0:t[2])
+    0 0 1 (lt<3?0:t[3])
+    0 0 0 (lt<4?1:t[4])
   ]
 end
 
-export translation
-
 """
 TODO
 """
-function rotation(r::Array{T,1}) where {T}
+function rotation{T}(r::Array{T,1})
   lr = length(r)
   T[
     1 0 0 0
     0 1 0 0
     0 0 1 0
-    (lr < 1 ? 0 : r[1]) (lr < 2 ? 0 : r[2]) (lr < 3 ? 0 : r[3]) (lr < 4 ? 1 : r[4])
+    (lr<1?0:r[1]) (lr<2?0:r[2]) (lr<3?0:r[3]) (lr<4?1:r[4])
   ]
 end
-
-export rotation
 
 """
 TODO
 """
-function rotation(q::Quaternion{T}) where {T}
+function rotation{T}(q::Quaternion{T})
   sx, sy, sz = 2q.s*q.v1,  2q.s*q.v2,   2q.s*q.v3
   xx, xy, xz = 2q.v1^2,    2q.v1*q.v2,  2q.v1*q.v3
   yy, yz, zz = 2q.v2^2,    2q.v2*q.v3,  2q.v3^2
@@ -127,9 +95,9 @@ end
 """
 TODO
 """
-function computeRotation(r::Array{T,1}) where {T}
+function computeRotation{T}(r::Array{T,1})
   lr = length(r)
-  (lr < 3) && error("rotation has less than 3 elements!")
+  (lr<3) && error("rotation has less than 3 elements!")
 
   dirBackwards= T[-1,0,0]
   dirRight = T[0,0,1]
@@ -145,27 +113,23 @@ function computeRotation(r::Array{T,1}) where {T}
   rotation(q)
 end
 
-export computeRotation
-
 """
 TODO
 """
-function scaling(s::Array{T}) where {T}
+function scaling{T}(s::Array{T})
   ls = length(s)
   T[
-    (ls<1 ? 1 : s[1]) 0 0 0
-    0 (ls<2 ? 1 : s[2]) 0 0
-    0 0 (ls<3 ? 1 : s[3]) 0
-    0 0 0 (ls<4 ? 1 : s[4])
+    (ls<1?1:s[1]) 0 0 0
+    0 (ls<2?1:s[2]) 0 0
+    0 0 (ls<3?1:s[3]) 0
+    0 0 0 (ls<4?1:s[4])
   ]
 end
 
-export scaling
-
 """
 TODO
 """
-function transform(t::Array{T,1},r::Array{T,1},s::Array{T,1}) where {T}
+function transform{T}(t::Array{T,1},r::Array{T,1},s::Array{T,1})
 #=
   lt = length(t)
   lr = length(r)
@@ -180,12 +144,10 @@ function transform(t::Array{T,1},r::Array{T,1},s::Array{T,1}) where {T}
   translation(t)*computeRotation(r)*scaling(s)
 end
 
-export transform
-
 """
 TODO
 """
-function ViewRH(eye::Array{T,1}, yaw::T, pitch::T) where {T}
+function ViewRH{T}(eye::Array{T,1}, yaw::T, pitch::T)
   (length(eye) < 3) && error("eye has less than 3 elements!")
 
   # If the pitch and yaw angles are in degrees,
@@ -210,12 +172,10 @@ function ViewRH(eye::Array{T,1}, yaw::T, pitch::T) where {T}
   ]
 end
 
-export ViewRH
-
 """
 TODO
 """
-function lookat(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1}) where {T}
+function lookat{T}(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1})
   (length(eye) < 3) && error("eye has less than 3 elements!")
   (length(lookAt) < 3) && error("lookAt has less than 3 elements!")
   (length(up) < 3) && error("up has less than 3 elements!")  
@@ -233,28 +193,20 @@ function lookat(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1}) where {T}
   ]
 end
 
-export lookat
+"""
+TODO
+"""
+forward{T}(m::Array{T, 2}) = T[m[3,1],m[3,2],m[3,3]]
 
 """
 TODO
 """
-forward(m::Array{T, 2}) where {T} = T[m[3,1],m[3,2],m[3,3]]
-
-export forward
+right{T}(m::Array{T, 2}) = T[m[1,1],m[1,2],m[1,3]]
 
 """
 TODO
 """
-right(m::Array{T, 2}) where {T} = T[m[1,1],m[1,2],m[1,3]]
-
-export right
-
-"""
-TODO
-"""
-up(m::Array{T, 2}) where {T} = T[m[2,1],m[2,2],m[2,3]]
-
-export up
+up{T}(m::Array{T, 2}) = T[m[2,1],m[2,2],m[2,3]]
 
 #=
 template <typename T, precision P>
@@ -300,5 +252,3 @@ end
 =#
 
 # glm::mat4 rotate = glm::transpose(glm::toMat4(m_Rotation));
-
-end #Math

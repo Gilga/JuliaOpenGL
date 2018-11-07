@@ -1,24 +1,33 @@
-using Compat: uninitialized, Nothing, Cvoid, AbstractDict
+using InteractiveUtils #versioninfo
+using DataStructures #SortedDict
 using Images
 using ImageMagick
-using DataStructures
-using Distances
+using JLD2
+using Distributed
+using Dates
+using SharedArrays
 
-displayInYellow(s) = string("\x1b[93m",s,"\x1b[0m")
-displayInRed(s) = string("\x1b[91m",s,"\x1b[0m")
+#https://github.com/shiena/ansicolor/blob/master/README.md
 
+include("lib_log.jl")
+using .Log
 include("lib_window.jl")
+#using .WindowManager
 include("lib_opengl.jl")
+using .GraphicsManager
 include("lib_math.jl")
-include("lib_time.jl")
+using .Math
+#include("TimeManager.jl")
+
+using ModernGL
+using StaticArrays
 
 """
 TODO
 """
-function waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1)
+function waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1) #error when functions does not exists
 	result=false
 	for i = 1:tryCount
-
 		#try reading file
 		if stat(path).size > 0
 			open(path) do file
@@ -32,17 +41,21 @@ function waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.
 	result
 end
 
+export waitForFileReady
+
 """
 TODO
 """
 function fileGetContents(path::String, tryCount=100, tryWait=0.1)
 	content=nothing
-	waitForFileReady(path,(x)->(content=readstring(x); content != nothing),tryCount,tryWait)
+	waitForFileReady(path,(x)->(content=read(x, String); content != nothing),tryCount,tryWait)
 	content
 end
 
+export fileGetContents
+
 TITLE = "Julia OpenGL"
-STARTTIME = Dates.time()
+STARTTIME = time()
 PREVTIME = STARTTIME
 FRAMES = 0
 MAX_FRAMES = 0
@@ -68,13 +81,13 @@ TODO
 function showFrames()
   global TITLE, TIMERS, FRAMES, MAX_FRAMES, FPS, MAX_FPS, ITERATION, BLOCK_COUNT, PREVTIME, RENDER_METHOD
   
-  time = Dates.time() #GetTimer("FRAME_TIMER")
+  currenttime = time() #GetTimer("FRAME_TIMER")
   
   ITERATION +=1
-  if !OnTime(1.0, prevTime, time) FRAMES += 1; return end
+  if !OnTime(1.0, prevTime; time=currenttime) FRAMES += 1; return end
 
-  #FPS = FRAMES/(time - PREVTIME)
-  #PREVTIME = time
+  #FPS = FRAMES/(currenttime - PREVTIME)
+  #PREVTIME = currenttime
   #if MAX_FPS < FPS MAX_FPS = FPS end
   #if FPS > 15 COUNT += 1 end
   #fpms = FPS > 0 ? (1000.0 / FPS) : 0
@@ -82,19 +95,37 @@ function showFrames()
   #norm_fps = FPS/MAX_FPS
   
   if MAX_FRAMES < FRAMES MAX_FRAMES = FRAMES end
-  const fps = FRAMES
-  const max_fps = MAX_FRAMES
-  const fpms = FRAMES > 0 ? (1000.0 / FRAMES) : 0
-  const max_fmps = MAX_FRAMES > 0 ? (1000.0 / MAX_FRAMES) : 0
-  const norm_fps = FRAMES / MAX_FRAMES
+  fps = FRAMES
+  max_fps = MAX_FRAMES
+  fpms = FRAMES > 0 ? (1000.0 / FRAMES) : 0
+  max_fmps = MAX_FRAMES > 0 ? (1000.0 / MAX_FRAMES) : 0
+  norm_fps = FRAMES / MAX_FRAMES
   
-  GLFW.SetWindowTitle(window, "$(TITLE) - FPS $(round(fps, 2))[$(round(max_fps, 2))] | FMPS $(round(fpms, 2))[$(round(max_fmps, 2))] - Blocks $CHUNK_SIZE^3 ($BLOCK_COUNT) - IT $ITERATION")
+  GLFW.SetWindowTitle(window, "$(TITLE) - FPS $(round(fps; digits=2))[$(round(max_fps; digits=2))] | FMPS $(round(fpms; digits=2))[$(round(max_fmps; digits=2))] - Blocks $CHUNK_SIZE^3 ($BLOCK_COUNT) - IT $ITERATION")
   FRAMES = 0
 end
 
-include("cubeData.jl")
-include("camera.jl")
-include("frustum.jl")
-include("chunk.jl")
-include("mesh.jl")
-include("texture.jl")
+export showFrames
+
+WIDTH = 800
+HEIGHT = 600
+RATIO = WIDTH/(HEIGHT*1f0)
+SIZE = WIDTH * HEIGHT
+FOV = 60.0f0
+CLIP_NEAR = 0.001f0
+CLIP_FAR = 10000.0f0
+
+"""
+sets glfw window size + viewport
+"""
+function rezizeWindow(window, width, height)
+  global WIDTH, HEIGHT, RATIO, SIZE
+  WIDTH = width
+  HEIGHT = height
+  RATIO = WIDTH/(HEIGHT*1f0)
+  SIZE = WIDTH * HEIGHT
+  GLFW.SetWindowSize(window, WIDTH, HEIGHT)
+  glViewport(0, 0, WIDTH, HEIGHT)
+end
+
+export rezizeWindow

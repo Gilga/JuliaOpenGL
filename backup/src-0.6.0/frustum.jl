@@ -1,63 +1,25 @@
-module FrustumManager
-
-using ..Math
-
-using LinearAlgebra
+"""
+TODO
+"""
+type Plane3D
+	mPoint::Vec3f
+	mNormal::Vec3f
+	d::Float32
+end
 
 """
 TODO
 """
-mutable struct Plane3D
-	mPoint::Vec3f
-	mNormal::Vec3f
-	d::Float32
+Plane3D() = Plane3D(Vec3f(),Vec3f(),0)
   
-  """
-  TODO
-  """
-  Plane3D() = new(Vec3f(),Vec3f(),0)
-  
-  """
-  TODO
-  """
-  function Plane3D(mPoint::Vec3f, mNormal::Vec3f)
-    mNormal = normalize(mNormal)
-    d= -(dot(mNormal, mPoint))
-    new(mPoint,mNormal,d)
-  end
-  
-  """
-  TODO
-  """
-  function Plane3D(lv1::Vec3f, lv2::Vec3f, lv3::Vec3f)
-    mNormal = normalize(cross(lv3 - lv2, lv1 - lv2))
-    mPoint = (lv1 + lv3) / 2 #lv2
-    d= -(dot(mNormal, mPoint))
-    new(mPoint,mNormal,d)
-  end
-  
-  """
-  TODO
-  """
-  function Plane3D(a::Float32, b::Float32, c::Float32, d::Float32)
-    mPoint = Vec3f(0,0,0)
-
-    # Set the normal vector
-    mNormal = Vec3f(a, b, c)
-
-    # Compute the length of the vector
-    lLength = length(mNormal)
-    
-    # Normalize the vector
-    mNormal = Vec3f(a / lLength, b / lLength, c / lLength)
-
-    # And divide d by the length as well
-    d = d / lLength
-    new(mPoint,mNormal,d)
-  end
+"""
+TODO
+"""
+function Plane3D(mPoint::Vec3f, mNormal::Vec3f)
+  mNormal = normalize(mNormal)
+  d= -(dot(mNormal, mPoint))
+  Plane3D(mPoint,mNormal,d)
 end
-
-export Plane3D
 
 """
 TODO
@@ -70,19 +32,45 @@ function Plane3D_Rect(lbn::Vec3f, rtf::Vec3f)
   Plane3D(mPoint,mNormal,d)
 end
 
-export Plane3D_Rect
+"""
+TODO
+"""
+function Plane3D(lv1::Vec3f, lv2::Vec3f, lv3::Vec3f)
+  mNormal = normalize(cross(lv3 - lv2, lv1 - lv2))
+  mPoint = (lv1 + lv3) / 2 #lv2
+  d= -(dot(mNormal, mPoint))
+  Plane3D(mPoint,mNormal,d)
+end
+
+"""
+TODO
+"""
+function Plane3D(a::Float32, b::Float32, c::Float32, d::Float32)
+  mPoint = Vec3f(0,0,0)
+
+  # Set the normal vector
+  mNormal = Vec3f(a, b, c)
+
+  # Compute the length of the vector
+  lLength = length(mNormal)
+  
+  # Normalize the vector
+  mNormal = Vec3f(a / lLength, b / lLength, c / lLength)
+
+  # And divide d by the length as well
+  d = d / lLength
+  Plane3D(mPoint,mNormal,d)
+end
 
 """
 TODO
 """
 GetPointDistance(this::Plane3D, lPoint::Vec3f) = this.d + dot(this.mNormal, lPoint)
 
-export GetPointDistance
-
 """
 TODO
 """
-mutable struct Frustum
+type Frustum
   planes::Dict{Symbol,Plane3D} #Array{Plane3D,1}
   box::Dict{Symbol,Plane3D}
   pos::Dict{Symbol,Vec3f}
@@ -119,15 +107,9 @@ mutable struct Frustum
   Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f()) #Array{Plane3D,1}(6)
 end
 
-export Frustum
-
 getNearPosition(fstm::Frustum) = Vec3f((fstm.nearBottomLeft + fstm.nearTopRight) / 2)
 getFarPosition(fstm::Frustum) = Vec3f((fstm.farBottomLeft + fstm.farTopRight) / 2)
 getPosition(fstm::Frustum) = Vec3f((fstm.nearBottomLeft + fstm.farTopRight) / 2)
-
-export getNearPosition
-export getFarPosition
-export getPosition
 
 """
 TODO
@@ -172,8 +154,6 @@ function getBox(this::Frustum)
   ]
 end
 
-export getBox
-
 """
 TODO
 """
@@ -211,8 +191,6 @@ function getVertices(this::Frustum)
   ]
 end
 
-export getVertices
-
 """
 TODO
 """
@@ -228,8 +206,6 @@ function SetFrustum(this::Frustum, angle::Float32, ratio::Float32, nearD::Float3
   this.farHeight = this.farDistance  * this.tang
   this.farWidth = this.farHeight * this.ratio
 end
-
-export SetFrustum
 
 """
 TODO
@@ -283,12 +259,10 @@ function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f)
   this.pos[:TARGET] = target
 end
 
-export SetCamera
-
 """
 TODO
 """
-function checkPoint2(this::Frustum, pos::Vec3f)
+function checkPoint(this::Frustum, pos::Vec3f)
   result = :FRUSTUM_INSIDE
   distances = Dict{Symbol,Float32}()
   
@@ -321,12 +295,10 @@ function checkPoint2(this::Frustum, pos::Vec3f)
   (result, distances)
 end
 
-export checkPoint2
-
 """
 TODO
 """
-function checkSphere2(this::Frustum, pos::Vec3f, radius::Number)
+function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
   result = :FRUSTUM_INSIDE
   (_, distances) = checkPoint(this, pos)
 
@@ -339,46 +311,6 @@ function checkSphere2(this::Frustum, pos::Vec3f, radius::Number)
 
 	(result, distances)
 end
-
-export checkSphere2
-
-"""
-TODO
-"""
-function checkPoint(this::Frustum, pos::Vec3f)
-  result = :FRUSTUM_INSIDE
-  distances = Dict{Symbol,Float32}()
-  
-  for (k,plane) in this.planes
-    distance = distances[k] = GetPointDistance(plane, pos)
-    if distance < 0 result = :FRUSTUM_OUTSIDE
-    elseif distance == 0 result = :FRUSTUM_INTERSECT
-    end
-  end
-  
-  (result, distances)
-end
-
-export checkPoint
-
-"""
-TODO
-"""
-function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
-  result = :FRUSTUM_INSIDE
-  distances = Dict{Symbol,Float32}()
-  
-  for (k,plane) in this.planes
-    distance = distances[k] = GetPointDistance(plane, pos)
-		if distance < -radius result = :FRUSTUM_OUTSIDE
-		elseif distance <= radius && result != :FRUSTUM_OUTSIDE result = :FRUSTUM_INTERSECT
-		end
-	end
-
-	(result, distances)
-end
-
-export checkSphere
 
 """
 TODO
@@ -439,7 +371,3 @@ function checkCube(this::Frustum, center::Vec3f, size::Vec3f)
 
   (result, distances)
 end
-
-export checkCube
-
-end #FrustumManager

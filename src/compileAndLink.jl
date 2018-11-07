@@ -1,11 +1,11 @@
-@static if is_windows() using WinRPM end
+@static if Sys.is_windows() using WinRPM end
 
 """
 TODO
 """
 function find_system_gcc()
     # On Windows, check to see if WinRPM is installed, and if so, see if gcc is installed
-    @static if is_windows()
+    @static if Sys.is_windows()
         try
             winrpmgcc = joinpath(WinRPM.installdir,"usr","$(Sys.ARCH)-w64-mingw32", "sys-root","mingw","bin","gcc.exe")
             if success(`$winrpmgcc --version`)
@@ -23,7 +23,7 @@ function find_system_gcc()
         end
     end
 
-    error( "GCC not found on system: " * (is_windows() ? "GCC can be installed via `Pkg.add(\"WinRPM\"); WinRPM.install(\"gcc\")`" : "" ))
+    error( "GCC not found on system: " * (Sys.is_windows() ? "GCC can be installed via `Pkg.add(\"WinRPM\"); WinRPM.install(\"gcc\")`" : "" ))
 end
 
 """
