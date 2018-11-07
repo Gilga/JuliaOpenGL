@@ -86,7 +86,6 @@ texture_screen = 0
 texture_blocks = 0
 
 GPU_FRUSTUM = true
-GPU_CHUNKS=false
 
 #---------------------------------------------
 
@@ -115,12 +114,28 @@ getBoxVertices() = box_vertices
 
 println("Include Objects.")
 include("cubeData.jl")
+using .DefaultModelData
 include("camera.jl")
+using .CameraManager
 include("frustum.jl")
+using .FrustumManager
 include("chunk.jl")
+using .ChunkManager
 include("mesh.jl")
+using .MeshManager
 include("texture.jl")
+using .TextureManager
 println("Set Functions.")
+
+#---------------------------------------------
+
+CAMERA = CameraManager.CAMERA
+mouseKeyPressed = CameraManager.mouseKeyPressed
+keyPressed = CameraManager.keyPressed
+keyPressing = CameraManager.keyPressing
+keyValue = CameraManager.keyValue
+
+GPU_CHUNKS = ChunkManager.GPU_CHUNKS
 
 #---------------------------------------------
 
@@ -152,7 +167,7 @@ function presetCamera()
   Update(CAMERA)
   global MVP = CAMERA.MVP
   SetFrustum(fstm, FOV, RATIO, CLIP_NEAR, 1000f0)
-  SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
+  SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0))
 end
 
 function presetTextures()
@@ -194,7 +209,7 @@ end
 TODO
 """
 function setFrustumMode()
-  SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+forward(CAMERA)), Vec3f(0,1,0))
+  SetCamera(fstm, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0))
   if !GPU_FRUSTUM
     updateChunk(mychunk)
     uploadChunk(:UPDATE)
@@ -238,7 +253,7 @@ function createChunk(this::Chunk)
     if isready(sz) SCENE=take!(sz) end
   end
   
-  reset(this; size=CHUNK_SIZE)
+  ChunkManager.reset(this; size=CHUNK_SIZE)
   
   #println("Set Chunk scenery")
     
@@ -379,7 +394,7 @@ function uploadData()
     linkData(screenData,  :vertices=>(DATA_PLANE2D_VERTEX_STRIP,2)) #, :indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
      #GL_DYNAMIC_COPY
     SZ=sizeof(Float32)*5*CHUNK_SIZE^3
-    dispatch = round(UInt32,Float32(length(chunk_instances)) / 128)
+    dispatch = round(UInt32,Float32(length(chunk_instances)) / CHUNK_SIZE)
     linkData(indirectData, :points=>zeros(Float32,SZ), :chunks_default=>chunk_instances, :points_default=>zeros(Float32,SZ),
     :indirect_dispatch=>(GLuint[dispatch,1,1],1,GL_DISPATCH_INDIRECT_BUFFER, GL_STREAM_READ),
     :indirect_dispatch_instances=>(GLuint[dispatch,1,1],1,GL_DISPATCH_INDIRECT_BUFFER, GL_STREAM_READ),
@@ -718,7 +733,7 @@ function run()
   GLFW.MakeContextCurrent(window)
 
   GLFW.SetWindowSize(window, WIDTH, HEIGHT) # Seems to be necessary to guarantee that window > 0
-  rezizeWindow(WIDTH,HEIGHT)
+  rezizeWindow(window, WIDTH,HEIGHT)
 
   # Window settings
   GLFW.SwapInterval(0) # intervall between canvas images (min. 2 images)

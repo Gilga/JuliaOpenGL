@@ -9,25 +9,18 @@ using SharedArrays
 
 #https://github.com/shiena/ansicolor/blob/master/README.md
 
-function stringColor(s...;color=:yellow)
-  colorstr="\x1b[0m"
-  if color == :yellow colorstr="\x1b[93m"
-  elseif color == :red colorstr="\x1b[91m"
-  elseif color == :cyan colorstr="\x1b[96m"
-  elseif color == :magenta colorstr="\x1b[95m"
-  end
-  return string(colorstr,s...,"\x1b[0m")
-end
-
-info(s...) = println(stringColor(s...;color=:yellow))
-debug(s...) = println("DEBUG: ",stringColor(s...;color=:cyan))
-warn(s...) = println("WARNING: ",stringColor(s...;color=:magenta))
-error(s...) = Base.error(stringColor(s...;color=:red))
-
+include("lib_log.jl")
+using .Log
 include("lib_window.jl")
+#using .WindowManager
 include("lib_opengl.jl")
+using .GraphicsManager
 include("lib_math.jl")
+using .Math
 #include("TimeManager.jl")
+
+using ModernGL
+using StaticArrays
 
 """
 TODO
@@ -48,6 +41,8 @@ function waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.
 	result
 end
 
+export waitForFileReady
+
 """
 TODO
 """
@@ -56,6 +51,8 @@ function fileGetContents(path::String, tryCount=100, tryWait=0.1)
 	waitForFileReady(path,(x)->(content=read(x, String); content != nothing),tryCount,tryWait)
 	content
 end
+
+export fileGetContents
 
 TITLE = "Julia OpenGL"
 STARTTIME = time()
@@ -107,3 +104,28 @@ function showFrames()
   GLFW.SetWindowTitle(window, "$(TITLE) - FPS $(round(fps; digits=2))[$(round(max_fps; digits=2))] | FMPS $(round(fpms; digits=2))[$(round(max_fmps; digits=2))] - Blocks $CHUNK_SIZE^3 ($BLOCK_COUNT) - IT $ITERATION")
   FRAMES = 0
 end
+
+export showFrames
+
+WIDTH = 800
+HEIGHT = 600
+RATIO = WIDTH/(HEIGHT*1f0)
+SIZE = WIDTH * HEIGHT
+FOV = 60.0f0
+CLIP_NEAR = 0.001f0
+CLIP_FAR = 10000.0f0
+
+"""
+sets glfw window size + viewport
+"""
+function rezizeWindow(window, width, height)
+  global WIDTH, HEIGHT, RATIO, SIZE
+  WIDTH = width
+  HEIGHT = height
+  RATIO = WIDTH/(HEIGHT*1f0)
+  SIZE = WIDTH * HEIGHT
+  GLFW.SetWindowSize(window, WIDTH, HEIGHT)
+  glViewport(0, 0, WIDTH, HEIGHT)
+end
+
+export rezizeWindow

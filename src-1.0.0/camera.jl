@@ -1,23 +1,11 @@
-WIDTH = 800
-HEIGHT = 600
-RATIO = WIDTH/(HEIGHT*1f0)
-SIZE = WIDTH * HEIGHT
-FOV = 60.0f0
-CLIP_NEAR = 0.001f0
-CLIP_FAR = 10000.0f0
+module CameraManager
 
-"""
-sets glfw window size + viewport
-"""
-function rezizeWindow(width,height)
-  global WIDTH, HEIGHT, RATIO, SIZE
-  WIDTH = width
-  HEIGHT = height
-  RATIO = WIDTH/(HEIGHT*1f0)
-  SIZE = WIDTH * HEIGHT
-  GLFW.SetWindowSize(window, WIDTH, HEIGHT)
-  glViewport(0, 0, WIDTH, HEIGHT)
-end
+using ..Math
+using ..TimeManager
+
+using Distributed
+using GLFW
+using ModernGL
 
 lastCursorPos = [0,0]
 cursorPos_old = [0,0]
@@ -61,32 +49,44 @@ mutable struct Camera
   eyeMat4x4f,eyeMat4x4f,eyeMat4x4f,eyeMat4x4f,eyeMat4x4f,eyeMat4x4f,eyeMat4x4f)
 end
 
+export Camera
+
 CAMERA = Camera()
 
 """
 gets forward vector of camera direction
 """
-forward(camera::Camera) = forward(camera.rotationMat)
+forward(camera::Camera) = Math.forward(camera.rotationMat)
+
+export forward
 
 """
 gets right vector of camera direction
 """
 right(camera::Camera) = right(camera.rotationMat)
 
+export right
+
 """
 gets up vector of camera direction
 """
 up(camera::Camera) = up(camera.rotationMat)
+
+export up
 
 """
 sets projection matrix
 """
 setProjection(camera::Camera, m::AbstractArray) = (camera.projectionMat = m)
 
+export setProjection
+
 """
 sets view matrix
 """
 setView(camera::Camera, m::AbstractArray) = (camera.viewMat = m)
+
+export setView
 
 VIEW_KEYS=false
 
@@ -139,6 +139,8 @@ function OnKey(window, key, scancode, action, mods)
   nothing
 end
 
+export OnKey
+
 """
 event which catches mouse key inpits and hides/shows cursor when mouse button is pressed
 """
@@ -159,6 +161,8 @@ function OnMouseKey(window, key, action, mods)
   nothing
 end
 
+export OnMouseKey
+
 """
 event which catches mouse position for camera rotation event
 """
@@ -176,6 +180,8 @@ function OnCursorPos(window, x::Number, y::Number)
   nothing
 end
 
+export OnCursorPos
+
 """
 rotates camera
 """
@@ -186,6 +192,8 @@ function rotate(camera::Camera, rotation::AbstractArray)
   #println("rotated")
 end
 
+export rotate
+
 """
 moves camera, adds vector to current position
 """
@@ -195,6 +203,8 @@ function move(camera::Camera, position::AbstractArray)
   if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
   #println("moved")
 end
+
+export move
 
 """
 event which calculates cursor position shifts and calls rotate function
@@ -207,6 +217,8 @@ function OnRotate(camera::Camera)
   cursorPos_old = cursorPos
   rotate(camera, [-mx*2f0,my*2f0,0f0]) #[-mx*2,my*2,0f0] #Vec3f((-mx+0.5f0),(-0.5f0+my),0f0)
 end
+
+export OnRotate
 
 oldposition = CAMERA.position
 shiftposition = [0.0f0,0,0]
@@ -221,6 +233,8 @@ function setPosition(camera::Camera, position::AbstractArray)
   camera.moved = true
   if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
 end
+
+export setPosition
 
 """
 event which updates positions shifts (left,right,up,down,forward,back)
@@ -247,6 +261,8 @@ function OnMove(camera::Camera, key::Symbol, m::Number)
   # if dist >= 1 camera.position = [0f0,0,0] end
 end
 
+export OnMove
+
 """
 update function where camera translation is update only when camera was moved by input. 
 here cameras MVP Matrix is updated aswell
@@ -257,6 +273,8 @@ function Update(camera::Camera)
   camera.viewMat = camera.scalingMat * camera.rotationMat * camera.translateMat
   camera.MVP = camera.modelMat * camera.projectionMat * camera.viewMat
 end
+
+export Update
 
 """
 event which is called by game loop and calls real update function
@@ -279,3 +297,7 @@ function OnUpdate(camera::Camera)
   camera.moved = false
   r
 end
+
+export OnUpdate
+
+end #CameraManager

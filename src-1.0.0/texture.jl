@@ -1,3 +1,10 @@
+module TextureManager
+
+using ..GraphicsManager
+
+using Images
+using ModernGL
+
 """
 uploads a texture by given file path
 """
@@ -39,3 +46,7 @@ function uploadTexture(sz::Tuple{Integer,Integer})
   
   textureID
 end
+
+export uploadTexture
+
+end #TextureManager

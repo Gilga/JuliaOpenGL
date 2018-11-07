@@ -1,3 +1,9 @@
+module FrustumManager
+
+using ..Math
+
+using LinearAlgebra
+
 """
 TODO
 """
@@ -51,6 +57,8 @@ mutable struct Plane3D
   end
 end
 
+export Plane3D
+
 """
 TODO
 """
@@ -62,10 +70,14 @@ function Plane3D_Rect(lbn::Vec3f, rtf::Vec3f)
   Plane3D(mPoint,mNormal,d)
 end
 
+export Plane3D_Rect
+
 """
 TODO
 """
 GetPointDistance(this::Plane3D, lPoint::Vec3f) = this.d + dot(this.mNormal, lPoint)
+
+export GetPointDistance
 
 """
 TODO
@@ -107,9 +119,15 @@ mutable struct Frustum
   Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f()) #Array{Plane3D,1}(6)
 end
 
+export Frustum
+
 getNearPosition(fstm::Frustum) = Vec3f((fstm.nearBottomLeft + fstm.nearTopRight) / 2)
 getFarPosition(fstm::Frustum) = Vec3f((fstm.farBottomLeft + fstm.farTopRight) / 2)
 getPosition(fstm::Frustum) = Vec3f((fstm.nearBottomLeft + fstm.farTopRight) / 2)
+
+export getNearPosition
+export getFarPosition
+export getPosition
 
 """
 TODO
@@ -154,6 +172,8 @@ function getBox(this::Frustum)
   ]
 end
 
+export getBox
+
 """
 TODO
 """
@@ -191,6 +211,8 @@ function getVertices(this::Frustum)
   ]
 end
 
+export getVertices
+
 """
 TODO
 """
@@ -206,6 +228,8 @@ function SetFrustum(this::Frustum, angle::Float32, ratio::Float32, nearD::Float3
   this.farHeight = this.farDistance  * this.tang
   this.farWidth = this.farHeight * this.ratio
 end
+
+export SetFrustum
 
 """
 TODO
@@ -259,6 +283,8 @@ function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f)
   this.pos[:TARGET] = target
 end
 
+export SetCamera
+
 """
 TODO
 """
@@ -295,6 +321,8 @@ function checkPoint2(this::Frustum, pos::Vec3f)
   (result, distances)
 end
 
+export checkPoint2
+
 """
 TODO
 """
@@ -311,6 +339,8 @@ function checkSphere2(this::Frustum, pos::Vec3f, radius::Number)
 
 	(result, distances)
 end
+
+export checkSphere2
 
 """
 TODO
@@ -329,6 +359,8 @@ function checkPoint(this::Frustum, pos::Vec3f)
   (result, distances)
 end
 
+export checkPoint
+
 """
 TODO
 """
@@ -345,6 +377,8 @@ function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
 
 	(result, distances)
 end
+
+export checkSphere
 
 """
 TODO
@@ -405,3 +439,7 @@ function checkCube(this::Frustum, center::Vec3f, size::Vec3f)
 
   (result, distances)
 end
+
+export checkCube
+
+end #FrustumManager
