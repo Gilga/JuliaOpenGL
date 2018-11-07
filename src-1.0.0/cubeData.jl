@@ -1,4 +1,7 @@
+module DefaultModelData
+
 const DATA_DUMMY = Float32[0,0,0]
+export DATA_DUMMY
 
 const DATA_CUBE = Float32[
   # Bottom
@@ -50,6 +53,8 @@ const DATA_CUBE = Float32[
   1.0, 1.0, 1.0,
 ]
 
+export DATA_CUBE
+
 const DATA_CUBE_VERTEX = Float32[
   1f0,  1,  1,  # 0
   -1,  1,  1,   # 1
@@ -61,6 +66,8 @@ const DATA_CUBE_VERTEX = Float32[
   1,  1, -1,    # 7
 ]
 
+export DATA_CUBE_VERTEX
+
 const DATA_CUBE_INDEX = UInt32[
   0, 1, 2, 2, 3, 0, # Front face
   7, 4, 5, 5, 6, 7, # Back face
@@ -70,6 +77,8 @@ const DATA_CUBE_INDEX = UInt32[
   3, 2, 5, 5, 4, 3  # Bottom face
 ]
 
+export DATA_CUBE_INDEX
+
 const DATA_PLANE_VERTEX  = Float32[
   1f0,  0,  1,  # 0
   1, 0, -1,     # 1
@@ -77,9 +86,17 @@ const DATA_PLANE_VERTEX  = Float32[
   -1, 0, -1     # 3
 ]
 
+export DATA_PLANE_VERTEX
+
 const DATA_PLANE_INDEX = UInt32[
   0, 1, 2, 3 #GL_TRIANGLE_STRIP
   #0, 1, 2, 2, 1, 3 #GL_TRIANGLES
 ]
 
+export DATA_PLANE_INDEX
+
 const DATA_PLANE2D_VERTEX_STRIP = Float32[-1, -1, 1, -1, -1, 1, 1, 1]
+
+export DATA_PLANE2D_VERTEX_STRIP
+
+end #DefaultModelData

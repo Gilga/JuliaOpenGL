@@ -1,4 +1,9 @@
-#module MeshManager
+module MeshManager
+
+using ..Math
+using ..GraphicsManager
+
+using ModernGL
 
 export Transform
 export MeshArray
@@ -8,7 +13,6 @@ export upload
 export linkData
 export setAttributes
 export setDrawArray
-
 
 """
 object which holds a transformation matrix and a model reference
@@ -207,4 +211,4 @@ function linkData(this::MeshData, args...)
   upload(this)
 end
 
-#end #MeshManager
+end #MeshManager

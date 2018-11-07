@@ -1,12 +1,20 @@
-#module ChunkManager
+module ChunkManager
 
-#using StaticArrays
+using ..Math
+using ..Log
+using ..FrustumManager
+
+using StaticArrays
+using JLD2
+using Images
 
 export Block
 export Chunk
 export ChunkNode
 export reset
 export update
+export showAll
+export getData
 export createSingle
 export createExample
 export createLandscape
@@ -15,6 +23,8 @@ export getActiveChilds
 export getVisibleChilds
 export getValidChilds
 export getFilteredChilds
+
+GPU_CHUNKS = false
 
 mutable struct Neighbours6{T} <: FieldVector{6, T}
   left::Union{T,Nothing}
@@ -835,4 +845,4 @@ function checkInFrustum3(this::Chunk, fstm::Frustum)
  
 end
 
-#end #ChunkManager
+end #ChunkManager

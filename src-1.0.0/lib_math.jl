@@ -1,3 +1,5 @@
+module Math
+
 using LinearAlgebra
 using Quaternions
 using StaticArrays
@@ -20,6 +22,8 @@ function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where 
   ]
 end
 
+export frustum
+
 """
 TODO
 """
@@ -39,6 +43,8 @@ function projection_perspective(fovy::T, aspect::T, znear::T, zfar::T) where {T}
   frustum(-w, w, -h, h, znear, zfar)
 end
 
+export projection_perspective
+
 """
 TODO
 """
@@ -51,6 +57,8 @@ function projection_orthographic(left::T,right::T,bottom::T,top::T,znear::T,zfar
     -(right+left)/(right-left) -(top+bottom)/(top-bottom) -(zfar+znear)/(zfar-znear) 1
   ]
 end
+
+export projection_orthographic
 
 """
 TODO
@@ -83,6 +91,8 @@ function translation(t::Array{T,1}) where {T}
   ]
 end
 
+export translation
+
 """
 TODO
 """
@@ -95,6 +105,8 @@ function rotation(r::Array{T,1}) where {T}
     (lr < 1 ? 0 : r[1]) (lr < 2 ? 0 : r[2]) (lr < 3 ? 0 : r[3]) (lr < 4 ? 1 : r[4])
   ]
 end
+
+export rotation
 
 """
 TODO
@@ -133,6 +145,8 @@ function computeRotation(r::Array{T,1}) where {T}
   rotation(q)
 end
 
+export computeRotation
+
 """
 TODO
 """
@@ -145,6 +159,8 @@ function scaling(s::Array{T}) where {T}
     0 0 0 (ls<4 ? 1 : s[4])
   ]
 end
+
+export scaling
 
 """
 TODO
@@ -163,6 +179,8 @@ function transform(t::Array{T,1},r::Array{T,1},s::Array{T,1}) where {T}
 =#
   translation(t)*computeRotation(r)*scaling(s)
 end
+
+export transform
 
 """
 TODO
@@ -192,6 +210,8 @@ function ViewRH(eye::Array{T,1}, yaw::T, pitch::T) where {T}
   ]
 end
 
+export ViewRH
+
 """
 TODO
 """
@@ -213,20 +233,28 @@ function lookat(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1}) where {T}
   ]
 end
 
+export lookat
+
 """
 TODO
 """
 forward(m::Array{T, 2}) where {T} = T[m[3,1],m[3,2],m[3,3]]
+
+export forward
 
 """
 TODO
 """
 right(m::Array{T, 2}) where {T} = T[m[1,1],m[1,2],m[1,3]]
 
+export right
+
 """
 TODO
 """
 up(m::Array{T, 2}) where {T} = T[m[2,1],m[2,2],m[2,3]]
+
+export up
 
 #=
 template <typename T, precision P>
@@ -272,3 +300,5 @@ end
 =#
 
 # glm::mat4 rotate = glm::transpose(glm::toMat4(m_Rotation));
+
+end #Math

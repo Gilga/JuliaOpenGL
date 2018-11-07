@@ -1,3 +1,7 @@
+module GraphicsManager
+
+using ..Log
+
 using ModernGL
 
 const GL_ERRORS = Dict{GLuint,AbstractString}(
@@ -80,10 +84,14 @@ function glDebug(debug::Bool)
 	#end
 end
 
+export glDebug
+
 """
 TODO
 """
 glErrorMessage() = glError(glGetError())
+
+export glErrorMessage
 
 """
 TODO
@@ -99,6 +107,8 @@ function glCheckError(actionName="")
   end
 end
 
+export glCheckError
+
 """
 TODO
 """
@@ -108,56 +118,78 @@ function glCheck(x=nothing)
   x
 end
 
+export glCheck
+
 """
 TODO
 """
 glGetValue(f::Function, id, typ::DataType) = begin value=typ[0]; glCheck(f(id,value)); value[] end
 #ref = Ref(T(0)); #f(ref); #ref.x
 
+export glGetValue
+
 """
 TODO
 """
 glGenOne(glGenFn) = begin id=GLuint[0]; glCheck(glGenFn(1, id)); id[] end
+
+export glGenOne
 
 """
 TODO
 """
 glDelOne(glDelFn, id) = begin ids=GLuint[id]; glCheck(glDelFn(1, ids)) end
 
+export glDelOne
+
 """
 TODO
 """
 glGenBuffer() = glGenOne(glGenBuffers)
+
+export glGenBuffer
 
 """
 TODO
 """
 glDeleteBuffer(id) = glDelOne(glDeleteBuffers,id)
 
+export glDeleteBuffer
+
 """
 TODO
 """
 glGenVertexArray() = glGenOne(glGenVertexArrays)
+
+export glGenVertexArray
 
 """
 TODO
 """
 glDeleteVertexArray(id) = glDelOne(glDeleteVertexArrays,id)
 
+export glDeleteVertexArray
+
 """
 TODO
 """
 glGenTexture() = glGenOne(glGenTextures)
+
+export glGenTexture
 
 """
 TODO
 """
 glDeleteTexture(id) = glDelOne(glDeleteTextures, id)
 
+export glDeleteTexture
+
 """
 TODO
 """
 glGetIntegerval(name::GLenum) = glGetValue(glGetIntegerv, name, GLint)
+
+export glGetIntegerval
 
 """
 TODO
@@ -185,6 +217,8 @@ function getInfoLog(obj::GLuint)
   end
 end
 
+export getInfoLog
+
 """
 TODO
 """
@@ -205,6 +239,8 @@ function compileShader(name, shader,source)
   glCheck(glCompileShader(shader))
   !validateShader(shader) && error("Shader $name compile error: ", getInfoLog(shader))
 end
+
+export compileShader
 
 BackupSource=Dict{Symbol,Dict{GLuint,String}}()
 
@@ -250,6 +286,8 @@ function createShader(source::Tuple{Symbol,Symbol,String})
   shader
 end
 
+export createShader
+
 """
 TODO
 """
@@ -288,6 +326,8 @@ function createShaderProgram(shaders::Array{Tuple{Symbol,Symbol,String},1})
   prog
 end
 
+export createShaderProgram
+
 global GLSL_VERSION = ""
 
 """
@@ -317,9 +357,16 @@ function createcontextinfo()
       #:gl_extensions => split(unsafe_string(glGetString(GL_EXTENSIONS))),
   )
 end
+
+export createcontextinfo
+
 function get_glsl_version_string()
   if isempty(GLSL_VERSION)
     error("couldn't get GLSL version, GLUTils not initialized, or context not created?")
   end
   return "#version $(GLSL_VERSION)\n"
 end
+
+export get_glsl_version_string
+
+end #GraphicsManager
