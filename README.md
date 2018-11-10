@@ -1,7 +1,8 @@
 [statusPic]: status.png "128³ Blocks"
 
 # JuliaOpenGL
-Julia 1.0.0 [![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL)
+[![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL) (Julia 1.0.0)
+
 Example 3D OpenGL Szene with up to 128³ Blocks.
 1. Blocks are filtered by Remove-Surrounded-Blocks algorithm (hidden Blocks will not be drawn)
 2. Blocks Instances are send to the GPU
