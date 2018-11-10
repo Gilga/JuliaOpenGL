@@ -17,4 +17,6 @@ function main()
   Main.App.start(USE_PROCESSES)
 end
 
+export main
+
 end #JuliaOpenGL

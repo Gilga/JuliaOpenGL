@@ -130,11 +130,6 @@ println("Set Functions.")
 #---------------------------------------------
 
 CAMERA = CameraManager.CAMERA
-mouseKeyPressed = CameraManager.mouseKeyPressed
-keyPressed = CameraManager.keyPressed
-keyPressing = CameraManager.keyPressing
-keyValue = CameraManager.keyValue
-
 GPU_CHUNKS = ChunkManager.GPU_CHUNKS
 
 #---------------------------------------------
@@ -535,6 +530,8 @@ function checkForUpdate()
     end)
   end
   
+  keyValue, keyPressed = getKey()
+  
   if keyPressed
   
     if keyValue == 80 #p
@@ -641,7 +638,7 @@ function checkForUpdate()
     end
   end
     
-  if keyPressed keyPressed=false end
+  if keyPressed resetKeys() end
 end
 
 """

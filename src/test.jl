@@ -1,2 +1,2 @@
 include("JuliaOpenGL.jl")
-main()
+JuliaOpenGL.main()

@@ -10,7 +10,7 @@ using SharedArrays
 #https://github.com/shiena/ansicolor/blob/master/README.md
 
 include("lib_log.jl")
-using .Log
+using .LogManager
 include("lib_window.jl")
 #using .WindowManager
 include("lib_opengl.jl")
