@@ -1,6 +1,7 @@
 [statusPic]: status.png "128³ Blocks"
 
 # JuliaOpenGL
+Julia 1.0.0 [![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL)
 Example 3D OpenGL Szene with up to 128³ Blocks.
 1. Blocks are filtered by Remove-Surrounded-Blocks algorithm (hidden Blocks will not be drawn)
 2. Blocks Instances are send to the GPU
@@ -8,12 +9,8 @@ Example 3D OpenGL Szene with up to 128³ Blocks.
 4. Geometry Shader will create Block Geometry Data (Vertices)
 5. Fragment Shader does texturing and lightning
 
-## Status
- [![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL)
-* ~~Works with 0.6.0~~ (Compiling will work, but execution will fail, see [Status of BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#status))
-* ~~Works with 0.6.1~~
-* ~~Works with 0.6.2~~
-* Only Works with 1.0.0, allot has changed...
+## Program Control
+See [Controls.md](Controls.md)
 
 ## Documentation
 Full detailed documentation can be found [here](https://gilga.github.io/JuliaOpenGL/).
@@ -33,8 +30,5 @@ See [Compiling with BuildExecutable.jl](https://github.com/Gilga/BuildExecutable
 * Graphics Card 2: NVIDIA GeForce 840M
 ### Linux
 * not tested
-
-## Program Control
-See [Controls.md](Controls.md)
 
 ![statusPic][statusPic]
