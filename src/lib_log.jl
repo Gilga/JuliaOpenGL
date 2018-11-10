@@ -1,4 +1,6 @@
-module Log
+module LogManager
+
+import Base.error
 
 export stringColor
 export info
@@ -21,4 +23,4 @@ debug(s...) = println("DEBUG: ",stringColor(s...;color=:cyan))
 warn(s...) = println("WARNING: ",stringColor(s...;color=:magenta))
 error(s...) = Base.error(stringColor(s...;color=:red))
 
-end #Log
+end #LogManager

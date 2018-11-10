@@ -1,6 +1,6 @@
 module GraphicsManager
 
-using ..Log
+using ..LogManager
 
 using ModernGL
 

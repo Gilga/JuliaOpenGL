@@ -1,7 +1,7 @@
 module ChunkManager
 
 using ..Math
-using ..Log
+using ..LogManager
 using ..FrustumManager
 
 using StaticArrays

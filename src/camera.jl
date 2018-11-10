@@ -25,6 +25,14 @@ keyPressed = false
 keyPressing = false
 keyValue = 0
 
+getKey() = keyValue, keyPressed
+
+export getKey
+
+resetKeys() = global keyPressed = false
+
+export resetKeys
+
 """
 camera object with holds position, rotation, scaling and various matrices like MVP
 """
@@ -63,14 +71,14 @@ export forward
 """
 gets right vector of camera direction
 """
-right(camera::Camera) = right(camera.rotationMat)
+right(camera::Camera) = Math.right(camera.rotationMat)
 
 export right
 
 """
 gets up vector of camera direction
 """
-up(camera::Camera) = up(camera.rotationMat)
+up(camera::Camera) = Math.up(camera.rotationMat)
 
 export up
 
@@ -148,9 +156,12 @@ function OnMouseKey(window, key, action, mods)
   key = Int32(key)
   action = Int32(action)
   mods = Int32(mods)
+  
+  if keyPressing return end
    
   global cursorPos_old, cursorPos
   global mouseKeyPressed = action != 0
+  
   if action == 1
     cursorPos_old = cursorPos
     GLFW.SetInputMode(window, GLFW.CURSOR, GLFW.CURSOR_DISABLED)
