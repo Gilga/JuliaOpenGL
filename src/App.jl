@@ -58,11 +58,7 @@ FRUSTUM_CULLING = true
 HIDE_UNSEEN_CUBES = true
 RENDER_METHOD = 8
 mychunk = nothing
-program_chunks = 0
-program_compute = 0
-program_screen = 0
-program_compute_instances = 0
-program_indirect_chunks = 0
+program_chunks, program_normal, program_screen, program_compute, program_compute_chunks, program_compute_instances, program_indirect_chunks = 0, 0, 0, 0, 0, 0, 0
 SCENE = 2
 fstm = nothing
 
@@ -84,7 +80,7 @@ fileredCount = 0
 uploaded = false
 texture_screen = 0
 texture_blocks = 0
-
+texture_heightmap = 0
 GPU_FRUSTUM = true
 
 #---------------------------------------------
@@ -167,6 +163,7 @@ end
 
 function presetTextures()
   global texture_blocks = uploadTexture("blocks.png")
+  global texture_heightmap = uploadTextureGray("heightmap.jpg")
   global texture_screen = uploadTexture((512,512))
 end
 
@@ -179,7 +176,7 @@ function use_program(program, f::Function)
   end
   glCheck(f())
   if program != current_program
-    glCheck(glUseProgram(current_program))
+    glCheck(glUseProgram(0))
   end
 end
 
@@ -327,26 +324,6 @@ struct IndirectCommand
   IndirectCommand(count=0, primCount=0) = new(count,primCount,0,0,0)
 end
 
-function createInstanceBuffer()
-  if GPU_CHUNKS
-    use_program(program_compute_chunks, () -> begin
-      glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch].bufferID)
-      glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].bufferID)
-      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:chunks_default].bufferID)
-      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points_default].bufferID)
-    end)
-  end
-  
-  use_program(program_compute_instances, () -> begin
-    glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].bufferID)
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].bufferID)
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[GPU_CHUNKS ? :points_default : :chunks_default].bufferID)
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
-  end)
- 
-  nothing
-end
-
 function uploadData()
   glCheck()
   
@@ -396,71 +373,90 @@ function uploadData()
     :indirect=>(GLuint[0,1,0,0,0],1,GL_DRAW_INDIRECT_BUFFER))
   end
   
-  println("Load shader files...")
-  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH, INST_CSH, CHUNKS_CSH, INST_CSH_VSH_GSH) = loadShaders()
-  
-  global program_chunks
-  if method < 7
-    if program_chunks != 0
-      println("Unbind & Delete previous program")
-      glCheck(glUseProgram(program_chunks))
-      glCheck(glDeleteProgram(program_chunks))
-      program_chunks = 0
-    end
-  end
-  
-  println("Create & Compile shader programs...")
-
-  if method < 7
-    if method == 1 program_chunks = createShaderProgram([INST_VSH_GSH, INST_FSH, INST_GSH])
-    elseif method > 1 && method <= 3 program_chunks = createShaderProgram([INST_VSH, INST_FSH])
-    elseif method == 4 program_chunks = createShaderProgram([VSH_TEXTURE, INST_FSH])
-    elseif method == 5 program_chunks = createShaderProgram([VSH_TEXTURE, INST_FSH])
-    elseif method == 6 program_chunks = createShaderProgram([VSH, FSH])
-    end
-    
-    if program_chunks <= 0 error("No Program") end
-  end
-  
-  if !render_init
-    global program_normal = createShaderProgram([VSH, FSH])#, createShader(GSH, GL_GEOMETRY_SHADER)
-    global program_screen = createShaderProgram([SCREEN_VSH, SCREEN_FSH])
-    global program_compute = createShaderProgram([CSH])
-    global program_compute_chunks = createShaderProgram([CHUNKS_CSH])
-    global program_compute_instances = createShaderProgram([INST_CSH])
-    global program_indirect_chunks = createShaderProgram([INST_CSH_VSH_GSH, INST_FSH, INST_GSH])
-    
-    createInstanceBuffer()
-  end
-  
-  println("set Attributes and Uniforms...")
-  
-  if !render_init
-    setAttributes(indirectData, program_indirect_chunks)
-    setAttributes(planeData, program_normal)
-    setAttributes(boxData, program_normal)
-    setAttributes(screenData, program_screen)
-    
-    setMVP(program_indirect_chunks, MVP)
-  end
-  
-   println("Continue...")
-  
-   if method < 7 
-    setAttributes(chunkData, program_chunks)
-
-    setMVP(program_chunks, MVP)
-    
-    global location_position = glGetUniformLocation(program_chunks, "iPosition")
-    global location_texindex = glGetUniformLocation(program_chunks, "iTexIndex")
-    
-    setMode(program_chunks, "iUseLight", LIGHTMODE)
-    setMode(program_chunks, "iUseTexture", TEXTUREMODE)
-  end
+  reloadShaderPrograms()
   
   if !render_init render_init = true end
   if !render_ready render_ready = true end
   global uploaded=:NOTHING
+end
+
+function reloadShaderProgram(previous, shaders)
+  try
+    program = createShaderProgram(shaders)
+    if program < 0 return previous end
+    glCheck(glUseProgram(0))
+    glCheck(glDeleteProgram(previous))
+    return program
+  catch e
+  end
+  previous
+end
+
+function bindBuffers()
+  if GPU_CHUNKS
+    use_program(program_compute_chunks, () -> begin
+      glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch].bufferID)
+      glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].bufferID)
+      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:chunks_default].bufferID)
+      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points_default].bufferID)
+    end)
+  end
+  
+  use_program(program_compute_instances, () -> begin
+    glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].bufferID)
+    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].bufferID)
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[GPU_CHUNKS ? :points_default : :chunks_default].bufferID)
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
+  end)
+
+end
+
+function reloadShaderPrograms()
+  method = RENDER_METHOD
+
+  println("Load shader files...")
+  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH, INST_CSH, CHUNKS_CSH, INST_CSH_VSH_GSH) = loadShaders()
+  
+  println("Create & Compile shader programs...")
+  program_data = [VSH, FSH]
+  
+  if method < 7
+    if method == 1 program_data = [INST_VSH_GSH, INST_FSH, INST_GSH]
+    elseif method > 1 && method <= 3 program_data = [INST_VSH, INST_FSH]
+    elseif method == 4 program_data = [VSH_TEXTURE, INST_FSH]
+    elseif method == 5 program_data = [VSH_TEXTURE, INST_FSH]
+    elseif method == 6 program_data = [VSH, FSH]
+    end
+  end
+  
+  global program_chunks = reloadShaderProgram(program_chunks, program_data)
+  global program_normal = reloadShaderProgram(program_normal, [VSH, FSH])
+  global program_screen = reloadShaderProgram(program_screen, [SCREEN_VSH, SCREEN_FSH])
+  global program_compute = reloadShaderProgram(program_compute, [CSH])
+  global program_compute_chunks = reloadShaderProgram(program_compute_chunks, [CHUNKS_CSH])
+  global program_compute_instances = reloadShaderProgram(program_compute_instances, [INST_CSH])
+  global program_indirect_chunks = reloadShaderProgram(program_indirect_chunks, [INST_CSH_VSH_GSH, INST_FSH, INST_GSH])
+  
+  println("bind Buffers...")
+  bindBuffers()
+  
+  println("set Attributes ...")
+  
+  setAttributes(indirectData, program_indirect_chunks)
+  setAttributes(planeData, program_normal)
+  setAttributes(boxData, program_normal)
+  setAttributes(screenData, program_screen)
+  setAttributes(chunkData, program_chunks)
+  
+  println("set Uniforms...")
+  
+  global location_position = glGetUniformLocation(program_chunks, "iPosition")
+  global location_texindex = glGetUniformLocation(program_chunks, "iTexIndex")
+  
+  setMVP(program_indirect_chunks, MVP)
+  setMVP(program_chunks, MVP)
+  setMode(program_chunks, "iUseLight", LIGHTMODE)
+  setMode(program_chunks, "iUseTexture", TEXTUREMODE)
 end
 
 function fetchlast!(c::Distributed.AbstractRemoteRef)
@@ -552,7 +548,8 @@ function checkForUpdate()
       setMode(program_chunks, "iUseLight", LIGHTMODE, "LIGHT")
 
     elseif keyValue == 82 #r
-      chooseRenderMethod()
+      #chooseRenderMethod()
+      reloadShaderPrograms()
       
     elseif (keyValue >= 290 && keyValue <= 301) # F1 - F12
       chooseRenderMethod(keyValue - 289)
@@ -925,20 +922,26 @@ function run()
       
       if RENDER_METHOD == 8
       
-        if GPU_CHUNKS && GPU_CHUNKS_INIT
-          global GPU_CHUNKS_INIT = false
-          useProgram(program_compute_chunks)
-          glDispatchComputeIndirect(C_NULL)
-          glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
-        end
-      
-        useProgram(program_compute_instances)
-        glDispatchComputeIndirect(C_NULL)
-        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT) # GL_ATOMIC_COUNTER_BARRIER_BIT GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
+        #if GPU_CHUNKS && GPU_CHUNKS_INIT
+        #  global GPU_CHUNKS_INIT = false
+        #  useProgram(program_compute_chunks)
+        #  glDispatchComputeIndirect(C_NULL)
+        #  glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
+        #end
         
         glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, texture_blocks)
+        glBindTexture(GL_TEXTURE_2D, texture_heightmap)
       
+        useProgram(program_compute_instances)
+        setMode(program_compute_instances, "time", time())
+        
+        glDispatchComputeIndirect(C_NULL)
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT) # GL_ATOMIC_COUNTER_BARRIER_BIT GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
+        #GL_BUFFER_UPDATE_BARRIER_BIT
+
+        glActiveTexture(GL_TEXTURE0)
+        glBindTexture(GL_TEXTURE_2D, texture_blocks)
+  
         useProgram(program_indirect_chunks)
         
         glBindVertexArray(indirectData.vao)
