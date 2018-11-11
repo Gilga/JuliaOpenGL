@@ -64,8 +64,10 @@ mutable struct Block <: IBlock
   sides::Array{UInt32,1}
   parent::Union{Nothing,IChunk}
   next::BlockNeighbours
+  nexts::Array{Float32,1}
+  id::Float32
   
-  Block(parent::IChunk, pos=Vec3f(), typ=0) = new(true,true,false,typ,0,pos,Vec3f(),resetSides(),parent,BlockNeighbours()) #,zeros(Mat4x4f),zeros(Mat4x4f))
+  Block(parent::IChunk, pos=Vec3f(), nexts=Float32[], typ=0; id=0) = new(true,true,false,typ,0,pos,Vec3f(pos.x,pos.z,pos.y),resetSides(),parent,BlockNeighbours(),nexts,id) #,zeros(Mat4x4f),zeros(Mat4x4f))
 end
 
 #Base.isless{T}(a::Ref{T}, b::Ref{T}) = a.x < b.x
@@ -105,14 +107,14 @@ function init(this::Chunk, size::Integer)
     createBlocks(this)
         
     #if GPU_CHUNKS linkBlockNeighbours(this); return end
-    createChunkNodes(this)
-    linkBlockNeighbours(this)
+    #createChunkNodes(this)
+    #linkBlockNeighbours(this)
 end
 
 function update(this::Chunk;unseen=true)
   #if GPU_CHUNKS && unseen hideUnseen(this); return end
-  updateChunkNodePos(this)
-  if unseen hideUnseen(this) end
+  #updateChunkNodePos(this)
+  #if unseen hideUnseen(this) end
   #r=create_spiral3D_searchlist(this)
 end
 
@@ -318,8 +320,23 @@ function checkInFrustum(this::Chunk, fstm::Frustum)
 end
 
 function createBlocks(this::Chunk)
-  X, Y, Z = size(this.childs)
-  for y=1:Y; for z=1:Z; for x=1:X; this.childs[x,z,y] = Block(this,Vec3f(x,y,z)); end; end; end
+  X, Y, Z = size(this.childs); XZ = X*Z; i=0;
+  for y=1:Y; for z=1:Z; for x=1:X; i+=1
+    #i = (y-1)*XZ+(z-1)*X+(x-1)
+    this.childs[x,z,y] = Block(this,Vec3f(x,y,z), Float32[
+    x>1 ? i-1 : 0,
+    x<X ? i+1 : 0,
+    y>1 ? i+XZ : 0,
+    y<Y ? i-XZ : 0,
+    z>1 ? i+X : 0,
+    z<Z ? i-X : 0];id=i)
+  end; end; end
+  
+  open("chunks.txt", "w") do f
+    for b in this.childs
+      write(f, string(b.id," : ",b.index.x,", ",b.index.y,", ",b.index.z,"\n"))
+    end
+  end
 end
 
 function linkBlockNeighbours(this::Chunk)
@@ -415,13 +432,17 @@ hideType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; set
 removeType(this::Chunk, typ::Integer) = for b in this.childs; if b.typ == typ; setActive(b,false); end; end
 
 function showAll(this::Chunk)
-  if GPU_CHUNKS setFilteredChilds(this,filter(b->true,this.childs)); return end
+  #if GPU_CHUNKS
+  setFilteredChilds(this,filter(b->true,this.childs))
+  #=
+  return end
   for b in this.childs
     setVisible(b,true)
     #setSurrounded(b,false)
     #resetSides(b)
   end
   setFilteredChilds(this,getValidChilds(this))
+  =#
 end
 
 setFilteredChilds(this::Chunk, r::Array{Block,1}) = begin this.filtered = r; this.fileredCount = length(r); r end
@@ -445,8 +466,9 @@ function getData(this::Block)
   #if this.sides[BOTTOM_SIDE] > 0 sides |= 0x8 end
   #if this.sides[FRONT_SIDE] > 0 sides |= 0x10 end
   #if this.sides[BACK_SIDE] > 0 sides |= 0x20 end
-
-  SVector(Float32[this.pos...,this.typ,sides]...)
+  
+  index = this.index
+  SVector(Float32[index.x-1, index.z-1, index.y-1, [n-1 for n in this.nexts]..., this.typ, sides]...)
 end
 
 getPos(this::Block) = SVector(Float32[this.pos...]...)
@@ -460,7 +482,6 @@ getPos(this::Chunk) = isValid(this) ? vec((b->getPos(b)).(getFilteredChilds(this
 
 function createSingle(this::Chunk)
   b=this.childs[32,22,32]
-  #b.pos=Vec3f(0, 0, -10)
   b.typ=1
 end
 
@@ -474,7 +495,6 @@ function createExample(this::Chunk)
 
   for i=1:length(sz)
     b = this.childs[i];
-    #b.pos=translate(x,y,z)
     b.typ=rand(1:16)
     #model = Mat4x4f(translation(Array(b.pos)))
     #push!(refblocks, pointer_from_objref(b))
@@ -493,6 +513,7 @@ function createExample(this::Chunk)
 end
 
 function createLandscape(this::Chunk)
+  if true return nothing end
   #Texture* heightTexture = m_pRenderer->GetTexture(m_pChunkManager->GetHeightMapTexture());
   
   rgbImage=Images.load("heightmap.jpg")
@@ -524,11 +545,7 @@ function createLandscape(this::Chunk)
       for y=1:Y
         if y > height break end
         #id = y*X*Y+z*Z+x
-        #c = this.childs[id]
-        #c.active = true
         b = this.childs[x,z,y]
-        #b.id=[x,y,z]
-        #b.pos = translate(x-1,y-1,z-1)
         #if y >= level_air b.typ = 0 # air or nothing
         if y >= level_grass  b.typ = 2 #grass
         elseif y >= level_dirt b.typ = 1 #dirt
@@ -544,6 +561,8 @@ function createLandscape(this::Chunk)
   b = this.childs[h,h,h]
   #b.pos=Vec3f(0,0,0)
   b.typ=7
+  
+  this.childs[1,1,1].typ=0
 end
 
 function saveChunk(this::Chunk, file::String)

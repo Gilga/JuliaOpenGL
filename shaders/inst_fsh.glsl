@@ -25,7 +25,7 @@ void main() {
   
   vec4 color = vec4(0,0,0,1);
   
-  bool UseLight = false;
+  bool UseLight = iUseLight;
   bool UseTexture = iUseTexture;
 
   if(!UseTexture) color = v.color; //color.w = color.x*color.y*color.z;
@@ -52,7 +52,7 @@ void main() {
     light.specular = 1;
 
     material.emission = vec4(0,0,0,1); //vec4(glow?1:0,glow?0.5:0,0,1);
-    material.ambient = vec4(0.25,0.25,0.25,1);
+    material.ambient = vec4(0.5,0.1,0.1,1);
     material.diffuse = vec4(1.0,1.0,1.0,1);
     material.specular = vec4(0.25,0.25,0.25,1);
     material.shininess = 1;
@@ -113,13 +113,13 @@ void main() {
       }
       
       //attenuation
-      float distanceToLight = 1/length(lightDist);
-      float attenuation = 1; //1.0 / (1.0 + lightAttenuation * pow(distanceToLight,2));
+      float distanceToLight = 1/(1.0 + pow(lightDist,2)*0.01);
+      float attenuation = 1 * distanceToLight; // / (1.0 + lightAttenuation * pow(distanceToLight,2));
       
       difSpec += (diffuse + specular*0) * attenuation * light.energy;
     }
     
-    vec3 all = (emission + ambient*0 + difSpec) * gammaAmount;
+    vec3 all = (emission + ambient + difSpec) * gammaAmount;
     color = vec4(pow(color.xyz * all, vec3(gammaAmount)),color.w);
     
     //float fogFactor = smoothstep(0.0f, 9.0f, length(camFrag));
