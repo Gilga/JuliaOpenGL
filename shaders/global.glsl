@@ -12,7 +12,8 @@ uniform bool frustum = false;
 uniform vec3 frustum_dirs[6] = vec3[6](vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0));
 uniform float frustum_dists[6] = float[6](0,0,0,0,0,0);
 
-uniform float time;
+uniform vec2 iResolution = vec2(0,0);
+uniform float iTime = 1;
 uniform bool iUseLight = true;
 uniform bool iUseTexture = true;
 

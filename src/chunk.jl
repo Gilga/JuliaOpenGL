@@ -467,8 +467,8 @@ function getData(this::Block)
   #if this.sides[FRONT_SIDE] > 0 sides |= 0x10 end
   #if this.sides[BACK_SIDE] > 0 sides |= 0x20 end
   
-  index = this.index
-  SVector(Float32[index.x-1, index.z-1, index.y-1, [n-1 for n in this.nexts]..., this.typ, sides]...)
+  #[n-1 for n in this.nexts]...,
+  SVector(Float32[this.index.x-1, this.index.z-1, this.index.y-1, this.typ, sides]...)
 end
 
 getPos(this::Block) = SVector(Float32[this.pos...]...)
