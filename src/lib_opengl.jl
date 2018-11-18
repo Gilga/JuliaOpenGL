@@ -234,7 +234,11 @@ end
 """
 TODO
 """
-function compileShader(name, shader,source)
+function compileShader(name::Symbol, shader, source::String)
+  source = strip(replace(source,"\r"=>""))
+  open("shaders/tmp/$name.glsl", "w") do f
+    write(f,source)
+  end
   glCheck(glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(string(source,"\x00")))])), C_NULL))
   glCheck(glCompileShader(shader))
   !validateShader(shader) && error("Shader $name compile error: ", getInfoLog(shader))

@@ -52,7 +52,7 @@ void main() {
     light.specular = 1;
 
     material.emission = vec4(0,0,0,1); //vec4(glow?1:0,glow?0.5:0,0,1);
-    material.ambient = vec4(0.5,0.1,0.1,1);
+    material.ambient = vec4(0.1,0.1,0.1,1);
     material.diffuse = vec4(1.0,1.0,1.0,1);
     material.specular = vec4(0.25,0.25,0.25,1);
     material.shininess = 1;
@@ -113,7 +113,7 @@ void main() {
       }
       
       //attenuation
-      float distanceToLight = 1/(1.0 + pow(lightDist,2)*0.01);
+      float distanceToLight = 1/(1.0 + pow(lightDist,2)*0.0001);
       float attenuation = 1 * distanceToLight; // / (1.0 + lightAttenuation * pow(distanceToLight,2));
       
       difSpec += (diffuse + specular*0) * attenuation * light.energy;
