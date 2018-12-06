@@ -7,6 +7,8 @@
 
 uniform mat4 iMVP = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
 uniform vec3 iPosition = vec3(0);
+uniform vec3 iCamPos = vec3(0);
+uniform vec3 iCamAng = vec3(0);
 
 uniform bool frustum = false;
 uniform vec3 frustum_dirs[6] = vec3[6](vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0));
@@ -120,7 +122,6 @@ Vertex _preset(vec3 pos, vec3 world){
   
   return v;
 }
-
 
 Vertex preset(vec3 pos){
   return _preset(pos, vec3(0,0,0));

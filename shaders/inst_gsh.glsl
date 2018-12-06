@@ -1,3 +1,5 @@
+#import "globals.glsl"
+
 layout(points) in;
 layout(triangle_strip, max_vertices=24) out; // 128 is hardware max
 //triangle_strip, line_strip
@@ -19,10 +21,13 @@ void createSide(Vertex v, int side)
   for(int i=0;i<4;++i) {
     v.pos          = vec4(cube[side][i],1);
     v.normal       = normalize(v.pos);
+    
+    if(v.flags.y == 15) v.pos.y -= (0.5+(sin((v.pos.x+v.world_center.x)*0.1+(v.pos.z+v.world_center.z)*0.5+iTime*5))*0.5)*2;
+    
     v.color        = getVertexColor(v.pos.xyz, v.normal.xyz, 1);
     v.world_pos    = vec4(v.pos.xyz+v.world_center.xyz,1);
     v.world_normal = normalize(v.world_pos);
-    
+
     ov = v;
     
     gl_Position = iMVP * v.world_pos;
@@ -49,9 +54,9 @@ void main()
   */
   
   v = iv[0];
-  
+    
   if(v.flags.x < 0 || (iUseTexture && v.flags.y < 0)) return; // discard
-  
+    
   uint sides = uint(floor(v.flags.z));
     
   if((sides & 0x1) > 0) createSide(v, 4);  // LEFT

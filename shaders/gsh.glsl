@@ -1,3 +1,5 @@
+#import "globals.glsl"
+
 layout(triangles) in;
 layout(line_strip, max_vertices=126) out; // 128 is hardware max
 
