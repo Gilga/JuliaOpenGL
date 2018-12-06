@@ -9,6 +9,8 @@ using SharedArrays
 
 #https://github.com/shiena/ansicolor/blob/master/README.md
 
+include("lib_file.jl")
+using .FileManager
 include("lib_log.jl")
 using .LogManager
 include("lib_window.jl")
@@ -21,38 +23,6 @@ using .Math
 
 using ModernGL
 using StaticArrays
-
-"""
-TODO
-"""
-function waitForFileReady(path::String, func::Function, tryCount=100, tryWait=0.1) #error when functions does not exists
-	result=false
-	for i = 1:tryCount
-		#try reading file
-		if stat(path).size > 0
-			open(path) do file
-				 result=func(file)
-			end
-			if result break end
-		end
-
-		Libc.systemsleep(tryWait) #wait
-	end
-	result
-end
-
-export waitForFileReady
-
-"""
-TODO
-"""
-function fileGetContents(path::String, tryCount=100, tryWait=0.1)
-	content=nothing
-	waitForFileReady(path,(x)->(content=read(x, String); content != nothing),tryCount,tryWait)
-	content
-end
-
-export fileGetContents
 
 TITLE = "Julia OpenGL"
 STARTTIME = time()

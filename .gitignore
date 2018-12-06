@@ -5,6 +5,8 @@ deps/deps.jl
 
 bin/
 build/
+backup/
+tmp/
 
 src/*/.vs/
 src/*/bin/

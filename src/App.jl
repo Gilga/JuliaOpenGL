@@ -58,7 +58,7 @@ FRUSTUM_CULLING = true
 HIDE_UNSEEN_CUBES = true
 RENDER_METHOD = 8
 mychunk = nothing
-program_chunks, program_normal, program_screen, program_compute, program_compute_chunks, program_compute_instances, program_indirect_chunks, program_bg = 0, 0, 0, 0, 0, 0, 0, 0
+program_chunks, program_normal, program_screen, program_compute, program_compute_chunks, program_compute_change_chunks, program_compute_instances, program_indirect_chunks, program_bg = 0, 0, 0, 0, 0, 0, 0, 0, 0
 SCENE = 2
 fstm = nothing
 
@@ -187,9 +187,13 @@ function setMode(program, name, value, mode="")
   use_program(program, () -> begin
     l = glGetUniformLocation(program, name)
     if l>-1
+      elems=length(value)
       if isa(value, Integer) glUniform1i(l, value)
       elseif isa(value, AbstractFloat) glUniform1f(l, value)
-      elseif isa(value, AbstractArray) glUniform1fv(l, 1, value)
+      elseif isa(value, AbstractArray) && elems==1 glUniform1fv(l, 1, Float32[value...])
+      elseif isa(value, AbstractArray) && elems==2 glUniform2fv(l, 1, Float32[value...])
+      elseif isa(value, AbstractArray) && elems==3 glUniform3fv(l, 1, Float32[value...])
+      elseif isa(value, AbstractArray) && elems==4 glUniform4fv(l, 1, Float32[value...])
       else warn("MODE("*stringColor(mode;color=:yellow)*") for "*typeof(value)*" is not implemented yet.")
       end
     end
@@ -367,9 +371,13 @@ function uploadData()
      #GL_DYNAMIC_COPY
     SZ=sizeof(Float32)*5*CHUNK_SIZE^3
     dispatch = round(UInt32,Float32(CHUNK_SIZE^3) / CHUNK_SIZE)
-    linkData(indirectData, :points=>zeros(Float32,SZ), :chunks_default=>chunk_instances, :points_default=>zeros(Float32,SZ),
-    :id=>(GLuint[0],1,GL_ATOMIC_COUNTER_BUFFER, GL_STREAM_READ),
+    linkData(indirectData,
+    :points=>zeros(Float32,SZ),
+    :chunks_default=>chunk_instances,
+    :chunks_changed=>zeros(Float32,SZ),
+    :points_default=>zeros(Float32,SZ),
     :counter=>(GLuint[0],1,GL_ATOMIC_COUNTER_BUFFER, GL_STREAM_READ),
+    :counter2=>(GLuint[0],1,GL_ATOMIC_COUNTER_BUFFER, GL_STREAM_READ),
     :indirect_dispatch=>(GLuint[dispatch,1,1],1,GL_DISPATCH_INDIRECT_BUFFER, GL_STREAM_READ),
     :indirect_dispatch_instances=>(GLuint[1,1,1],1,GL_DISPATCH_INDIRECT_BUFFER, GL_STREAM_READ),
     :indirect=>(GLuint[0,1,0,0,0],1,GL_DRAW_INDIRECT_BUFFER))
@@ -416,7 +424,24 @@ function reloadShaderPrograms()
   method = RENDER_METHOD
 
   println("Load shader files...")
-  (INST_VSH, INST_VSH_GSH, INST_GSH, INST_FSH, VSH_TEXTURE, VSH, FSH, GSH, CSH, SCREEN_VSH, SCREEN_FSH, INST_CSH, CHUNKS_CSH, INST_CSH_VSH_GSH, BG_FSH) = loadShaders()
+  shaders = loadShaders()
+  
+  INST_VSH = shaders[:INST_VSH]
+  INST_VSH_GSH = shaders[:INST_VSH_GSH]
+  INST_GSH = shaders[:INST_GSH]
+  INST_FSH = shaders[:INST_FSH]
+  VSH_TEXTURE = shaders[:VSH_TEXTURE]
+  VSH = shaders[:VSH]
+  FSH = shaders[:FSH]
+  GSH = shaders[:GSH]
+  CSH = shaders[:CSH]
+  SCREEN_VSH = shaders[:SCREEN_VSH]
+  SCREEN_FSH = shaders[:SCREEN_FSH]
+  INST_CSH = shaders[:INST_CSH]
+  CHUNKS_CSH = shaders[:CHUNKS_CSH]
+  CHANGE_CHUNKS_CSH = shaders[:CHANGE_CHUNKS_CSH]
+  INST_VSH_CSH_GSH = shaders[:INST_VSH_CSH_GSH]
+  BG_FSH = shaders[:BG_FSH]
   
   println("Create & Compile shader programs...")
   program_data = [VSH, FSH]
@@ -435,8 +460,9 @@ function reloadShaderPrograms()
   global program_screen = reloadShaderProgram(program_screen, [SCREEN_VSH, SCREEN_FSH])
   global program_compute = reloadShaderProgram(program_compute, [CSH])
   global program_compute_chunks = reloadShaderProgram(program_compute_chunks, [CHUNKS_CSH])
+  global program_compute_change_chunks = reloadShaderProgram(program_compute_change_chunks, [CHANGE_CHUNKS_CSH])
   global program_compute_instances = reloadShaderProgram(program_compute_instances, [INST_CSH])
-  global program_indirect_chunks = reloadShaderProgram(program_indirect_chunks, [INST_CSH_VSH_GSH, INST_FSH, INST_GSH])
+  global program_indirect_chunks = reloadShaderProgram(program_indirect_chunks, [INST_VSH_CSH_GSH, INST_FSH, INST_GSH])
   global program_bg = reloadShaderProgram(program_bg, [VSH, BG_FSH])
   
   println("bind Buffers...")
@@ -507,6 +533,7 @@ end
 
 
 GPU_CHUNKS_INIT = true
+CAMERA_UPDATED = true
 
 """
 TODO
@@ -553,6 +580,7 @@ function checkForUpdate()
       #chooseRenderMethod()
       reloadShaderPrograms()
       global GPU_CHUNKS_INIT = true
+      global CAMERA_UPDATED = true
       
     elseif (keyValue >= 290 && keyValue <= 301) # F1 - F12
       chooseRenderMethod(keyValue - 289)
@@ -821,21 +849,18 @@ function run()
   
   function checkCamera()
     if OnUpdate(CAMERA)
+      #println(CAMERA.position)
       #if !CAM_LOCK
         if RENDER_METHOD < 7 
           setMVP(program_chunks, CAMERA.MVP)
           setMVP(program_normal, CAMERA.MVP)
           setFrustum(program_chunks)
         end
-        if RENDER_METHOD == 8
-          setMVP(program_indirect_chunks, CAMERA.MVP)
-          setFrustum(program_compute_instances)
-        end
       #end
       if length(procs()) > 1 put!(channels[:BOOL], (:NOTHING, false))
       else setFrustumMode()
       end
-      cam_updated=true
+      global CAMERA_UPDATED=true
     end
   end
   
@@ -859,7 +884,6 @@ function run()
     
     if render_ready
       checkCamera()
-      if cam_updated cam_updated=false end
     
       if RENDER_METHOD < 7
         glActiveTexture(GL_TEXTURE0)
@@ -926,6 +950,9 @@ function run()
         
         itime = programTime()
         
+        glBlendFunc(GL_ONE, GL_ZERO)
+        glDisable( GL_BLEND )
+        
         glDepthMask(GL_FALSE)
         
         useProgram(program_bg)
@@ -935,37 +962,73 @@ function run()
         
         glDepthMask(GL_TRUE)
         
+        glActiveTexture(GL_TEXTURE0)
+        glBindTexture(GL_TEXTURE_2D, texture_heightmap)
+        
         if GPU_CHUNKS_INIT
-          global GPU_CHUNKS_INIT = false
           useProgram(program_compute_chunks)
+          setMode(program_compute_chunks, "iTime", itime)
+          setMode(program_compute_chunks, "iCamPos", CAMERA.position)
+          setMode(program_compute_chunks, "iCamAng", CAMERA.rotation)
+          setFrustum(program_compute_chunks)
+          
           glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch].bufferID)
-          glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter].bufferID)
-          glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectData.arrays[:indirect_dispatch_instances].bufferID)
-          glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].bufferID)
+          glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter].bufferID) #new LIMIT
+          glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectData.arrays[:indirect_dispatch_instances].bufferID) #dispatch
+          glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:chunks_changed].bufferID)
           glDispatchComputeIndirect(C_NULL)
           glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
        end
+       
+       if GPU_CHUNKS_INIT || CAMERA_UPDATED
+        useProgram(program_compute_change_chunks)
+        setMode(program_compute_change_chunks, "iTime", itime)
+        setMode(program_compute_change_chunks, "iCamPos", CAMERA.position)
+        setMode(program_compute_change_chunks, "iCamAng", CAMERA.rotation)
+        setMVP(program_compute_change_chunks, CAMERA.MVP)
+        setFrustum(program_compute_change_chunks)
+        
+        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].bufferID)
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter].bufferID) #LIMIT
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectData.arrays[:counter2].bufferID) #instanceID
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, indirectData.arrays[:indirect].bufferID) #instanceCount
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:chunks_changed].bufferID)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
+        glDispatchComputeIndirect(C_NULL)
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
+        
+        #setFrustum(program_compute_instances)
+        #setMVP(program_compute_instances, CAMERA.MVP)
+        #setMode(program_compute_instances, "iCamPos", CAMERA.position)
+        #setMode(program_compute_instances, "iCamAng", CAMERA.rotation)
+      end
 
-        glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, texture_heightmap)
-      
+        #=
         useProgram(program_compute_instances)
         setMode(program_compute_instances, "iTime", itime)
+          
         glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].bufferID)
-        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].bufferID)
-        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectData.arrays[:counter].bufferID)
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter2].bufferID) #LIMIT
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectData.arrays[:indirect].bufferID) #instanceCount
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].bufferID)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
         
         glDispatchComputeIndirect(C_NULL)
         glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT) # GL_ATOMIC_COUNTER_BARRIER_BIT GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
         #GL_BUFFER_UPDATE_BARRIER_BIT
+        =#
 
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, texture_blocks)
   
         useProgram(program_indirect_chunks)
+        setMVP(program_indirect_chunks, CAMERA.MVP)
         setMode(program_indirect_chunks, "iTime", itime)
+        setMode(program_indirect_chunks, "iCamPos", CAMERA.position)
+        setMode(program_indirect_chunks, "iCamAng", CAMERA.rotation)
+        
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glEnable( GL_BLEND )
         
         glBindVertexArray(indirectData.vao)
         #glDrawElementsIndirect(GL_POINTS, GL_UNSIGNED_INT, Ptr{Nothing}(0))
@@ -976,6 +1039,9 @@ function run()
       #ptr = Ptr{GLuint}(glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0,1*sizeof(GLuint),  GL_MAP_READ_BIT|GL_MAP_WRITE_BIT))
       #counter = convert(GLuint, unsafe_load(ptr))
       #println(counter)
+      
+      if CAMERA_UPDATED global CAMERA_UPDATED=false end
+      if GPU_CHUNKS_INIT global GPU_CHUNKS_INIT=false end
     end 
 
     # Swap front and back buffers
