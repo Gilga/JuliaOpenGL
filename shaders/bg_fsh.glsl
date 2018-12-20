@@ -41,10 +41,8 @@ float fbm ( in vec2 _st) {
 
 layout(location = 0) out vec4 outColor;
 
-uniform vec4 color = vec4(1,0,1,1);
-
 void main() {
- vec2 uv = gl_FragCoord.xy / vec2(1280,800) + vec2(sin(iTime*0.01*random(1)),sin(iTime*0.01*random(2)));
- float cloud = clamp(fbm(uv*3.0)*1.0,0,1);
- outColor = vec4(cloud,cloud,cloud,1);
+  vec2 uv = gl_FragCoord.xy / iResolution.xy + vec2(sin(iTime*0.01*random(1)),sin(iTime*0.01*random(2)));
+  float cloud = clamp(fbm(uv*3.0)*1.0,0,1);
+  outColor = vec4(vec3(cloud),1);
 }

@@ -8,19 +8,23 @@ export debug
 export warn
 export error
 
-function stringColor(s...;color=:yellow)
+FONT_COLOR = :normal
+
+function stringColor(s...;color=FONT_COLOR, reset=true)
+  global FONT_COLOR
   colorstr="\x1b[0m"
   if color == :yellow colorstr="\x1b[93m"
   elseif color == :red colorstr="\x1b[91m"
   elseif color == :cyan colorstr="\x1b[96m"
   elseif color == :magenta colorstr="\x1b[95m"
   end
-  return string(colorstr,s...,"\x1b[0m")
+  FONT_COLOR=colorstr
+  return string(colorstr,s...,reset ? "\x1b[0m" : "")
 end
 
-info(s...) = println(stringColor(s...;color=:yellow))
-debug(s...) = println("DEBUG: ",stringColor(s...;color=:cyan))
-warn(s...) = println("WARNING: ",stringColor(s...;color=:magenta))
-error(s...) = Base.error(stringColor(s...;color=:red))
+info(s...) = println(string(stringColor("";color=:yellow,reset=false),s...,stringColor("";color=:normal)))
+debug(s...) = println("DEBUG: ",string(stringColor("";color=:cyan,reset=false),s...,stringColor("";color=:normal)))
+warn(s...) = println("WARNING: ",string(stringColor("";color=:magenta,reset=false),s...,stringColor("";color=:normal)))
+error(s...) = Base.error(string(stringColor("";color=:red,reset=false),s...,stringColor("";color=:normal)))
 
 end #LogManager

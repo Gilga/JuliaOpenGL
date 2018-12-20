@@ -1,6 +1,7 @@
 module MeshManager
 
 using ..Math
+using ..LogManager
 using ..GraphicsManager
 
 using ModernGL
@@ -109,8 +110,8 @@ function setAttributes(this::MeshData, program; flexible=false)
   glBindVertexArray(this.vao)
   glCheckError("glBindVertexArray")
   if haskey(this.arrays,:vertices) list=this.arrays[:vertices]; setAttributes(list, program, [("iVertex",Float32,list.elements,0)]) end
-  if haskey(this.arrays,:points) list=this.arrays[:points]; setAttributes(list, program, [("iInstancePos",Float32,3,0),("iInstanceFlags",Float32,2,0)]) end
-  if haskey(this.arrays,:instances) list=this.arrays[:instances]; setAttributes(list, program, [("iInstancePos",Float32,3,1),("iInstanceFlags",Float32,2,1)]) end
+  if haskey(this.arrays,:points) list=this.arrays[:points]; setAttributes(list, program, [("iInstancePos",Float32,3,0),("iInstanceFlags",Float32,3,0)]) end
+  if haskey(this.arrays,:instances) list=this.arrays[:instances]; setAttributes(list, program, [("iInstancePos",Float32,3,1),("iInstanceFlags",Float32,3,1)]) end
   glBindVertexArray(0)
 end
 

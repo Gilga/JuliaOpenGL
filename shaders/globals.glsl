@@ -5,10 +5,17 @@
 #define UVHALF 0.57735
 #define UVFULL (1-0.000001)
 
-uniform mat4 iMVP = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+const mat4 IdentityMatrix = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+
+uniform mat4 iMVP = IdentityMatrix;
+uniform mat4 iProj = IdentityMatrix;
+uniform mat4 iView = IdentityMatrix;
+uniform mat4 iModel = IdentityMatrix;
+
 uniform vec3 iPosition = vec3(0);
 uniform vec3 iCamPos = vec3(0);
 uniform vec3 iCamAng = vec3(0);
+uniform vec3 iCenter = vec3(0);
 
 uniform bool frustum = false;
 uniform vec3 frustum_dirs[6] = vec3[6](vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0));

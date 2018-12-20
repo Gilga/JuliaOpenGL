@@ -160,6 +160,34 @@ export glDeleteBuffer
 """
 TODO
 """
+glGenFramebuffer() = glGenOne(glGenFramebuffers)
+
+export glGenFramebuffer
+
+"""
+TODO
+"""
+glDeleteFramebuffer(id) = glDelOne(glDeleteFramebuffers,id)
+
+export glDeleteFramebuffer
+
+"""
+TODO
+"""
+glGenRenderbuffer() = glGenOne(glGenRenderbuffers)
+
+export glGenRenderbuffer
+
+"""
+TODO
+"""
+glDeleteRenderbuffer(id) = glDelOne(glDeleteRenderbuffers,id)
+
+export glDeleteRenderbuffer
+
+"""
+TODO
+"""
 glGenVertexArray() = glGenOne(glGenVertexArrays)
 
 export glGenVertexArray
@@ -184,6 +212,20 @@ TODO
 glDeleteTexture(id) = glDelOne(glDeleteTextures, id)
 
 export glDeleteTexture
+
+"""
+TODO
+"""
+glGenSampler() = glGenOne(glGenSamplers)
+
+export glGenSampler
+
+"""
+TODO
+"""
+glDeleteSampler(id) = glDelOne(glDeleteSamplers, id)
+
+export glDeleteSampler
 
 """
 TODO
@@ -248,10 +290,11 @@ BackupSource=Dict{Symbol,String}()
 """
 TODO
 """
-function createShader(infos::Dict{Symbol,Any})
+function createShader(programname::Symbol, infos::Dict{Symbol,Any})
   key = Symbol(infos[:path]); file = infos[:file]; typ = infos[:shader]; source = infos[:content]; err=false
   source = string(strip(replace(source,"\r"=>"")))
 
+  typname="?"
   if typ == :VSH typ = GL_VERTEX_SHADER; typname="VERTEX SHADER"
   elseif typ == :FSH typ = GL_FRAGMENT_SHADER; typname="FRAGMENT SHADER"
   elseif typ == :GSH typ = GL_GEOMETRY_SHADER; typname="GEOMETRY SHADER"
@@ -260,7 +303,7 @@ function createShader(infos::Dict{Symbol,Any})
 
   # Create the shader
   shader = glCheck(glCreateShader(typ)::GLuint)
-  if shader == 0 error("Error creating shader: ", glErrorMessage()) end
+  if shader == 0 error("[$programname] Error creating $typname: ", glErrorMessage()) end
   
   tmpdir="shaders/tmp/"
   backupdir="shaders/backup/"
@@ -275,18 +318,17 @@ function createShader(infos::Dict{Symbol,Any})
   try
     # load previous backup
     if !haskey(BackupSource, key) && isfile(backupfile)
-      #info("Found backup file for $file.")
       BackupSource[key]=fileGetContents(backupfile)
     end
     
     open(tmpfile, "w") do f write(f,source) end
-    !compileShader(shader, source) && error("Shader $file compile error: ", getInfoLog(shader))
+    !compileShader(shader, source) && error("[$programname] $typname ($file) compile error: ", getInfoLog(shader))
      # save backup
 
     mv(tmpfile, backupfile; force=true) #move into backups
     BackupSource[key]=source
     
-    info("Shader $file of type $typname is initalized.")
+    debug("[$programname] $typname ($file) is compiled.")
     
   catch(ex)
     Base.showerror(stderr, ex, catch_backtrace())
@@ -294,11 +336,12 @@ function createShader(infos::Dict{Symbol,Any})
     
     # get backup
     if haskey(BackupSource, key)
-      !compileShader(shader, BackupSource[key]) && error("Shader $file compile error: ", getInfoLog(shader))
+      !compileShader(shader, BackupSource[key]) && error("[$programname] Backup of $typname ($file) compile error: ", getInfoLog(shader))
+      debug("[$programname] Backup of $typname ($file) is compiled.")
     else
       glDeleteShader(shader)
       shader = -1
-      warn("No valid Backup found for shader $file of type $typname.")
+      warn("[$programname] No valid backup for $typname.")
     end
   end
 
@@ -310,13 +353,15 @@ export createShader
 """
 TODO
 """
-function createShaderProgram(shaders::AbstractArray)
+function createShaderProgram(name::Symbol, shaders::AbstractArray)
   # Create, link then return a shader program for the given shaders.
   # Create the shader program
   prog = glCheck(glCreateProgram())
   if prog == 0
-    error("Error creating shader program: ", glErrorMessage())
+    error("Error creating shader program $name: ", glErrorMessage())
   end
+  
+  debug("Created shader program $name.")
   
   # attributes
   #glBindAttribLocation(prog,0,"iVertex") # bind attribute always
@@ -324,7 +369,7 @@ function createShaderProgram(shaders::AbstractArray)
   shaderIDs = Int32[]
   
   for shader in shaders
-    shaderID = createShader(shader)
+    shaderID = createShader(name, shader)
     if shaderID > 0
       glCheck(glAttachShader(prog, shaderID))
       push!(shaderIDs, shaderID)
@@ -334,7 +379,7 @@ function createShaderProgram(shaders::AbstractArray)
   if length(shaderIDs) == 0
     glDeleteProgram(prog)
     prog = -1
-    error("No valid shaders for shader program found.")
+    error("No valid shaders for shader program $name found.")
   else
   
     # link the program and check for errors
@@ -351,7 +396,7 @@ function createShaderProgram(shaders::AbstractArray)
       error("Linking shader: ", msg)
     end
     
-    info("Shader Program $prog is initalized.")
+    debug("Shader Program($prog) $name is initalized.")
   end 
     
   prog

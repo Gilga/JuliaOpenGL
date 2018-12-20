@@ -1,11 +1,12 @@
 #import "globals.glsl"
 
-layout (local_size_x = 128) in; //, local_size_y = 4, local_size_z = 4
+layout (local_size_x = $CHUNK_SIZE) in; //, local_size_y = 4, local_size_z = 4
 
 struct Data {
   float[3] pos; //4*3
   float type;
   float sides;
+  float height;
 };
 
 layout(binding = 0, offset = 0) uniform atomic_uint LIMIT;
@@ -27,6 +28,7 @@ void main() {
   
   Data data = inputset.data[ident];
 
+  barrier();
   uint unique  = atomicCounterIncrement(instanceCount);
-  outputset.data[unique] = Data(data.pos,data.type, data.sides);
+  outputset.data[unique] = Data(data.pos,data.type,data.sides,data.height);
 }
