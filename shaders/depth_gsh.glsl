@@ -23,9 +23,19 @@ void createPoint(Vertex v)
   EmitVertex();
   EndPrimitive();
 }
+
+mat4 rotation(vec4 r) {
+  float lr = length(r);
+  return mat4(1,0,0,0,
+    0,1,0,0,
+    0,0,1,0,
+    (lr < 1 ? 0 : r.x),(lr < 2 ? 0 : r.y),(lr < 3 ? 0 : r.z),(lr < 4 ? 1 : r.w)
+  );
+}
   
 void createSide(Vertex v, int side)
 {
+  mat4 VP = iView;
   vec3 CameraRight_worldspace = vec3(iMVP[0][0], iMVP[1][0], iMVP[2][0]);
   vec3 CameraUp_worldspace = vec3(iMVP[0][1], iMVP[1][1], iMVP[2][1]);
 
@@ -36,10 +46,10 @@ void createSide(Vertex v, int side)
     
     if(v.flags.y == 15) v.pos.y -= (0.5+(sin((v.pos.x+v.world_center.x)*0.1+(v.pos.z+v.world_center.z)*0.5+iTime*5))*0.5)*2;
     
-    //vec3 vpos = (CameraRight_worldspace * v.pos.x + CameraUp_worldspace * v.pos.y * 0.6);
-    
+    vec3 vpos = v.pos.xyz; //(CameraRight_worldspace * v.pos.x + CameraUp_worldspace * v.pos.y * 0.6);
+
     v.color        = getVertexColor(v.pos.xyz, v.normal.xyz, 1);
-    v.world_pos    = vec4(v.pos.xyz+v.world_center.xyz,1);
+    v.world_pos    = vec4(vpos + v.world_center.xyz,1);
     v.world_normal = normalize(v.world_pos);
 
     ov = v;
@@ -70,7 +80,7 @@ void main()
   v = iv[0];
     
   if(v.flags.w < 0) return; // discard
-
+    
   //createSide(v, 3);
   uint sides = uint(floor(v.flags.z));
   if((sides & 0x1) > 0) createSide(v, 4);  // LEFT
