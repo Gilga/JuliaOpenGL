@@ -1,4 +1,7 @@
 #import "globals.glsl"
+#import "landscape.glsl"
+
+#define DIST VOXEL_DIST*0.5
 
 layout(points) in;
 layout(triangle_strip, max_vertices=24) out; // 128 is hardware max
@@ -30,7 +33,7 @@ void createSide(Vertex v, int side)
   vec3 CameraUp_worldspace = vec3(iMVP[0][1], iMVP[1][1], iMVP[2][1]);
 
   for(int i=0;i<4;++i) {
-    v.pos          = vec4(cube[side][i],1);
+    v.pos          = vec4(cube[side][i]*DIST,1);
     //if((side == 2 && (i == 1 || i == 3)) || (side == 3 && (i == 1 || i == 3)) || (side == 4 && (i == 2 || i == 3)) || (side == 5 && (i == 0 || i == 1))) v.pos.y -= 100;
     v.normal       = normalize(v.pos);
     

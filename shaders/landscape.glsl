@@ -1,7 +1,11 @@
+precision highp float;
+precision highp float;
+
 #define COLSIZE $CHUNK1D_SIZE //?^1
 #define ROWSIZE $CHUNK2D_SIZE //?^2
 #define MAXSIZE $CHUNK3D_SIZE //?^3
 #define LAST MAXSIZE-1
+#define DISPATCHSIZE ROWSIZE
 
 #define COLISIZE 1.0/COLSIZE
 #define ROWISIZE 1.0/ROWSIZE
@@ -10,8 +14,8 @@
 #define SEED 43758.5453123
 #define NUM_OCTAVES 5
 
-float DIST = 2;
-float STARTDIST =(COLSIZE*DIST) / 2.0;
+float VOXEL_DIST = 1;
+float STARTDIST = (COLSIZE*VOXEL_DIST) / 2.0;
 vec3 START = vec3(-1,-1,1)*STARTDIST;
 
 layout(binding = 3) uniform sampler2D iHeightTexture;
@@ -35,9 +39,9 @@ struct MapData {
 Data createData(vec3 pos, float type, float sides, float height) { return Data(float[3](pos.x,pos.y,pos.z),type,sides,height);  }
 Data createData() { return createData(vec3(0),0,0,0);  }
 
-vec3 translate(vec3 index) { return START+index*vec3(1,1,-1)*DIST-vec3(0,STARTDIST,0); }
+vec3 translate(vec3 index) { return START+index*vec3(1,1,-1)*VOXEL_DIST-vec3(0,STARTDIST,0); }
 
-vec3 getIndex(uint index) {
+vec3 getIndex(uint index, uint lod) {
   float i = index;
   float y = floor(i*ROWISIZE);
   float height = y*ROWSIZE;
@@ -84,11 +88,12 @@ float fbm (in vec2 _st) {
 vec2 texSize = vec2(1.0/1024.0);
 
 float createLandscapeHeight(vec2 uv) {
-  return clamp(fbm(uv*100.0),0.0,1.0);
+  return clamp(fbm(uv * 2),0.0,1.0);
 }
 
 float getLandscapeHeight(vec2 uv) {
- return clamp(texture(iHeightTexture, uv).r,0.0,1.0);
+ return clamp(fbm(uv*1),0.0,1.0);
+ //return clamp(texture(iHeightTexture, uv).r,0.0,1.0);
 }
 
   /*
@@ -122,7 +127,9 @@ float getLandscapeHeight(vec2 uv) {
   */
 
 
-MapData getTypeSide2(vec3 index){
+MapData getTypeSide2(vec3 index, uint lod){
+  float slod = 1.0 / float(lod + 1);
+
   float S = COLISIZE;
   float y = index.y * S;
   vec2 uv = index.xz * S;
@@ -159,7 +166,8 @@ MapData getTypeSide2(vec3 index){
   if(!forward) sides |= (0x1 << 4); // FRONT
   if(!back) sides |= (0x1 << 5); // BACK
   
-  if (sides <= 0 || h<0 || h>1) { h=-1; sides=0; }
+  if (sides <= 0) { h=-1; sides=0; }
+  if (h>1) { h=-1; sides=0; }
 
   //if (h<0.99) { h=-1; sides=0; }
   return MapData(-1,sides,h);
@@ -231,14 +239,4 @@ vec3 getTypeSide(vec3 index){
   }
   
   return vec3(typ,sides,height*128);
-}
-
-void synchronize()
-{
-    // Ensure that memory accesses to shared variables complete.
-    memoryBarrierBuffer();
-    memoryBarrierShared();
-    groupMemoryBarrier();
-    // Every thread in work group must reach this barrier before any other thread can continue.
-    barrier();
 }

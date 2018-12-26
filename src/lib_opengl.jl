@@ -291,6 +291,7 @@ BackupSource=Dict{Symbol,String}()
 TODO
 """
 function createShader(programname::Symbol, infos::Dict{Symbol,Any})
+  pname = stringColor(programname;color=:yellow)
   key = Symbol(infos[:path]); file = infos[:file]; typ = infos[:shader]; source = infos[:content]; err=false
   source = string(strip(replace(source,"\r"=>"")))
 
@@ -303,7 +304,7 @@ function createShader(programname::Symbol, infos::Dict{Symbol,Any})
 
   # Create the shader
   shader = glCheck(glCreateShader(typ)::GLuint)
-  if shader == 0 error("[$programname] Error creating $typname: ", glErrorMessage()) end
+  if shader == 0 LogManager.error("[$pname] Error creating $typname: ", glErrorMessage()); return -1 end
   
   tmpdir="shaders/tmp/"
   backupdir="shaders/backup/"
@@ -315,35 +316,37 @@ function createShader(programname::Symbol, infos::Dict{Symbol,Any})
   backupfile=abspath(backupdir*file)
   
   # Compile the shader
-  try
-    # load previous backup
-    if !haskey(BackupSource, key) && isfile(backupfile)
-      BackupSource[key]=fileGetContents(backupfile)
-    end
-    
-    open(tmpfile, "w") do f write(f,source) end
-    !compileShader(shader, source) && error("[$programname] $typname ($file) compile error: ", getInfoLog(shader))
-     # save backup
-
-    mv(tmpfile, backupfile; force=true) #move into backups
-    BackupSource[key]=source
-    
-    debug("[$programname] $typname ($file) is compiled.")
-    
-  catch(ex)
-    Base.showerror(stderr, ex, catch_backtrace())
-    err=true
+  #try
+  # load previous backup
+  if !haskey(BackupSource, key) && isfile(backupfile)
+    BackupSource[key]=fileGetContents(backupfile)
+  end
+  
+  open(tmpfile, "w") do f write(f,source) end
+  result=compileShader(shader, source)
+  if !result
+    LogManager.warn("[$pname] $typname ($file) compile error: ", getInfoLog(shader))
     
     # get backup
     if haskey(BackupSource, key)
-      !compileShader(shader, BackupSource[key]) && error("[$programname] Backup of $typname ($file) compile error: ", getInfoLog(shader))
-      debug("[$programname] Backup of $typname ($file) is compiled.")
+      result=compileShader(shader, BackupSource[key])
+       if !result LogManager.error("[$pname] Backup of $typname ($file) compile error: ", getInfoLog(shader)); return -1 end #lost backup?
+      LogManager.debug("[$pname] Backup of $typname ($file) is compiled.")
     else
       glDeleteShader(shader)
-      shader = -1
-      warn("[$programname] No valid backup for $typname.")
+      LogManager.error("[$pname] No valid backup for $typname.")
+      return -1
     end
+  else
+    # save backup
+    mv(tmpfile, backupfile; force=true) #move into backups
+    BackupSource[key]=source
+    LogManager.debug("[$pname] $typname ($file) is compiled.")
   end
+  #catch(ex)
+  #  Base.showerror(stderr, ex, catch_backtrace())
+  #  err=true
+  #end
 
   shader
 end
@@ -353,15 +356,16 @@ export createShader
 """
 TODO
 """
-function createShaderProgram(name::Symbol, shaders::AbstractArray)
+function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeedback=false)
   # Create, link then return a shader program for the given shaders.
   # Create the shader program
+  pname = stringColor(name;color=:yellow)
   prog = glCheck(glCreateProgram())
   if prog == 0
-    error("Error creating shader program $name: ", glErrorMessage())
+    LogManager.error("Error creating shader program $pname: ", glErrorMessage())
   end
   
-  debug("Created shader program $name.")
+  LogManager.debug("Created shader program $pname.")
   
   # attributes
   #glBindAttribLocation(prog,0,"iVertex") # bind attribute always
@@ -379,24 +383,34 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray)
   if length(shaderIDs) == 0
     glDeleteProgram(prog)
     prog = -1
-    error("No valid shaders for shader program $name found.")
+    LogManager.error("No valid shaders for shader program $pname found.")
   else
   
-    # link the program and check for errors
-    glCheck(glLinkProgram(prog))
-    
-    (id->glCheck(glDeleteShader(id))).(shaderIDs) # remove shaders
-    
-    status = GLint[0]
-    glCheck(glGetProgramiv(prog, GL_LINK_STATUS, status))
-    
-    if status[] == GL_FALSE
-      msg = getInfoLog(prog)
-      glCheck(glDeleteProgram(prog))
-      error("Linking shader: ", msg)
+    if transformfeedback
+      #Ptr{Ptr{GLchar}}
+      r = [
+        convert(Ptr{GLchar}, pointer("iInstancePos")),#pointer(collect("iInstancePos\x00"))
+        convert(Ptr{GLchar}, pointer("iInstanceFlags")) #pointer(collect("iInstanceFlags\x00"))
+      ]
+      glTransformFeedbackVaryings(prog, 2, r, GL_INTERLEAVED_ATTRIBS)
     end
     
-    debug("Shader Program($prog) $name is initalized.")
+    # link the program and check for errors
+    glLinkProgram(prog)
+    
+    status = GLint[0]
+    glGetProgramiv(prog, GL_LINK_STATUS, status)
+
+    (id->glCheck(glDeleteShader(id))).(shaderIDs) # remove shaders
+
+    if status[] == GL_FALSE
+      msg = getInfoLog(prog)
+      glDeleteProgram(prog)
+      LogManager.error("Shader Program($prog) $pname: Error Linking: $msg")
+      prog=-1
+    end
+    
+    LogManager.debug("Shader Program($prog) $pname is initalized.")
   end 
     
   prog

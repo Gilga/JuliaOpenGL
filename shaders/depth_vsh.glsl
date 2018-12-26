@@ -11,7 +11,7 @@ void main() {
   Vertex v = preset(iVertex);
   vec4 outpos = vec4(0,0,0,0);
 
-  v.flags = vec4(0,(iInstanceFlags.x-1),iInstanceFlags.y,iInstanceFlags.z);
+  v.flags = vec4(iInstanceFlags.x,0,iInstanceFlags.y,iInstanceFlags.z);
   
   if(v.flags.w >= 0) {
     v.world_center  = vec4(iInstancePos.xyz+iPosition,1);

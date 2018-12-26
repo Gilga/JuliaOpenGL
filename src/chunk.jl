@@ -23,6 +23,7 @@ export getActiveChilds
 export getVisibleChilds
 export getValidChilds
 export getFilteredChilds
+export inFrustum
 
 GPU_CHUNKS = false
 
@@ -87,6 +88,7 @@ mutable struct ChunkNode <: IChunk
 end
 
 mutable struct Chunk <: IChunk
+  id::UInt32
   active::Bool
   visible::Bool
   pos::Vec3f
@@ -98,7 +100,7 @@ mutable struct Chunk <: IChunk
   nodes::Array{ChunkNode,1}
   parent::Union{Nothing,IChunk}
   
-  Chunk() = new(true,true,Vec3f(),Vec3f(),0,0,Array{Block}(undef,0,0,0),Block[],Array{ChunkNode}(undef,0),nothing)
+  Chunk(;id=0,pos=Vec3f()) = new(id,true,true,pos,Vec3f(),0,0,Array{Block}(undef,0,0,0),Block[],Array{ChunkNode}(undef,0),nothing)
 end
 
 function init(this::Chunk, size::Integer)
@@ -232,6 +234,12 @@ function itranslate(this::INode, SIZE::Integer)
   Vec3f(START.x+(x-1)*DIST.x, START.y+(y-1)*DIST.y, START.z-(z-1)*DIST.z)
 end
 
+function itranslate(index::Vec3f)::Vec3f
+  DIST = 0.25
+  STARTDIST = (128*DIST) / 2f0
+  Vec3f(-1,-1,1)*STARTDIST+index*Vec3f(1,1,-1)*DIST-Vec3f(0,STARTDIST,0)
+end
+
 function updateChunkNodePos(this::Chunk)
   SIZE=size(this.childs)[1]
   depths=zeros(UInt,round(UInt,log(2,SIZE)))
@@ -258,6 +266,8 @@ function updateChunkNodePos(this::Chunk)
     if depth < max_depth depth+=1; node=child; else count+=1; child.pos = itranslate(child, SIZE); end
   end
 end
+
+inFrustum(this::Chunk, fstm::Frustum) = checkCube(fstm, itranslate(this.pos), Vec3f(128,128,128))[1] != :FRUSTUM_OUTSIDE #checkSphere(fstm, itranslate(this.pos), 128.0)
 
 function checkInFrustum(this::Chunk, fstm::Frustum)
   depths=[0,0,0,0,0,0]
