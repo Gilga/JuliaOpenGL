@@ -61,7 +61,11 @@ FRUSTUM_CULLING = true
 HIDE_UNSEEN_CUBES = true
 RENDER_METHOD = 8
 mychunk = nothing
-programs = Dict{Symbol,GLint}(:CHUNKS=>0,:NORMAL=>0, :SCREEN=>0, :COMPUTE=>0, :COMPUTE_CHUNKS=>0, :CHANGE_CHUNKS=>0, :INSTANCES=>0, :INDIRECT=>0, :BG=>0, :FG=>0, :DEPTH=>0, :DEPTH_MIP=>0)
+programs = Dict{Symbol,GLint}(
+:CHUNKS=>0,:NORMAL=>0, :SCREEN=>0, :COMPUTE=>0,
+:COMPUTE_CHUNKS=>0, :CHANGE_CHUNKS=>0, :INSTANCES=>0, :INDIRECT=>0,
+:BG=>0, :FG=>0, :DEPTH=>0, :RASTER=>0, :DEPTH_MIP=>0
+)
 
 SCENE = 2
 FRUSTUM = nothing
@@ -185,7 +189,7 @@ function presetCamera()
   setProjection(CAMERA, projection_perspective(FOV, RATIO, CLIP_NEAR, CLIP_FAR))
   Update(CAMERA)
   #= global =# MVP = CAMERA.MVP
-  SetFrustum(FRUSTUM, FOV, RATIO, CLIP_NEAR, 1000f0)
+  SetFrustum(FRUSTUM, FOV+10, RATIO, CLIP_NEAR, CLIP_FAR)
   SetCamera(FRUSTUM, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0))
 end
 
@@ -344,9 +348,32 @@ end
 
 render_init = false
 
+  
+chunk_pos = [
+  Float32[0,0,0],
+  Float32[1,0,0],Float32[-1,0,0],Float32[0,0,1],Float32[0,0,-1],Float32[-1,0,-1],Float32[1,0,1],Float32[-1,0,1],Float32[1,0,-1],
+  Float32[2,0,0],Float32[-2,0,0],Float32[0,0,2],Float32[0,0,-2],Float32[-2,0,-2],Float32[2,0,2],Float32[-2,0,2],Float32[2,0,-2],
+  Float32[2,0,1],Float32[2,0,-1],Float32[-2,0,1],Float32[-2,0,-1],Float32[1,0,2],Float32[-1,0,2],Float32[1,0,-2],Float32[-1,0,-2]
+] * 128
+
+CHUNKS = Chunk[Chunk(;id=i,pos=chunk_pos[i]) for i=1:length(chunk_pos)] #Array{ChunkD,1}(undef, length(centers))
+
+CHUNK_COUNT = length(CHUNKS)
 DEPTH_SIZE = max(WIDTH, HEIGHT) #256
 DEPTH_SIZE_LOG2 = round(Integer,log2(DEPTH_SIZE)) #8
 LOD_LEVELS = DEPTH_SIZE_LOG2 + 1
+
+DISPATCH_RESETER = nothing
+CHUNK_ALL_BUFFERS = []
+CHUNK_BUFFERS = []
+DISPATCH_BUFFERS = []
+CHUNK_COUNTERS = []
+CHUNK_INDIRECT_DRAW_BUFFERS = []
+CHUNK_INDIRECT_DRAW_BUFFERS_REFIDS = []
+CHUNK_COUNTERS=[]
+DISPATCH_COUNTERS=[]
+CHUNK_OBJECTS=[]
+TRANSFORM_FEEDBACK_BUFFERS=[]
 
 frameBuffers = zeros(Integer,LOD_LEVELS)
 depthrenderbuffer = 0
@@ -394,26 +421,49 @@ function uploadData()
     ARRAY_SIZE=6*CHUNK3D_SIZE #max: 128000000 - ok it's to big
     DISPATH_SIZE = round(UInt32,Float32(CHUNK3D_SIZE) / CHUNK_SIZE)
   
+    #= global =# DISPATCH_RESETER = createBuffers(GLuint[1,1,1],1; typ=GL_DISPATCH_INDIRECT_BUFFER, usage=GL_STREAM_READ)[1]
+  
     #linkData(chunkData, :vertices=>(DATA_PLANE_VERTEX,3), :indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true), :instances=>chunk_instances)
-    if RENDER_METHOD != 7 
-      linkData(planeData,  :vertices=>plane_vertices)
-      linkData(boxData,  :vertices=>box_vertices)
-    end
     
+    setFrustumMode()
+    plane_vertices = getVertices(FRUSTUM)
+    box_vertices = getBox(FRUSTUM)
+    
+    linkData(planeData,  :vertices=>(plane_vertices,3))
+    linkData(boxData,  :vertices=>(box_vertices,3))
+      
     if RENDER_METHOD >= 7 
-      linkData(screenData,  :vertices=>(DATA_PLANE2D_VERTEX_STRIP,2)) #, :indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
+      linkData(screenData, :vertices=>(DATA_PLANE2D_VERTEX_STRIP,2)) #:indicies=>(DATA_PLANE_INDEX,1,GL_ELEMENT_ARRAY_BUFFER, true))
     end
     
-    if RENDER_METHOD == 8 linkData(indirectData,
-      :points=>zeros(Float32,ARRAY_SIZE),
+    if RENDER_METHOD == 8
+    
+      #linkData(chunkData,
+      #:points=>zeros(Float32,ARRAY_SIZE),
       #:chunks_default=>chunk_instances,
-      :chunks_changed=>zeros(Float32,ARRAY_SIZE),
-      :points_default=>zeros(Float32,ARRAY_SIZE),
-      :counter=>(GLuint[0],1,GL_ATOMIC_COUNTER_BUFFER, GL_STREAM_READ),
-      :dispatchCounter=>(GLuint[0],1,GL_ATOMIC_COUNTER_BUFFER, GL_STREAM_READ),
-      :indirect_dispatch=>(GLuint[1,1,1],1,GL_DISPATCH_INDIRECT_BUFFER, GL_STREAM_READ),
-      :dispatch_reset=>(GLuint[1,1,1],1,GL_DISPATCH_INDIRECT_BUFFER, GL_STREAM_READ),
-      :indirect=>(GLuint[0,1,0,0,0],1,GL_DRAW_INDIRECT_BUFFER))
+      #:chunks_changed=>zeros(Float32,ARRAY_SIZE),
+      #:points_default=>zeros(Float32,ARRAY_SIZE),
+      #:indirect_dispatch=>(GLuint[1,1,1],1,GL_DISPATCH_INDIRECT_BUFFER, GL_STREAM_READ)
+      #:counter=>(GLuint[0],1,GL_ATOMIC_COUNTER_BUFFER, GL_STREAM_READ),
+      #:dispatchCounter=>(GLuint[0],1,GL_ATOMIC_COUNTER_BUFFER, GL_STREAM_READ),
+      #:dispatch_reset=>(GLuint[1,1,1],1,GL_DISPATCH_INDIRECT_BUFFER, GL_STREAM_READ),
+      #:indirect=>(GLuint[0,1,0,0,0],1,GL_DRAW_INDIRECT_BUFFER)
+      #)
+    
+      linkData(indirectData)
+      
+      #= global =# CHUNK_COUNTERS = createBuffers(GLuint[0],2; typ=GL_ATOMIC_COUNTER_BUFFER, usage=GL_STREAM_READ)
+      #= global =# DISPATCH_COUNTERS = createBuffers(GLuint[0],CHUNK_COUNT; typ=GL_ATOMIC_COUNTER_BUFFER, usage=GL_STREAM_READ)
+      
+      buffdata=zeros(Float32,ARRAY_SIZE)
+      #= global =# CHUNK_OBJECTS = createArrayObjects(CHUNK_COUNT)
+      #= global =# CHUNK_ALL_BUFFERS = createBuffers(buffdata,CHUNK_COUNT)
+      #= global =# CHUNK_BUFFERS = createBuffers(buffdata,CHUNK_COUNT)
+      #= global =# TRANSFORM_FEEDBACK_BUFFERS = createBuffers(buffdata,CHUNK_COUNT)
+      #= global =# DISPATCH_BUFFERS = createBuffers(GLuint[1,1,1],CHUNK_COUNT; typ=GL_DISPATCH_INDIRECT_BUFFER, usage=GL_STREAM_READ)
+      #= global =# CHUNK_INDIRECT_DRAW_BUFFERS = createBuffers(GLuint[0,1,0,0,0],CHUNK_COUNT; typ=GL_DRAW_INDIRECT_BUFFER)
+      ##= global =# CHUNK_INDIRECT_DRAW_BUFFERS = [createBuffer(GLuint[0,1,0,0,0], CHUNK_COUNT; typ=GL_DRAW_INDIRECT_BUFFER)]
+      ##= global =# CHUNK_INDIRECT_DRAW_BUFFERS_REFIDS = getMeshBufferRefID(CHUNK_INDIRECT_DRAW_BUFFERS)
       
       #= global =# depthrenderbuffer = glGenRenderbuffer()
       #= global =# texture_depth = createTexture((WIDTH,HEIGHT);level=LOD_LEVELS) #DEPTH_SIZE
@@ -465,10 +515,10 @@ function uploadData()
   #= global =# uploaded=:NOTHING
 end
 
-function reloadShaderProgram(program::Symbol, shaders::AbstractArray)
+function reloadShaderProgram(program::Symbol, shaders::AbstractArray; transformfeedback=false)
   result=false
   try
-    p = createShaderProgram(program, shaders)
+    p = createShaderProgram(program, shaders; transformfeedback=transformfeedback)
     if p >= 0
       glCheck(glUseProgram(0))
       glCheck(glDeleteProgram(programs[program]))
@@ -483,18 +533,18 @@ end
 function bindBuffers()
   #if GPU_CHUNKS
     #use_program(programs[:COMPUTE_CHUNKS]s, () -> begin
-      #glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch].bufferID)
-      #glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter].bufferID)
-      #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:chunks_default].bufferID)
-      #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points_default].bufferID)
+      #glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch].refID)
+      #glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter].refID)
+      #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:chunks_default].refID)
+      #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points_default].refID)
     #end)
   #end
   
   #use_program(programs[:INSTANCES], () -> begin
-    #glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].bufferID)
-    #glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].bufferID)
-    #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].bufferID)
-    #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
+    #glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].refID)
+    #glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].refID)
+    #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].refID)
+    #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].refID)
   #end)
 end
 
@@ -531,6 +581,9 @@ function reloadShaderPrograms()
   DEPTH_FSH = shaders[:DEPTH_FSH]
   DEPTH_GSH = shaders[:DEPTH_GSH]
   DEPTH_MIP_FSH = shaders[:DEPTH_MIP_FSH]
+  RASTER_VSH = shaders[:RASTER_VSH]
+  RASTER_FSH = shaders[:RASTER_FSH]
+  RASTER_GSH = shaders[:RASTER_GSH]
   
   println("Create & Compile shader programs...")
   program_data = [VSH, FSH]
@@ -556,13 +609,14 @@ function reloadShaderPrograms()
   #= global =# reloadShaderProgram(:FG, [VSH, FG_FSH])
   #= global =# reloadShaderProgram(:DEPTH, [INST_VSH_CSH_GSH, DEPTH_FSH, DEPTH_GSH])
   #= global =# reloadShaderProgram(:DEPTH_MIP, [SCREEN_VSH, DEPTH_MIP_FSH])
+  #= global =# reloadShaderProgram(:RASTER, [RASTER_VSH, RASTER_FSH, RASTER_GSH];transformfeedback=false)
   
   println("bind Buffers...")
   bindBuffers()
   
   println("set Attributes ...")
-  
-  setAttributes(indirectData, programs[:INDIRECT])
+  setAttributes(CHUNK_OBJECTS[1:1], CHUNK_BUFFERS[1:1], programs[:INDIRECT])
+  #setAttributes(indirectData, programs[:INDIRECT])
   setAttributes(planeData, programs[:NORMAL])
   setAttributes(boxData, programs[:NORMAL])
   setAttributes(screenData, programs[:SCREEN])
@@ -737,13 +791,7 @@ function loop()
   
   #------------------------------------------------------------------------------------
 
-  #function updateBlocks()
-    #const mmvp = SMatrix{4,4,Float32}(CAMERA.MVP)
-    #setMVP(CAMERA.MVP)
-    #glUniform3fv(location_shift, 1, CAMERA.position)
-    #glUniform3fv(location_shift, 1, shiftposition)
-    #for b in blocks; b.mvp=mmvp*b.model; end
-  #end
+  #const mmvp = SMatrix{4,4,Float32}(CAMERA.MVP)
 
   #------------------------------------------------------------------------------------
 
@@ -800,61 +848,89 @@ function loop()
           #setFrustumProgram(programs[:CHUNKS])
         end
       #end
-      if RENDER_METHOD != 7 setFrustumMode() end
+      setFrustumMode()
       #= global =# CAMERA_UPDATED=true
     end
   end
   
-  centers = [Float32[1,0,0],Float32[-1,0,0],Float32[0,0,1],Float32[0,0,-1],Float32[-1,0,-1],Float32[1,0,1],Float32[-1,0,1],Float32[1,0,-1]]
-  #frameBufferMax = length(centers)
+  #frameBufferMax = length(CHUNKS)
   #frameBufferCounter=0
   itime = 0
 
-  function gpu_updateChunks(center,culling=false)
-    #for center in centers
-    useProgram(programs[:CHANGE_CHUNKS])
-    
-    setMode("iTime", itime)
-    setMode("iCamPos", CAMERA.position)
-    setMode("iCamAng", CAMERA.rotation)
-    setMode("iCenter", center)
-    setMode("iProj", CAMERA.projectionMat)
-    setMode("iView", CAMERA.viewMat)
-    setMode("iMVP", CAMERA.MVP)
-    
-    setFrustumProgram(programs[:CHANGE_CHUNKS])
-    
-    glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch].bufferID)
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect_dispatch].bufferID) #DISPATH
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectData.arrays[:dispatchCounter].bufferID) #dispatchCount (used after GPU_CHUNKS_INIT)
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, indirectData.arrays[:indirect].bufferID) #instanceCount
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 3, indirectData.arrays[:counter].bufferID) #counter
-    
+  INDIRECT_DRAW_BUFFER_SIZE=sizeof(GLuint[0,1,0,0,0])
+  
+  VISIBLE_CHUNKS=Array{Chunk,1}(undef, length(CHUNKS))
+  VISIBLE_CHUNKS_COUNT = 0
+  
+  function gpu_updateChunks()
     if GPU_CHUNKS_INIT || CAMERA_UPDATED
-      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:chunks_changed].bufferID)
-      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
+      #SetCamera(FRUSTUM, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0))
     
-      if GPU_CHUNKS_INIT
-        setMode("STATE", -1) #RESET
-        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:dispatch_reset].bufferID)
+      useProgram(programs[:CHANGE_CHUNKS])
+      
+      setMode("iTime", itime)
+      setMode("iCamPos", CAMERA.position)
+      setMode("iCamAng", CAMERA.rotation)
+      setMode("iProj", CAMERA.projectionMat)
+      setMode("iView", CAMERA.viewMat)
+      setMode("iMVP", CAMERA.MVP)
+      
+      setFrustumProgram(programs[:CHANGE_CHUNKS])
+      
+      CHUNK_COUNTER=CHUNK_COUNTERS[1]
+      #DISPATCH_BUFFER=DISPATCH_BUFFERS[1]
+      CHUNK_INDIRECT_DRAW_BUFFER = CHUNK_INDIRECT_DRAW_BUFFERS[1]
+      
+      #glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, DISPATCH_BUFFER.refID) #DISPATH
+      glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 3, CHUNK_COUNTER.refID) #counter
+      
+      #buf = glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT)
+      VISIBLE_CHUNKS_COUNT = 0
+      
+      for chunk in CHUNKS
+        visible=inFrustum(chunk,FRUSTUM)
+        if !GPU_CHUNKS_INIT && !visible continue end
+        
+        if visible
+          VISIBLE_CHUNKS_COUNT += 1
+          VISIBLE_CHUNKS[VISIBLE_CHUNKS_COUNT] = chunk
+        end
+        
+        setMode("iCenter", chunk.pos)
+        
+        DISPATCH_BUFFER=DISPATCH_BUFFERS[chunk.id]
+        CHUNK_ALL_BUFFER=CHUNK_ALL_BUFFERS[chunk.id]
+        CHUNK_BUFFER=CHUNK_BUFFERS[chunk.id]
+        CHUNK_INDIRECT_DRAW_BUFFER = CHUNK_INDIRECT_DRAW_BUFFERS[chunk.id]
+        DISPATCH_COUNTER=DISPATCH_COUNTERS[chunk.id]
+
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, DISPATCH_BUFFER.refID) #DISPATH
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, DISPATCH_COUNTER.refID) #dispatchCount (used after GPU_CHUNKS_INIT)
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, CHUNK_INDIRECT_DRAW_BUFFER.refID) #instanceCount
+        #glBindBufferRange(GL_ATOMIC_COUNTER_BUFFER, 2 , CHUNK_INDIRECT_DRAW_BUFFER.refID, 0, INDIRECT_DRAW_BUFFER_SIZE)
+        
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, CHUNK_ALL_BUFFER.refID)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, CHUNK_BUFFER.refID)
+        
+        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , DISPATCH_RESETER.refID)
+        setMode("STATE", GPU_CHUNKS_INIT ? -1 : -2) #RESET / SET DISPATCH VALUE
         glDispatchComputeIndirect(C_NULL)
         glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
-        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch].bufferID)
+        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , DISPATCH_BUFFER.refID)
+        
+        setMode("STATE", GPU_CHUNKS_INIT ? 0 : 1)
+        setMode("iCulling", 0)
+        glDispatchComputeIndirect(C_NULL)
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
       end
-      
-      setMode("STATE", GPU_CHUNKS_INIT ? 0 : 1)
-      setMode("iCulling", 0)
-      glDispatchComputeIndirect(C_NULL)
-      glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
-      
+
       #glDrawBuffer(GL_NONE)
       #glReadBuffer(GL_NONE)
       #glReadBuffer(GL_BACK)
       #glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 0, 0, WIDTH, HEIGHT, 0)
       
-      # rasterize_occluders
       ######################################################################
-      
+      # depth buffer
       useProgram(programs[:DEPTH])
 
       # Render occlusion geometry to miplevel 0
@@ -863,7 +939,14 @@ function loop()
       glViewport(0, 0, WIDTH, HEIGHT) #DEPTH_SIZE
       drawChunk(Float32[0,0,0])
       glBindFramebuffer(GL_FRAMEBUFFER, 0)
-
+      
+      glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) # make sure writing to image has finished before read
+      glActiveTexture(GL_TEXTURE0)
+      glBindTexture(GL_TEXTURE_2D, texture_depth)
+      
+      ############################################################################
+      glDepthFunc(GL_ALWAYS)
+      
       # Render occlusion geometry to miplevel > 0
       useProgram(programs[:DEPTH_MIP])
       glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) # make sure writing to image has finished before read
@@ -895,6 +978,7 @@ function loop()
 
       glBindVertexArray(0)
       glBindFramebuffer(GL_FRAMEBUFFER, 0)
+      glDepthFunc(GL_LEQUAL)
       
       # Restore miplevels. MAX_LEVEL will be clamped accordingly.
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
@@ -903,18 +987,136 @@ function loop()
       glViewport(0, 0, WIDTH, HEIGHT)
       glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) # make sure writing to image has finished before read
       ######################################################################
-      # test_bounding_boxes
-      
-      useProgram(programs[:CHANGE_CHUNKS])
-      
+
        # Bind Hi-Z depth map
       glActiveTexture(GL_TEXTURE0)
       glBindTexture(GL_TEXTURE_2D, texture_depth)
       glBindSampler(0, shadow_sampler)
+      ############################################################################
+        
+      glDepthMask(GL_FALSE)
+      glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE)
+     
+      #glEnable( GL_POLYGON_OFFSET_FILL )
+      #glPolygonOffset(-1,-1)
+     
+      useProgram(programs[:RASTER])
+      #setMode("iTime", itime)
+      #setMode("iResolution", Float32[WIDTH,HEIGHT])
+      #setMode("iCamPos", CAMERA.position)
+      #setMode("iCamAng", CAMERA.rotation)
+      #setMode("iProj", CAMERA.projectionMat)
+      #setMode("iView", CAMERA.viewMat)
+      #setMode("iMVP", CAMERA.MVP)
       
+      
+       
+      # rasterize_occluders
+      
+      chunk = VISIBLE_CHUNKS[1]
+     # setAttributes(CHUNK_BUFFERS[chunk.id], programs[:INDIRECT], atrb) # cannot use this for multiple vbos. opengl has its limitation here
+      #glBindBuffer(GL_ARRAY_BUFFER, CHUNK_BUFFERS[chunk.id].refID) #for vao
+      #glBindBuffer(GL_DRAW_INDIRECT_BUFFER , CHUNK_INDIRECT_DRAW_BUFFERS[chunk.id].refID)
+
+      glEnable(GL_RASTERIZER_DISCARD)
+      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, CHUNK_BUFFERS[1].refID)
+      glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT)
+      #glBindTransformFeedback(GL_TRANSFORM_FEEDBACK_BUFFER,TRANSFORM_FEEDBACK_BUFFERS[1].refID)
+      #glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER,0,TRANSFORM_FEEDBACK_BUFFERS[1].refID)
+      #glBeginTransformFeedback(GL_POINTS)
+
+      glDrawArraysIndirect(GL_POINTS, Ptr{Nothing}(0))
+      #drawChunk(Float32[0,0,0];single=true)
+      
+      #glEndTransformFeedback()
+      #glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER,0,0)
+      glDisable(GL_RASTERIZER_DISCARD)
+      
+      glDepthMask(GL_TRUE)
+      glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE)
+
+      #glPolygonOffset(0,0)
+      #glDisable( GL_POLYGON_OFFSET_FILL )
+      
+      ############################################################################ 
+      
+      useProgram(programs[:CHANGE_CHUNKS])
+      
+      for i=1:VISIBLE_CHUNKS_COUNT
+        chunk=VISIBLE_CHUNKS[i]
+         
+        setMode("iCenter", chunk.pos)
+        
+        DISPATCH_BUFFER=DISPATCH_BUFFERS[chunk.id]
+        CHUNK_ALL_BUFFER=CHUNK_ALL_BUFFERS[chunk.id]
+        CHUNK_BUFFER=CHUNK_BUFFERS[chunk.id]
+        CHUNK_INDIRECT_DRAW_BUFFER = CHUNK_INDIRECT_DRAW_BUFFERS[chunk.id]
+        DISPATCH_COUNTER=DISPATCH_COUNTERS[chunk.id]
+
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, DISPATCH_BUFFER.refID) #DISPATH
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, DISPATCH_COUNTER.refID) #dispatchCount (used after GPU_CHUNKS_INIT)
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, CHUNK_INDIRECT_DRAW_BUFFER.refID) #instanceCount
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, CHUNK_ALL_BUFFER.refID)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, CHUNK_BUFFER.refID)
+        
+        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , DISPATCH_RESETER.refID)
+        setMode("STATE", -2) # SET DISPATCH VALUE
+        glDispatchComputeIndirect(C_NULL)
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
+        glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , DISPATCH_BUFFER.refID)
+        
+        setMode("STATE", 2)
+        glDispatchComputeIndirect(C_NULL)
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
+      end
+      
+      #=
+      useProgram(programs[:CHANGE_CHUNKS])
       setMode("iCulling", 1) # Dispatch occlusion culling job
+
+      setMode("STATE", -3) # SET DISPATCH VALUE
+      glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , DISPATCH_RESETER.refID)
+      glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, CHUNK_INDIRECT_DRAW_BUFFER.refID)
       glDispatchComputeIndirect(C_NULL)
       glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
+      
+      CHUNK_BUFFER=CHUNK_BUFFERS[1]
+      glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, CHUNK_BUFFER.refID)
+      =#
+
+      #=
+      glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, DISPATCH_BUFFER.refID) #DISPATH
+      glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 3, CHUNK_COUNTER.refID) #counter
+        
+      for chunk=1:CHUNK_COUNT
+        setMode("iCenter", CHUNKS[chunk].pos)
+        
+        CHUNK_ALL_BUFFER=CHUNK_ALL_BUFFERS[chunk]
+        CHUNK_BUFFER=CHUNK_BUFFERS[chunk]
+        CHUNK_INDIRECT_DRAW_BUFFER = CHUNK_INDIRECT_DRAW_BUFFERS[chunk]
+        DISPATCH_COUNTER=DISPATCH_COUNTERS[chunk]
+        
+        #glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, DISPATCH_BUFFER.refID) #DISPATH
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, DISPATCH_COUNTER.refID) #dispatchCount (used after GPU_CHUNKS_INIT)
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, CHUNK_INDIRECT_DRAW_BUFFER.refID) #instanceCount
+        #glBindBufferRange(GL_ATOMIC_COUNTER_BUFFER, 2 , CHUNK_INDIRECT_DRAW_BUFFER.refID, 0, INDIRECT_DRAW_BUFFER_SIZE)
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, CHUNK_ALL_BUFFER.refID)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, CHUNK_BUFFER.refID)
+        
+        #setMode("STATE", -2) # SET DISPATCH VALUE
+        #glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , DISPATCH_RESETER.refID)
+        #glDispatchComputeIndirect(C_NULL)
+        #glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
+        #glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , DISPATCH_BUFFER.refID)
+
+        setMode("STATE", 2)
+        glDispatchComputeIndirect(C_NULL)
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
+      end
+      =#
+ 
       glBindSampler(0, 0)
       #setFrustumProgram(programs[:INSTANCES])
       #setMVP(programs[:INSTANCES], CAMERA.MVP)
@@ -922,8 +1124,8 @@ function loop()
       #setMode(programs[:INSTANCES], "iCamAng", CAMERA.rotation)
     end
     #=
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].bufferID)
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].refID)
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].refID)
     setMode("STATE", 2)
     glDispatchComputeIndirect(C_NULL)
     glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
@@ -932,11 +1134,11 @@ function loop()
     useProgram(programs[:INSTANCES])
     setMode("iTime", itime)
       
-    glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].bufferID)
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter2].bufferID) #LIMIT
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectData.arrays[:indirect].bufferID) #instanceCount
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].bufferID)
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].bufferID)
+    glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].refID)
+    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter2].refID) #LIMIT
+    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, indirectData.arrays[:indirect].refID) #instanceCount
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].refID)
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, indirectData.arrays[:points].refID)
     
     glDispatchComputeIndirect(C_NULL)
     glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT) # GL_ATOMIC_COUNTER_BARRIER_BIT GL_SHADER_IMAGE_ACCESS_BARRIER_BIT
@@ -944,7 +1146,9 @@ function loop()
     =#
    end
    
-   function drawChunk(center)
+   atrb=[("iInstancePos",Float32,3,0),("iInstanceFlags",Float32,3,0)]
+   
+   function drawChunk(center;single=false)
     setMode("iTime", itime)
     setMode("iResolution", Float32[WIDTH,HEIGHT])
     setMode("iCamPos", CAMERA.position)
@@ -954,13 +1158,28 @@ function loop()
     setMode("iView", CAMERA.viewMat)
     setMode("iMVP", CAMERA.MVP)
     setMode("iDepth", 0)
-
-    glBindVertexArray(indirectData.vao)
     
-    #glDrawArraysIndirect(GL_POINTS, Ptr{Nothing}(0))
-    glMultiDrawArraysIndirect(GL_POINTS,Ptr{Nothing}(0),1,0)
-        
+    #glBindVertexArray(indirectData.vao)
+    
+    glBindVertexArray(CHUNK_OBJECTS[1])
+    
+    #glBindBuffersRange(GL_ARRAY_BUFFER, i, length(buffers[i]), buffers[i], i>0 ? len*sz : 0, sizeof(Float32)*3*2)
+    
+    for i=1:(single ? 1 : VISIBLE_CHUNKS_COUNT)
+      chunk = VISIBLE_CHUNKS[i]
+      setAttributes(CHUNK_BUFFERS[chunk.id], programs[:INDIRECT], atrb) # cannot use this for multiple vbos. opengl has its limitation here
+      glBindBuffer(GL_ARRAY_BUFFER, CHUNK_BUFFERS[chunk.id].refID) #for vao
+      #glBindBufferRange(GL_DRAW_INDIRECT_BUFFER, 0 , CHUNK_INDIRECT_DRAW_BUFFERS[chunk.id].refID, 0, INDIRECT_DRAW_BUFFER_SIZE)
+      glBindBuffer(GL_DRAW_INDIRECT_BUFFER , CHUNK_INDIRECT_DRAW_BUFFERS[chunk.id].refID)
+      glDrawArraysIndirect(GL_POINTS, Ptr{Nothing}(0))
+      #glMultiDrawArraysIndirect(GL_POINTS,CHUNK_INDIRECT_DRAW_BUFFERS_REFIDS,1,0) # cannot use this for multiple vbos. opengl has its limitation here
+    end
+    
+    #glBindBuffer(GL_DRAW_INDIRECT_BUFFER , CHUNK_INDIRECT_DRAW_BUFFERS[1].refID)
+    #glMultiDrawArraysIndirect(GL_POINTS,Ptr{Nothing}(0),CHUNK_COUNT,0) 
+    
     glBindVertexArray(0)
+
   end
   
   """
@@ -1011,23 +1230,6 @@ function loop()
           end
           glBindVertexArray(0)
         end
-
-        ##############################################
-        
-        useProgram(programs[:NORMAL])
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-        
-        #setMode("color", Vec3f(1,0,0))
-        
-        glBindVertexArray(boxData.vao)
-        glDrawArrays(GL_TRIANGLES, 0, boxData.draw.count)
-        glBindVertexArray(0)
-
-        #setMode("color", Vec3f(1,1,0))
-        
-        glBindVertexArray(planeData.vao)
-        glDrawArrays(GL_TRIANGLES, 0, planeData.draw.count)
-        glBindVertexArray(0)
       end
       
       if RENDER_METHOD == 7
@@ -1083,12 +1285,15 @@ function loop()
         glActiveTexture(GL_TEXTURE4)
         glBindTexture(GL_TEXTURE_2D, texture_heightMap)
         
+        # calculate landscape
         if GPU_CHUNKS_INIT || CAMERA_UPDATED
           useProgram(programs[:COMPUTE])
           setMode("iTime", itime)
           glDispatchCompute(512/1, 512/1, 1)
         end
                 
+        ###################################
+        
         glDepthMask(GL_FALSE)
         
         useProgram(programs[:BG])
@@ -1099,30 +1304,56 @@ function loop()
         setMode("iCamAng", CAMERA.rotation)
         setMode("iProj", CAMERA.projectionMat)
         setMode("iView", CAMERA.viewMat)
+        #setMode("iMVP", eyeMat4x4f)
         
-        glBindVertexArray(screenData.vao)
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) # make sure writing to image has finished before read
         
+        glBindVertexArray(screenData.vao)
         glDrawArrays(GL_TRIANGLE_STRIP, 0, screenData.draw.count)
-
+        
         glBindVertexArray(0)
         glDepthMask(GL_TRUE)
-         
-        #drawChunk(centers[1])
-        #drawChunk(centers[2])
-        #drawChunk(centers[3])
-        #drawChunk(centers[4])
-        #drawChunk(centers[6])
-        #drawChunk(centers[7])
-        #drawChunk(centers[8])
-      
-        gpu_updateChunks(Float32[0,0,0])
+        #################################
+        
+        gpu_updateChunks()
         
         glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
         useProgram(programs[:INDIRECT])
         drawChunk(Float32[0,0,0])
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)        
+        
+        #################################
+        #=
+        useProgram(programs[:NORMAL])
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        
+        if GPU_CHUNKS_INIT #|| CAMERA_UPDATED
+          SetCamera(FRUSTUM, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0); far=100f0)
+          linkData(planeData, :vertices=>(getVertices(FRUSTUM),3))
+          linkData(boxData, :vertices=>(DATA_CUBE,3)) #getBox(FRUSTUM)
+          setAttributes(planeData, programs[:NORMAL])
+          setAttributes(boxData, programs[:NORMAL])
+        end
+        setMode("iMVP", CAMERA.MVP)
 
+        setMode("color", Vec4f(1,0,0,1))
+        glBindVertexArray(planeData.vao)
+        glDrawArrays(GL_TRIANGLES, 0, planeData.draw.count)
+        
+        glBindVertexArray(0)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        
+        setMode("color", Vec4f(0,0,1,1))
+        glBindVertexArray(boxData.vao)
+        
+        for i=1:VISIBLE_CHUNKS_COUNT
+          setMode("iPosition", VISIBLE_CHUNKS[i].pos)
+          glDrawArrays(GL_TRIANGLES, 0, boxData.draw.count)
+        end
+        =#
+        
+        #################################
+ 
         useProgram(programs[:FG])
         setMode("iTime", itime)
         setMode("iResolution", Float32[WIDTH,HEIGHT])
@@ -1138,7 +1369,9 @@ function loop()
         #glDrawBuffer(GL_BACK)
         #glReadBuffer(GL_FRONT)
       end
-      
+
+      ##############################################
+
       #ptr = Ptr{GLuint}(glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0,1*sizeof(GLuint),  GL_MAP_READ_BIT|GL_MAP_WRITE_BIT))
       #counter = convert(GLuint, unsafe_load(ptr))
       #println(counter)

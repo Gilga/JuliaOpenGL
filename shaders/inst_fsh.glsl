@@ -1,10 +1,13 @@
 #import "globals.glsl"
 
+precision highp sampler2DShadow;
+precision highp sampler2D;
+
 //layout(early_fragment_tests) in;
 layout(location = 0) in Vertex v;
 layout(location = 0) out vec4 outColor;
 
-//layout(binding = 1) uniform sampler2D iDepthTexture;
+layout(binding = 0) uniform sampler2DShadow iDepthMap;
 layout(binding = 2) uniform sampler2D iTexturePack;
 uniform int iDepth = 0;
 
@@ -84,7 +87,7 @@ void main() {
     }
   }
   
-  color = vec4(vec3(0.5 + sin(v.world_center.x*(1.0/8.0))*0.5,0.5 + sin(v.world_center.z*(1.0/8.0))*0.5,(0.5 + sin(v.world_center.y*(1.0/128.0)))),1);
+  if(!UseTexture && !UseLight) color = vec4(vec3(0.5 + sin(v.world_center.x*(1.0/8.0))*0.5,0.5 + sin(v.world_center.z*(1.0/8.0))*0.5,(0.5 + sin(v.world_center.y*(1.0/128.0)))),1);
   
   vec3 lightPos = vec3(sin(iTime)*100,70+sin(iTime*3)*30,cos(iTime)*100);
   vec3 lightDir = lightPos - v.world_center.xyz;
@@ -100,13 +103,13 @@ void main() {
     float alpha = radians(0);
 
     light.color = vec4(1,1,1,1);
-    light.energy = 10;
+    light.energy = 20;
     light.position = lightPos; //vec3(1000,500,-300); //vec3(sin(alpha),0,cos(alpha));
     light.diffuse = 1;
     light.specular = 1;
 
     material.emission = vec4(0.0,0.0,0.0,1.0); //vec4(glow?1:0,glow?0.5:0,0,1);
-    material.ambient = vec4(0.1,0.0,0.0,1.0);
+    material.ambient = vec4(0.0,0.0,0.0,1.0);
     material.diffuse = vec4(1.0,1.0,1.0,1.0);
     material.specular = vec4(1.0,1.0,1.0,1.0);
     material.shininess = 1;
@@ -182,19 +185,16 @@ void main() {
   }
   else color = vec4(vec3(color.xyz*range*100),color.w);
   
-  /*
-  float depth = gl_FragCoord.z;
-  //depth = 1 - (1.0/(length(camPos - v.world_center.xyz)));
-  
   if(iDepth == 1){
+    float depth = gl_FragCoord.z;
+    //depth = 1 - (1.0/(length(camPos - v.world_center.xyz)));
     vec2 duv = gl_FragCoord.xy / iResolution.xy;
-    //float tdepth = texture(iDepthMap, duv).x;
-    float tdepth = clamp(textureLod(iDepthMap, vec3(duv, 0), 1) + 0.00000003*0+0.000001*0 ,0,1); //0.00000003 not sure why its needed
+    //float tdepth = texture(iDepthTexture, duv).x;
+    float tdepth = clamp(textureLod(iDepthMap, vec3(duv, 0), 1) + 0.00000003 ,0,1); //0.00000003 not sure why its needed
     if(tdepth<depth) discard;
-    else { depth = gl_FragCoord.z; }
+    //else { depth = gl_FragCoord.z; }
+    //gl_FragDepth = depth;
   }
-  gl_FragDepth = depth;
-  */
 
   outColor = color;
 }

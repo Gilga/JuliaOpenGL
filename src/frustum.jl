@@ -234,7 +234,7 @@ export SetFrustum
 """
 TODO
 """
-function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f)
+function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f; near=0, far=0)
   pos = -pos
   target = -target
 
@@ -246,8 +246,8 @@ function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f)
 
 	Y = cross(Z, X)
 
-	nc = pos - Z * this.nearDistance
-	fc = pos - Z * this.farDistance
+	nc = pos - Z * (near==0 ? this.nearDistance : near)
+	fc = pos - Z * (far==0 ? this.farDistance : far)
 
 	this.nearTopLeft = nc + Y * this.nearHeight - X * this.nearWidth
 	this.nearTopRight = nc + Y * this.nearHeight + X * this.nearWidth

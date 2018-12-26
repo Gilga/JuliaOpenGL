@@ -7,10 +7,11 @@ layout (location = 0) out Vertex vertex;
 
 void main() {
   Vertex v = _Vertex();
-  vec3 pos = iInstancePos + iCenter * 128 + iPosition;
+  vec3 pos = iInstancePos + iCenter + iPosition;
 
-  v.flags = vec4(0,(iInstanceFlags.x-1),iInstanceFlags.y,iInstanceFlags.z); //vec4(0,0,127,iInstanceFlags.x);
-  if(iInstanceFlags.x == 9999) pos = vec3(sin(iTime)*100,70+sin(iTime*3)*30,cos(iTime)*100);
+  //v.size = vec4(0,0,0,0); 
+  v.flags = vec4(iInstanceFlags.x,0,iInstanceFlags.y,iInstanceFlags.z); //vec4(0,0,127,iInstanceFlags.x);
+  //if(iInstanceFlags.x == 9999) pos = vec3(sin(iTime)*100,70+sin(iTime*3)*30,cos(iTime)*100);
   
   if(v.flags.w >= 0) {
     v.world_center  = vec4(pos,1);

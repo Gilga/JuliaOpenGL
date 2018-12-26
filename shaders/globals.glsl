@@ -31,6 +31,7 @@ struct Vertex
 	vec4 pos;
 	vec4 normal;
 	vec4 color;
+  vec4 size;
   vec4 flags;
   vec4 uvs;
   vec4 world_center;
@@ -38,7 +39,7 @@ struct Vertex
 	vec4 world_normal;
 };
 
-Vertex _Vertex() { return Vertex(vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0)); }
+Vertex _Vertex() { return Vertex(vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0),vec4(0)); }
 
 vec2 getUV(vec3 vertex)
 {

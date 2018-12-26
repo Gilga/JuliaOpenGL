@@ -48,7 +48,7 @@ void main() {
  
  current = getCoord(uv, scale, vec2(0.01+0,0.01), false, true);
  if(isValid(current)) {
-  color = (1 - texture(iDepthTexture, current).xyz)*5000;
+  color = (1 - texture(iDepthTexture, current).xyz)*50000;
   visible=1;
  }
  

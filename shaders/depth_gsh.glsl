@@ -1,7 +1,9 @@
 #import "globals.glsl"
+#import "landscape.glsl"
 
 layout(points) in;
-layout(triangle_strip, max_vertices=24) out; // 128 is hardware max
+//layout(triangle_strip, max_vertices=24) out; // 128 is hardware max
+layout(triangle_strip,max_vertices=24) out;
 //triangle_strip, line_strip
 
 layout(location = 0) in Vertex iv[];
@@ -36,17 +38,18 @@ mat4 rotation(vec4 r) {
 void createSide(Vertex v, int side)
 {
   mat4 VP = iView;
-  vec3 CameraRight_worldspace = vec3(iMVP[0][0], iMVP[1][0], iMVP[2][0]);
-  vec3 CameraUp_worldspace = vec3(iMVP[0][1], iMVP[1][1], iMVP[2][1]);
+  vec3 CameraRight_worldspace = vec3(VP[0][0], VP[1][0], VP[2][0]);
+  vec3 CameraUp_worldspace = vec3(VP[0][1]*0, VP[1][1], VP[2][1]*0);
 
   for(int i=0;i<4;++i) {
-    v.pos          = vec4(cube[side][i],1);
+    v.pos          = vec4(cube[side][i]*VOXEL_DIST*0.5,1);
     //if((side == 2 && (i == 1 || i == 3)) || (side == 3 && (i == 1 || i == 3)) || (side == 4 && (i == 2 || i == 3)) || (side == 5 && (i == 0 || i == 1))) v.pos.y -= 100;
     v.normal       = normalize(v.pos);
     
-    if(v.flags.y == 15) v.pos.y -= (0.5+(sin((v.pos.x+v.world_center.x)*0.1+(v.pos.z+v.world_center.z)*0.5+iTime*5))*0.5)*2;
+    //if(v.flags.y == 15) v.pos.y -= (0.5+(sin((v.pos.x+v.world_center.x)*0.1+(v.pos.z+v.world_center.z)*0.5+iTime*5))*0.5)*2;
     
-    vec3 vpos = v.pos.xyz; //(CameraRight_worldspace * v.pos.x + CameraUp_worldspace * v.pos.y * 0.6);
+    vec3 vpos = v.pos.xyz;
+    //vpos = (CameraRight_worldspace * v.pos.x * 1 + CameraUp_worldspace * v.pos.y * 1) * 1;
 
     v.color        = getVertexColor(v.pos.xyz, v.normal.xyz, 1);
     v.world_pos    = vec4(vpos + v.world_center.xyz,1);
@@ -81,7 +84,6 @@ void main()
     
   if(v.flags.w < 0) return; // discard
     
-  //createSide(v, 3);
   uint sides = uint(floor(v.flags.z));
   if((sides & 0x1) > 0) createSide(v, 4);  // LEFT
   if((sides & 0x2) > 0) createSide(v, 5);  // RIGHT
