@@ -26,33 +26,24 @@
  */
 
 #import "globals.glsl"
+#import "buffer.glsl"
 
-struct Data {
-  float[3] pos;
-  float type;
-  float sides;
-  float height;
-};
+//layout(early_fragment_tests) in;
 
-layout(early_fragment_tests) in;
+layout(location = 0) in Vertex v;
 
-layout(std430,binding=0) buffer visibleBuffer {
-  Data visibles[];
-};
+layout(std430, binding = 0) buffer inputBuffer { BuffData instances[]; };
 
 layout(location=0,index=0) out vec4 FragColor;
 
-flat in int objid;
-
-layout(binding = 0) uniform sampler2DShadow iDepthMap;
+layout(binding = 0) uniform sampler2D iDepthTexture;
 
 void main() {
-  vec2 duv = gl_FragCoord.xy / iResolution.xy;
-  float tdepth = clamp(textureLod(iDepthMap, vec3(duv, 0), 1) + 0.00000003 ,0,1);
+  float tdepth = clamp(texture(iDepthTexture, gl_FragCoord.xy / textureSize(iDepthTexture,0)).x + 0.00000003*0 ,0,1);
   if(tdepth<gl_FragCoord.z) discard;
-  
-  visibles[objid].height = 1;
-  vec4 c = unpackUnorm4x8(uint(objid));
-  c.a=0.0;
+ 
+  uint index = uint(v.flags.x);
+  instances[index].height = 1;
+  vec4 c = unpackUnorm4x8(index); c.a=0.0;
   FragColor = c;
 }

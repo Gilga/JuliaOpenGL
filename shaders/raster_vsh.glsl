@@ -1,36 +1,32 @@
 #import "globals.glsl"
+#import "buffer.glsl"
+
+#define MAXSIZE $CHUNK3D_SIZE //?^3
 
 layout (location = 0) in vec3 iInstancePos;
 layout (location = 1) in vec3 iInstanceFlags;
 
 layout (location = 0) out Vertex vertex;
 
-struct Data {
-  float[3] pos;
-  float type;
-  float sides;
-  float height;
-};
-
-layout(std430, binding = 0) buffer visibleBuffer {
-  Data visibles[];
-};
+layout(std430) buffer inputBuffer { BuffData instances[]; };
 
 void main() {
   Vertex v = _Vertex();
-  vec3 pos = iInstancePos + iCenter + iPosition;
+  uint index = gl_VertexID;
+  
+  BuffData data = instances[index];
+  //instances[index].height = 0;
 
-  v.flags = vec4(iInstanceFlags.x,0,iInstanceFlags.y,iInstanceFlags.z);
+  vec3 pos = data.pos + iCenter + iPosition;
+
+  v.flags = vec4(data.type*0+index,0,data.sides,data.height);
   
   if(v.flags.w >= 0) {
     v.world_center  = vec4(pos,1);
+    v.size = vec4(0,0,iInstancePos.x,iInstanceFlags.x);
     vertex = v;
-    //uint objid = uint(v.flags.x);
-    //visibles[objid].height = 1;
-
-    //if (length(v.world_pos)) { //all(lessThan(abs(objPos),dim))){
-      // inside bbox
-      //visibles[objid] = 1;
-    //}
-  } //else discard;
+  } // else discard
+ 
+  //vertex = v;
+  //gl_Position = vec4(0,0,0,0);
 }
