@@ -2,7 +2,7 @@
 
 layout(location = 0) out vec4 outColor;
 
-layout(binding = 0) uniform sampler2DShadow iDepthMap;
+//layout(binding = 0) uniform sampler2DShadow iDepthMap;
 layout(binding = 1) uniform sampler2D iDepthTexture;
 layout(binding = 2) uniform sampler2D iTexturePack;
 layout(binding = 3) uniform sampler2D iHeightTexture;
@@ -48,7 +48,7 @@ void main() {
  
  current = getCoord(uv, scale, vec2(0.01+0,0.01), false, true);
  if(isValid(current)) {
-  color = (1 - texture(iDepthTexture, current).xyz)*50000;
+  color = (1 - texture(iDepthTexture, (gl_FragCoord.xy/ textureSize(iDepthTexture,0))).xyz)*50000; //0.22
   visible=1;
  }
  

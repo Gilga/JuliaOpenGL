@@ -1,13 +1,13 @@
-#import "globals.glsl"
-
-layout(location = 0) in Vertex v;
-layout(location = 0) out vec4 FragColor;
+layout(binding = 0) uniform sampler2D iDepthTexture;
+uniform bool iDepth = false;
 
 void main() {
-  //vec2 uv = getUV(v.pos.xyz);
-  //float depth = 1 - (1.0/(length(-iCamPos - v.world_center.xyz)));
-  //float dist = abs(length(uv-vec2(0.5)));
-  //if(dist>0.9) discard;
-  //gl_FragDepth = depth; //gl_FragCoord.z;
-  FragColor = vec4(1.0);
+
+  //if (iDepth) {
+  //  float tdepth = clamp(texture(iDepthTexture, gl_FragCoord.xy / textureSize(iDepthTexture,0)).x + 0.00000003 ,0,1);
+  //  if(tdepth<gl_FragCoord.z) discard;
+  //  gl_FragDepth = gl_FragCoord.z;
+  //}
+
+  gl_FragDepth = gl_FragCoord.z;
 }

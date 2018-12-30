@@ -8,6 +8,7 @@ export OnTime
 export GetTimer
 export SetTimer
 export UpdateTimers
+export GetTimePassed
 
 using Dates
 using Printf
@@ -45,6 +46,10 @@ function UpdateTimers()
   SetTimer("FRAME_TIMER", Dates.time())
 end
 
+timePassed = 0
+GetTimePassed() = timePassed
+SetTimePassed(t) = global timePassed=t
+
 """
 TODO
 """
@@ -58,7 +63,7 @@ function OnTime(milisec::Number)
     prevTime = GetTimer(milisec)
   end
   
-  (GetTimer("FRAME_TIMER") - prevTime) >= milisec
+  SetTimePassed(GetTimer("FRAME_TIMER") - prevTime) >= milisec
 end
 
 """

@@ -11,26 +11,22 @@ uniform int STATE = 0;
 layout(binding = 0) uniform sampler2DShadow iDepthMap;
 
 uniform int iCulling = 0;
+uniform bool iRasterrize = false;
 
-layout (local_size_x = 128) in; // //$CHUNK_SIZE
+layout (local_size_x = $CHUNK_SIZE) in;
 
 layout(binding = 0, offset = 0) uniform atomic_uint DISPATCH;
 layout(binding = 1, offset = 0) uniform atomic_uint dispatchCount;
 layout(binding = 2, offset = 0) uniform atomic_uint instanceCount;
 layout(binding = 3, offset = 0) uniform atomic_uint counter;
 
-layout(std430, binding = 0) buffer Buffer {
-  Data data[];
-} dataset;
+layout(std430, binding = 0) buffer inputBuffer { BuffData inputData[]; };
+layout(std430, binding = 1) buffer outputBuffer { BuffData outputData[]; };
 
-layout(std430, binding = 1) buffer Output {
-  Data data[];
-} outputset;
-
-bool is_chunk_visible()
+bool is_chunk_visible(vec3 center)
 {
   if (frustum) {
-    int result = checkSphere(translate(iCenter), 192);
+    int result = checkSphere(translate(center), 150);
     if (result < 0) { return false; }
   }
   return true;
@@ -47,103 +43,177 @@ bool is_visible(vec3 pos)
   return true;
 }
 
+void setDispatch()
+{
+  //synchronize();
+  uint count = atomicCounter(dispatchCount);
+  //+0.000130653854284902*0
+  uint dispatch = uint(round((float(count)/MAXSIZE)*DISPATCHSIZE));
+  //if(dispatch<=0) dispatch=1; // DO NOT REMOVE THIS LINE OR DISPATCH RESET WILL FAIL! (FIXED)
+  atomicCounterExchange(DISPATCH, dispatch); // dispatch now
+}
+
+const vec3[] CHUNK_POSITIONS = vec3[](
+  vec3(0,0,0),
+  vec3(1,0,0), vec3(-1,0,0), vec3(0,0,1), vec3(0,0,-1), vec3(-1,0,-1), vec3(1,0,1), vec3(-1,0,1), vec3(1,0,-1),
+  vec3(2,0,0), vec3(-2,0,0), vec3(0,0,2), vec3(0,0,-2), vec3(-2,0,-2), vec3(2,0,2), vec3(-2,0,2), vec3(2,0,-2),
+  vec3(2,0,1), vec3(2,0,-1), vec3(-2,0,1), vec3(-2,0,-1), vec3(1,0,2), vec3(-1,0,2), vec3(1,0,-2), vec3(-1,0,-2),
+  vec3(3,0,0), vec3(-3,0,0), vec3(0,0,3), vec3(0,0,-3), vec3(-3,0,-3), vec3(3,0,3), vec3(-3,0,3), vec3(3,0,-3),
+  vec3(3,0,2), vec3(3,0,-2), vec3(-3,0,2), vec3(-3,0,-2), vec3(2,0,3), vec3(-2,0,3), vec3(2,0,-3), vec3(-2,0,-3),
+  vec3(3,0,1), vec3(3,0,-1), vec3(-3,0,1), vec3(-3,0,-1), vec3(1,0,3), vec3(-1,0,3), vec3(1,0,-3), vec3(-1,0,-3),
+  vec3(4,0,0), vec3(-4,0,0), vec3(0,0,4), vec3(0,0,-4), vec3(-4,0,-4), vec3(4,0,4), vec3(-4,0,4), vec3(4,0,-4),
+  vec3(4,0,3), vec3(4,0,-3), vec3(-4,0,3), vec3(-4,0,-3), vec3(3,0,4), vec3(-3,0,4), vec3(3,0,-4), vec3(-3,0,-4),
+  vec3(4,0,2), vec3(4,0,-2), vec3(-4,0,2), vec3(-4,0,-2), vec3(2,0,4), vec3(-2,0,4), vec3(2,0,-4), vec3(-2,0,-4),
+  vec3(4,0,1), vec3(4,0,-1), vec3(-4,0,1), vec3(-4,0,-1), vec3(1,0,4), vec3(-1,0,4), vec3(1,0,-4), vec3(-1,0,-4),
+  vec3(5,0,0), vec3(-5,0,0), vec3(0,0,5), vec3(0,0,-5), vec3(-5,0,-5), vec3(5,0,5), vec3(-5,0,5), vec3(5,0,-5),
+  vec3(5,0,4), vec3(5,0,-4), vec3(-5,0,4), vec3(-5,0,-4), vec3(4,0,5), vec3(-4,0,5), vec3(4,0,-5), vec3(-4,0,-5),
+  vec3(5,0,3), vec3(5,0,-3), vec3(-5,0,3), vec3(-5,0,-3), vec3(3,0,5), vec3(-3,0,5), vec3(3,0,-5), vec3(-3,0,-5),
+  vec3(5,0,2), vec3(5,0,-2), vec3(-5,0,2), vec3(-5,0,-2), vec3(2,0,5), vec3(-2,0,5), vec3(2,0,-5), vec3(-2,0,-5),
+  vec3(5,0,1), vec3(5,0,-1), vec3(-5,0,1), vec3(-5,0,-1), vec3(1,0,5), vec3(-1,0,5), vec3(1,0,-5), vec3(-1,0,-5)
+);
+
+BuffData data;
+MapData flags;
+bool visible;
+uint unique;
+uint dispatch;
+uint ident;
+
+uint CHUNK_COUNT = 25;
+ 
 void main() {
-  uint ident  = gl_GlobalInvocationID.x;
-  uint unique = 0;
-  uint dispatch = 0;
-  vec3 index = vec3(0);
-  MapData flags = MapData(0,0,0);
-  vec3 pos = vec3(0);
-  bool visible = false;
-  Data data = createData();
-
-  if(STATE < 3){
-    // RESET
-    if(STATE == -1) {
-      if(ident == 0) atomicCounterExchange(DISPATCH, DISPATCHSIZE);
-      return;
-    }
-    // SET
-    else if(STATE == -2) {
-      //if(ident == 0) atomicCounterExchange(DISPATCH, uint(round((float(atomicCounter(dispatchCount))/MAXSIZE)*DISPATCHSIZE)));
-      
-      //synchronize();
-      uint count = atomicCounter(dispatchCount);
-      dispatch = 1000; //uint(round((float(count)/MAXSIZE+0.000130653854284902*0)*DISPATCHSIZE)); //gl_WorkGroupSize.x
-      //if(!is_chunk_visible()) dispatch = 0;
-      //if(dispatch<=0) dispatch=1; // DO NOT REMOVE THIS LINE OR DISPATCH RESET WILL FAIL! (FIXED)
-      //atomicCounterExchange(DISPATCH, dispatch); // dispatch now
-      
-      return;
-    }
-    // SET
-    else if(STATE == -3) {
-      //if(ident == 0) atomicCounterExchange(instanceCount, 0);
-      return;
-    }
-
-    // INIT
-    if(STATE == 0){
+  ident  = gl_GlobalInvocationID.x;
+  
+  if(STATE < 0) // RESET
+  {
+    if(STATE == -1) { if(ident == 0) atomicCounterExchange(DISPATCH, DISPATCHSIZE); return;  }
+    else if(STATE == -2) { /*if(ident == 0) setDispatch();*/ return;  }
+    else if(STATE == -3) { /*if(ident == 0) setDispatch();*/ return;  }
+    else if(STATE == -4) { /*if(ident == 0) atomicCounterExchange(instanceCount, 0);*/ return; }
+    return;
+  }
+  else if(STATE < 3) // SET
+  {
+    if(STATE == 0) // INIT
+    { 
       if(ident == 0) {
         atomicCounterExchange(dispatchCount, 0);
         atomicCounterExchange(instanceCount, 0);
+        atomicCounterExchange(counter, 0);
       }
       
-      index = iCenter + getIndex(ident,0);
-      pos = translate(index);
-      
-      uint lod = 2; //uint(max(ceil(length(-iCamPos - pos)/COLSIZE),1.0));
-      
-      flags = getTypeSide2(index, lod);
-      
-      //uint last = uint(ceil(LAST * 1));
+      vec3 base_index = iCenter + getIndex(ident,0);
+      uint lod = 1; //uint(max(ceil(length(-iCamPos - pos)/COLSIZE),1.0));
 
-      if (flags.height >= 0 && ident <= LAST) {
-          dispatch = atomicCounterIncrement(dispatchCount);
-          dataset.data[dispatch] = data = createData(pos,0,flags.sides,flags.height*0);
+      //uint last = uint(ceil(LAST * 1));
+      vec3 index;
+      vec3 pos;
+      vec3 chunk_pos;
       
-          if (is_visible(pos)) {
-            unique  = atomicCounterIncrement(instanceCount);
-            outputset.data[unique] = createData(pos,unique,flags.sides,flags.height*0);
-          }
+      for(uint i=0; i<CHUNK_COUNT; i++){ //9, 25, 57, 97, 121
+        chunk_pos = CHUNK_POSITIONS[i]*COLSIZE;
+        index = chunk_pos + base_index;
+        flags = getTypeSide2(index, lod);
+        if (flags.height <= 0) { flags.sides = 0; }
+      
+        if (flags.height >= 0) {
+        inputData[atomicCounterIncrement(dispatchCount)] = BuffData(index,0,flags.sides,flags.height);
+        if (flags.height >= 0) {
+          pos = translate(index);
+          if(is_visible(pos)) outputData[atomicCounterIncrement(instanceCount)] = BuffData(pos,0,flags.sides,0);
+        }
+        }
       }
       
       // set new dispatch
-      if(ident == LAST) {
-        //synchronize();
-        uint count = atomicCounter(dispatchCount);
-        dispatch = uint(round((float(count)/MAXSIZE+0.000130653854284902)*DISPATCHSIZE)); //gl_WorkGroupSize.x
-        //if(!is_chunk_visible()) dispatch = 0;
-        //if(dispatch<=0) dispatch=1; // DO NOT REMOVE THIS LINE OR DISPATCH RESET WILL FAIL! (FIXED)
-        atomicCounterExchange(DISPATCH, dispatch); // dispatch now
+      //if(ident == LAST) setDispatch();
+      return;
+    }
+    else if(STATE == 12) // UPDATE FRUSTUM ~ 20 CHUNKS
+    {
+      if(ident == 0) {
+        atomicCounterExchange(instanceCount, 0);
+        atomicCounterExchange(counter, 0);
       }
+      if(ident>atomicCounter(dispatchCount)) return;
+    
+      for(uint i=0; i<CHUNK_COUNT; i++){
+        data = inputData[atomicCounterIncrement(counter)];
+        if (data.height >= 0) {
+           data.pos = translate(data.pos);
+          if (is_visible(data.pos)) outputData[atomicCounterIncrement(instanceCount)] = data;
+        }
+      }
+    }
+    else if(STATE == 1) // UPDATE FRUSTUM
+    {
+      if(ident == 0) atomicCounterExchange(instanceCount, 0);
+      if(ident>atomicCounter(dispatchCount)) return;
+      
+      data = inputData[ident];
+      if (data.height < 0) return;
+      
+      vec3 index = data.pos;
+      vec3 pos = translate(index);
+      bool visible = is_visible(pos);
+
+      /*
+      vec3 campos = vec3(iCamPos.x,0,iCamPos.z);
+      vec3 len=-campos-pos;
+      
+      float range = COLSIZE;
+      
+      bool valid_x = abs(len.x) <= range;
+      bool valid_z = abs(len.z) <= range;
+      bool valid_y = abs(len.y) <= range;
+      
+      if (flags.height >= 0)
+      
+      bool invalid = true;
+      
+      if (valid_x && valid_z && valid_y) {
+        if(data.height < 0) {
+          
+          //index.y=flags.height;
+        }
+        else invalid = false;
+      }
+      else {
+        if(!valid_x) index.x = (len.x > 0 ? 1 : -1 ) * range + index.x;
+        if(!valid_z) index.z = (len.z > 0 ? 1 : -1 ) * -range + index.z;
+        //if(!valid || !valid_y) index.y = (len.y > 0 ? 1 : -1 ) * range + index.y;
+        flags = getTypeSide2(index);
+      }
+      
+      if(invalid) inputData[ident] = BuffData(pos,0,flags.sides,-1);
+      if(invalid) return;
+      */
+      
+      //if (!visible) return;
+      
+      unique = atomicCounterIncrement(instanceCount);
+      data.pos = pos;
+      data.type = unique;
+      data.height = 0;
+      outputData[unique] = data;
       
       return;
     }
-    else if(STATE == 1){
+    else if(STATE == 12) // UPDATE OCCLUSION CULLING
+    {
       if(ident == 0) atomicCounterExchange(instanceCount, 0);
-      //if(ident>atomicCounter(dispatchCount)) return;
+      if(ident>atomicCounter(dispatchCount)) return;
+
+      data = outputData[ident];
+      synchronize();
       
-      data = dataset.data[ident];
-      pos = vec3(data.pos[0],data.pos[1],data.pos[2]);
-      //flags = MapData(data.type,data.sides,data.height);
-      //index = getIndex(ident) + iCenter * COLSIZE * 0;
-      //flags = getTypeSide2(index);
-      //pos = translate(index);
-      visible = is_visible(pos);
-      
-      if (!visible) return;
-      unique  = atomicCounterIncrement(instanceCount);
-      outputset.data[unique] = createData(pos,unique,data.sides,data.height*0);
-      
-    } else if(STATE == 2){
-      //if(ident == 0) atomicCounterExchange(instanceCount, 0);
-      //if(ident>atomicCounter(dispatchCount)) return;
-      
-      data = outputset.data[ident];
-      pos = vec3(data.pos[0],data.pos[1],data.pos[2]);
-      if(data.height <= 0) data.sides=0;
-      outputset.data[ident] = createData(pos,ident,data.sides,data.height);
+      if(iRasterrize && data.height <= 0) {
+        //outputData[ident].sides=0;
+        return;
+      }
+
+      unique = atomicCounterIncrement(instanceCount);
+      outputData[unique] = data;
       
       //flags = MapData(data.type,data.sides,data.height);
       //index = getIndex(ident) + iCenter * COLSIZE * 0;
@@ -153,10 +223,11 @@ void main() {
       
       //if (data.height < 0 || !visible)  return;
       //unique  = atomicCounterIncrement(instanceCount);
-      //outputset.data[unique] = createData(pos,unique,data.sides,data.height);
+      //outputData[unique] = createData(pos,unique,data.sides,data.height);
+      return;
     }
-    
     return;
+    
     /*
     float d = COLSIZE*0.78;
     vec3 campos = vec3(iCamPos.x,0,iCamPos.z); //+vec3(d,COLSIZE*0.5*0,d)*vec3(sin(iCamAng.x),sin(iCamAng.y)*0,cos(iCamAng.x));
@@ -187,8 +258,8 @@ void main() {
     }
     
     if(change) {
-      if(STATE == 0) dataset.data[dispatch] = Data(float[3](index.x,index.y,index.z),flags.type,flags.sides,-1);
-      else dataset.data[ident] = Data(float[3](index.x,index.y,index.z),flags.type,flags.sides,-1);
+      if(STATE == 0) dinputData[dispatch] = Data(float[3](index.x,index.y,index.z),flags.type,flags.sides,-1);
+      else inputData[ident] = Data(float[3](index.x,index.y,index.z),flags.type,flags.sides,-1);
     }
     if(change) return;
     */
@@ -198,7 +269,7 @@ void main() {
       vec2 zNearFar = vec2(gl_DepthRange.near,gl_DepthRange.far);
 
       float radius = 0.5;
-      vec3 view_center = (iView * vec4(pos, 1.0)).xyz;
+      vec3 view_center = (iView * vec4(data.pos, 1.0)).xyz;
       float nearest_z = view_center.z + radius;
       
       // Sphere clips against near plane, just assume visibility.
@@ -236,7 +307,7 @@ void main() {
       // Project our nearest Z value in view space.
       vec2 zw = mat2(iProj[2].zw, iProj[3].zw) * vec2(nearest_z, 1.0);
       
-      float dist = (1/(length(-iCamPos-pos)));
+      float dist = (1/(length(-iCamPos-data.pos)));
       
       nearest_z = 1 + (-1 + zw.x / zw.y) * 0.52; //clamp(dist,0.5,1.0);
 
@@ -267,18 +338,17 @@ void main() {
     unique  = atomicCounterIncrement(instanceCount);
     //if(unique==0) { flags.type=9999; flags.sides=255; } // SUN
     
-    outputset.data[unique] = createData(pos,flags.type,flags.sides,flags.height);
+    outputData[unique] = create(data,flags);
   
   } else {
     //if(ident == 0) atomicCounterExchange(counter, 0);
     //if(ident == 0) atomicCounterExchange(instanceCount, 0);
     //if(atomicCounter(counter) >= atomicCounter(instanceCount)) return;
     
-    data = dataset.data[ident];
-    pos = vec3(data.pos[0],data.pos[1],data.pos[2]);
+    data = inputData[ident];
     flags = MapData(data.type,data.sides,data.height);
  
     //unique = atomicCounterIncrement(instanceCount);
-    outputset.data[ident] = createData(pos,flags.type,flags.sides,flags.height);
+    outputData[ident] = create(data,flags);
   }
 }

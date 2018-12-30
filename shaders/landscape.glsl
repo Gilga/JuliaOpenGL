@@ -1,3 +1,5 @@
+#import "buffer.glsl"
+
 precision highp float;
 precision highp float;
 
@@ -20,24 +22,13 @@ vec3 START = vec3(-1,-1,1)*STARTDIST;
 
 layout(binding = 3) uniform sampler2D iHeightTexture;
 
-//float = 1 * 4 bytes 
-// Never use a vec3 in a UBO or SSBO.
-// https://stackoverflow.com/questions/38172696/should-i-ever-use-a-vec3-inside-of-a-uniform-buffer-or-shader-storage-buffer-o
-struct Data {
-  float[3] pos; //4*3
-  float type;
-  float sides;
-  float height;
-};
-
 struct MapData {
   float type;
   float sides;
   float height;
 };
 
-Data createData(vec3 pos, float type, float sides, float height) { return Data(float[3](pos.x,pos.y,pos.z),type,sides,height);  }
-Data createData() { return createData(vec3(0),0,0,0);  }
+BuffData create(BuffData data, MapData flags) { return BuffData(data.pos,flags.type,flags.sides,flags.height); }
 
 vec3 translate(vec3 index) { return START+index*vec3(1,1,-1)*VOXEL_DIST-vec3(0,STARTDIST,0); }
 
@@ -92,7 +83,7 @@ float createLandscapeHeight(vec2 uv) {
 }
 
 float getLandscapeHeight(vec2 uv) {
- return clamp(fbm(uv*1),0.0,1.0);
+ return clamp(fbm(uv),0.0,1.0);
  //return clamp(texture(iHeightTexture, uv).r,0.0,1.0);
 }
 
@@ -238,5 +229,5 @@ vec3 getTypeSide(vec3 index){
     sides=4;
   }
   
-  return vec3(typ,sides,height*128);
+  return vec3(typ,sides,height*COLSIZE);
 }

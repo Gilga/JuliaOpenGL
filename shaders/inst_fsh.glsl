@@ -1,4 +1,7 @@
 #import "globals.glsl"
+#import "landscape.glsl"
+
+#define DIST (1.0/(VOXEL_DIST*0.5))
 
 precision highp sampler2DShadow;
 precision highp sampler2D;
@@ -7,7 +10,7 @@ precision highp sampler2D;
 layout(location = 0) in Vertex v;
 layout(location = 0) out vec4 outColor;
 
-layout(binding = 0) uniform sampler2DShadow iDepthMap;
+layout(binding = 0) uniform sampler2D iDepthMap;
 layout(binding = 2) uniform sampler2D iTexturePack;
 uniform int iDepth = 0;
 
@@ -43,7 +46,7 @@ void main() {
   vec3 camPos = -iCamPos.xyz;
   vec4 color = v.color; //vec4(0,0,0,1); //color.w = color.x*color.y*color.z;
   
-  bool UseLight = false; //iUseLight;
+  bool UseLight = true; //iUseLight;
   bool UseTexture = false; //iUseTexture;
   
   vec2 texUV = v.uvs.zw;
@@ -53,7 +56,7 @@ void main() {
   //if(dist>0.5) discard;
 
   if(texUV.y >= 0) {
-    float level = v.flags.w;
+    float level = v.flags.w*0+0.5+sin(v.world_center.y/10.0)*-0.5;
     float typ = 0;
   
     //float level_air = height * 0.99;
@@ -70,12 +73,14 @@ void main() {
     else if (level <= level_dirt) { typ = 1; color = vec4(0.75,0.5,0.5,1); } //dirt
     else { typ = 2; color = vec4(0,1,0,1); } //grass
     
-    water = typ > 14;
+    //typ *= (0.5+sin(v.world_center.x*(1.0/18.0)+iTime*0)*0.5);
+    
+    //water = typ > 14;
     if(water){ color = vec4(0,0,1,1); }
     
     if(UseTexture && !water){
       texUV = getTexUV(typ-1);
-      vec2 UV = getUV(v.pos.xyz)*0.25f;
+      vec2 UV = getUV(v.pos.xyz*DIST)*0.25f;
       
       // flip texture 
       UV.y=(1-UV.y);
@@ -87,7 +92,7 @@ void main() {
     }
   }
   
-  if(!UseTexture && !UseLight) color = vec4(vec3(0.5 + sin(v.world_center.x*(1.0/8.0))*0.5,0.5 + sin(v.world_center.z*(1.0/8.0))*0.5,(0.5 + sin(v.world_center.y*(1.0/128.0)))),1);
+  if(!UseTexture) color = vec4(vec3(0.5 + sin(v.world_center.x*(1.0/18.0))*0.5, 0.5 + sin(v.world_center.z*(1.0/18))*0.5,(0.5 + sin(v.world_center.y*(1.0/28.0)))),1);
   
   vec3 lightPos = vec3(sin(iTime)*100,70+sin(iTime*3)*30,cos(iTime)*100);
   vec3 lightDir = lightPos - v.world_center.xyz;
@@ -188,9 +193,10 @@ void main() {
   if(iDepth == 1){
     float depth = gl_FragCoord.z;
     //depth = 1 - (1.0/(length(camPos - v.world_center.xyz)));
-    vec2 duv = gl_FragCoord.xy / iResolution.xy;
+    vec2 duv = gl_FragCoord.xy / textureSize(iDepthMap,0);
     //float tdepth = texture(iDepthTexture, duv).x;
-    float tdepth = clamp(textureLod(iDepthMap, vec3(duv, 0), 1) + 0.00000003 ,0,1); //0.00000003 not sure why its needed
+    float tdepth = texture(iDepthMap, duv).x + 0.00000003;
+    //float tdepth = clamp(textureLod(iDepthMap, vec3(duv, 0), 1) + 0.00000003 ,0,1); //0.00000003 not sure why its needed
     if(tdepth<depth) discard;
     //else { depth = gl_FragCoord.z; }
     //gl_FragDepth = depth;

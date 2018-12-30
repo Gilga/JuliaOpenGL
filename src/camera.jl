@@ -254,9 +254,11 @@ m is direction value with weight (positive, negative)
 """
 function OnMove(camera::Camera, key::Symbol, m::Number)
   global shiftposition
-  if key == :FORWARD  move(camera, forward(camera)*(m*0.05f0*(!speed ? 1f0 : 10f0)))
-  elseif key == :RIGHT  move(camera, right(camera)*(-m*0.05f0*(!speed ? 1f0 : 10f0))) #+Vec3f(-right*0.02f0,-up*0.02f0,forward*0.02f0)
-  elseif key == :UP  move(camera, up(camera)*(-m*0.05f0*(!speed ? 1f0 : 10f0)))
+  f=m*GetTimePassed()*10*(!speed ? 1 : 10)
+  
+  if key == :FORWARD  move(camera, forward(camera)*f)
+  elseif key == :RIGHT  move(camera, right(camera)*-f) #+Vec3f(-right*0.02f0,-up*0.02f0,forward*0.02f0)
+  elseif key == :UP  move(camera, up(camera)*-f)
   end
   
   #dif = camera.position

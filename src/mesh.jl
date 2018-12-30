@@ -19,6 +19,27 @@ export createBuffers
 export getMeshBufferRefID
 export createArrayObjects
 
+buffers = GLuint[]
+
+function cleanUp()
+  global buffers
+  glDeleteBuffers(length(buffers), buffers)
+  buffers = GLuint[]
+end
+
+function createBuffers(count)
+  lbuffers=zeros(GLuint,count)
+  glGenBuffers(count, lbuffers)
+  for buffer in lbuffers push!(buffers, buffer) end
+  lbuffers
+end
+
+function createBuffer()
+  buffer = glGenBuffer()
+  push!(buffers, buffer)
+  buffer
+end
+
 """
 object which holds a transformation matrix and a model reference
 """
@@ -67,35 +88,32 @@ gltypes=Dict(Float32=>GL_FLOAT,Float64=>GL_DOUBLE,UInt32=>GL_UNSIGNED_INT,Int32=
 """
 set attributes for shader 
 """
-function setAttributes(this::MeshBuffer, program, attrb; flexible=false, typ=0)
+function setAttributes(this::MeshBuffer, program, attrb; flexible=false, typ=0, bindbuffer=true)
   if this.count == 0 return end
   
   STRIDE = GLsizei(length(attrb)<=1 ? 0 : reduce(+, (x->sizeof(x[2])*x[3]).(attrb)))
   OFFSET =  C_NULL
   
-  glBindBuffer(typ<=0 ? this.typ : typ, this.refID)
+  if bindbuffer glBindBuffer(typ<=0 ? this.typ : typ, this.refID) end
   #glBufferData(this.typ, sizeof(this.data), this.data,  this.usage)
 
   index=-1
   for (name,typ,elems,inst) in attrb
     index+=1
     atr = glGetAttribLocation(program, name)
-    glCheckError("glGetAttribLocation")
     if flexible && atr <= -1 atr=index end
     if  atr > -1
       #typ = nothing; old = this.data
       #while true typ = eltype(old); if typ == old break; else old=typ; end; end
       glEnableVertexAttribArray(atr)
-      glCheckError("glEnableVertexAttribArray")
       glVertexAttribPointer(atr, elems, gltypes[typ], GL_FALSE, STRIDE, OFFSET)
-      glCheckError("glVertexAttribPointer")
-      if inst>0 glVertexAttribDivisor(atr, inst); glCheckError("glVertexAttribDivisor") end
+      if inst>0 glVertexAttribDivisor(atr, inst) end
       OFFSET +=  sizeof(typ)*elems
     else warn("Could not load Attribute \"$name\"")
     end
   end
   
-  glBindBuffer(this.typ, 0)
+  if bindbuffer glBindBuffer(this.typ, 0) end
 end
 
 """
@@ -112,20 +130,19 @@ creates gpu buffers
 """
 function createBuffers(this::MeshData)
   if this.vao == 0 this.vao = glGenVertexArray() end
-  for (s,a) in this.arrays if a.refID == 0 && a.count > 0 a.refID = glGenBuffer() end end 
+  for (s,a) in this.arrays if a.refID == 0 && a.count > 0 a.refID = createBuffer() end end 
 end
 
 function createBuffers(data::AbstractArray, count=1; size=0, typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
   list=Array{MeshBuffer,1}(undef, count)
   
-  buffers=zeros(GLuint,count)
-  glGenBuffers(count, buffers)
+  buffers=createBuffers(count)
   
   has_data = length(data) > 0
   if size <= 0 size = sizeof(data) end
   
   for i=1:count
-    buffer = MeshBuffer(typ,usage,data; refID=buffers[i],elems=1)
+    buffer = MeshBuffer(typ, usage, data; refID=buffers[i],elems=1)
     list[i]=buffer
     
     glBindBuffer(typ, buffer.refID)
@@ -137,19 +154,32 @@ function createBuffers(data::AbstractArray, count=1; size=0, typ=GL_ARRAY_BUFFER
 end
 
 function createBuffer(data::AbstractArray, count=1; typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
-  refID=glGenBuffer()
-  buffer=MeshBuffer(typ,usage,data; refID=refID,elems=1)
-  glBindBuffer(buffer.typ, buffer.refID)
-
-  list=Array{eltype(data),1}()
-  for i=1:count  list=vcat(list,data) end
-  setData(buffer,list)
+  refID=createBuffer()
+    
+  buffer=MeshBuffer(typ, usage, data; refID=refID,elems=1)
+  sz=sizeof(buffer.data)
   
-  glBufferData(buffer.typ, sizeof(buffer.data), buffer.data, buffer.usage) #length(data) > 0 ? buffer.data : C_NULL
+  glBindBuffer(buffer.typ, buffer.refID)
+  glBufferData(buffer.typ, count*sz, C_NULL, buffer.usage)
+  for i=1:count glBufferSubData(buffer.typ , (i-1)*sz, sz, buffer.data) end
   glBindBuffer(buffer.typ, 0)
   
   buffer
 end
+
+"""
+delete gpu buffer
+"""
+function delete(this::MeshBuffer)
+  glDeleteBuffer(this.refID)
+end
+
+"""
+delete gpu buffer
+"""
+delete(buffers::Array{MeshBuffer,1}) = for buffer in buffers delete(buffer) end
+
+export delete
 
 """
 deletes gpu buffers
