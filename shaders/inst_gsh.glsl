@@ -33,18 +33,18 @@ void createSide(Vertex v, int side)
   vec3 CameraUp_worldspace = vec3(iMVP[0][1], iMVP[1][1], iMVP[2][1]);
 
   for(int i=0;i<4;++i) {
-    v.pos          = vec4(cube[side][i]*DIST,1);
-    //if((side == 2 && (i == 1 || i == 3)) || (side == 3 && (i == 1 || i == 3)) || (side == 4 && (i == 2 || i == 3)) || (side == 5 && (i == 0 || i == 1))) v.pos.y -= 100;
+    v.pos          = vec4(cube[side][i],1);
+    //if((side == 2 && (i == 1 || i == 3)) || (side == 3 && (i == 1 || i == 3)) || (side == 4 && (i == 2 || i == 3)) || (side == 5 && (i == 0 || i == 1))) v.pos.y *= 1+abs(1-v.flags.w)*300;
     v.normal       = normalize(v.pos);
     
-    if(v.flags.y == 15) v.pos.y -= (0.5+(sin((v.pos.x+v.world_center.x)*0.1+(v.pos.z+v.world_center.z)*0.5+iTime*5))*0.5)*2;
+    if(v.flags.z == 127+4) v.pos.y -= 2+(0.5+(sin((v.pos.x+v.world_center.x)*0.5+(v.pos.z*sin(i)+v.world_center.z)*0.5+iTime*5))*0.5)*2;
     
     //vec3 vpos = (CameraRight_worldspace * v.pos.x + CameraUp_worldspace * v.pos.y * 0.6);
-    
+    v.pos.xyz *= DIST;
     v.color        = getVertexColor(v.pos.xyz, v.normal.xyz, 1);
     v.world_pos    = vec4(v.pos.xyz+v.world_center.xyz,1);
     v.world_normal = normalize(v.world_pos);
-
+    v.flags.x = v.flags.z == 127+4 ? 1 : 0;
     ov = v;
     
     gl_Position = iMVP * v.world_pos;
@@ -73,9 +73,8 @@ void main()
   v = iv[0];
     
   if(v.flags.w < 0) return; // discard
-
   //createSide(v, 3);
-  uint sides = uint(floor(v.flags.z));
+  uint sides = uint(floor(v.flags.z == 127+4 ? 4 : v.flags.z));
   if((sides & 0x1) > 0) createSide(v, 4);  // LEFT
   if((sides & 0x2) > 0) createSide(v, 5);  // RIGHT
   if((sides & 0x4) > 0) createSide(v, 0);  // TOP

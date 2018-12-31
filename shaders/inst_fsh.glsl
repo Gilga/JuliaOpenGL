@@ -47,7 +47,7 @@ void main() {
   vec4 color = v.color; //vec4(0,0,0,1); //color.w = color.x*color.y*color.z;
   
   bool UseLight = true; //iUseLight;
-  bool UseTexture = false; //iUseTexture;
+  bool UseTexture = true; //iUseTexture;
   
   vec2 texUV = v.uvs.zw;
   bool water = false;
@@ -56,7 +56,7 @@ void main() {
   //if(dist>0.5) discard;
 
   if(texUV.y >= 0) {
-    float level = v.flags.w*0+0.5+sin(v.world_center.y/10.0)*-0.5;
+    float level = v.flags.w*0+0.5+sin(v.world_center.y/20.0)*-0.5;
     float typ = 0;
   
     //float level_air = height * 0.99;
@@ -71,11 +71,11 @@ void main() {
     else if (level <= level_stone) { typ = 4; color = vec4(0.5,0.5,0.75,1); } //stone
     else if (level <= level_stonebricks) { typ = 5; color = vec4(0.25,0.25,0.5,1); } //stonebricks
     else if (level <= level_dirt) { typ = 1; color = vec4(0.75,0.5,0.5,1); } //dirt
-    else { typ = 2; color = vec4(0,1,0,1); } //grass
-    
+ 
+    if(v.flags.x  == 1 && v.flags.w > 0.40 && v.flags.w < 0.42) typ = 16;
     //typ *= (0.5+sin(v.world_center.x*(1.0/18.0)+iTime*0)*0.5);
     
-    //water = typ > 14;
+    water = typ == 16;
     if(water){ color = vec4(0,0,1,1); }
     
     if(UseTexture && !water){

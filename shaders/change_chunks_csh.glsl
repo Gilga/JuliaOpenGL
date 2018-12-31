@@ -79,7 +79,7 @@ uint unique;
 uint dispatch;
 uint ident;
 
-uint CHUNK_COUNT = 25;
+uint CHUNK_COUNT = 9; // 9, 25, 49, 81, 121
  
 void main() {
   ident  = gl_GlobalInvocationID.x;
@@ -109,19 +109,19 @@ void main() {
       vec3 index;
       vec3 pos;
       vec3 chunk_pos;
-      
-      for(uint i=0; i<CHUNK_COUNT; i++){ //9, 25, 57, 97, 121
+   
+      for(uint i=0; i<CHUNK_COUNT; i++){
         chunk_pos = CHUNK_POSITIONS[i]*COLSIZE;
         index = chunk_pos + base_index;
         flags = getTypeSide2(index, lod);
         if (flags.height <= 0) { flags.sides = 0; }
       
         if (flags.height >= 0) {
-        inputData[atomicCounterIncrement(dispatchCount)] = BuffData(index,0,flags.sides,flags.height);
-        if (flags.height >= 0) {
-          pos = translate(index);
-          if(is_visible(pos)) outputData[atomicCounterIncrement(instanceCount)] = BuffData(pos,0,flags.sides,0);
-        }
+          inputData[atomicCounterIncrement(dispatchCount)] = BuffData(index,flags.height,flags.sides,flags.height);
+          if (flags.height >= 0) {
+            pos = translate(index);
+            if(is_visible(pos)) outputData[atomicCounterIncrement(instanceCount)] = BuffData(pos,flags.height,flags.sides,flags.height);
+          }
         }
       }
       
@@ -129,23 +129,25 @@ void main() {
       //if(ident == LAST) setDispatch();
       return;
     }
-    else if(STATE == 12) // UPDATE FRUSTUM ~ 20 CHUNKS
+    else if(STATE == 1) // faster
     {
       if(ident == 0) {
         atomicCounterExchange(instanceCount, 0);
         atomicCounterExchange(counter, 0);
       }
-      if(ident>atomicCounter(dispatchCount)) return;
-    
+      
       for(uint i=0; i<CHUNK_COUNT; i++){
-        data = inputData[atomicCounterIncrement(counter)];
-        if (data.height >= 0) {
-           data.pos = translate(data.pos);
-          if (is_visible(data.pos)) outputData[atomicCounterIncrement(instanceCount)] = data;
+        unique = atomicCounterIncrement(counter);
+        if(unique<=atomicCounter(dispatchCount)) {
+          data = inputData[unique];
+          if (data.height >= 0) {
+             data.pos = translate(data.pos);
+            if (is_visible(data.pos)) outputData[atomicCounterIncrement(instanceCount)] = data;
+          }
         }
       }
     }
-    else if(STATE == 1) // UPDATE FRUSTUM
+    else if(STATE == 13) // UPDATE FRUSTUM
     {
       if(ident == 0) atomicCounterExchange(instanceCount, 0);
       if(ident>atomicCounter(dispatchCount)) return;
@@ -199,12 +201,17 @@ void main() {
       
       return;
     }
-    else if(STATE == 12) // UPDATE OCCLUSION CULLING
+    else if(STATE == 23) // UPDATE OCCLUSION CULLING
     {
-      if(ident == 0) atomicCounterExchange(instanceCount, 0);
-      if(ident>atomicCounter(dispatchCount)) return;
+      if(ident == 0) {
+        atomicCounterExchange(instanceCount, 0);
+        atomicCounterExchange(counter, 0);
+      }
+      
+      unique = atomicCounterIncrement(counter);
+      if(unique>atomicCounter(dispatchCount)) return;
 
-      data = outputData[ident];
+      data = outputData[unique];
       synchronize();
       
       if(iRasterrize && data.height <= 0) {
