@@ -83,7 +83,7 @@ float createLandscapeHeight(vec2 uv) {
 }
 
 float getLandscapeHeight(vec2 uv) {
- return clamp(fbm(uv),0.0,1.0);
+ return clamp(fbm(uv*2),0.0,1.0);
  //return clamp(texture(iHeightTexture, uv).r,0.0,1.0);
 }
 
@@ -139,29 +139,37 @@ MapData getTypeSide2(vec3 index, uint lod){
   
   float height = getLandscapeHeight(uv);
   float h = y/height;
+  int typ=-1;
   uint sides=0;
+  uint count=0;
+  float lh = 0;
+  float rh = 0;
+  float fh = 0;
+  float bh = 0;
 
-  if(left) left = y <= getLandscapeHeight(vec2(next.x,uv.y));
-  if(right) right = y <= getLandscapeHeight(vec2(next.y,uv.y));
-  if(forward) forward = y <= getLandscapeHeight(vec2(uv.x,next.z));
-  if(back) back = y <= getLandscapeHeight(vec2(uv.x,next.w));
-  if(top) top = nextTB.x <= height;
-  if(bottom) bottom = nextTB.y <= height;
+  if(left) { lh=getLandscapeHeight(vec2(next.x,uv.y)); left = y <= lh; lh=height-lh; if(lh<0) lh=0; }
+  if(right) { rh=getLandscapeHeight(vec2(next.y,uv.y)); right = y <= rh; rh=height-rh; if(rh<0) rh=0; }
+  if(forward) { fh=getLandscapeHeight(vec2(uv.x,next.z)); forward = y <= fh; fh=height-fh; if(fh<0) fh=0; }
+  if(back) { bh=getLandscapeHeight(vec2(uv.x,next.w)); back = y <= bh; bh=height-bh; if(bh<0) bh=0; }
+  if(top) { top = nextTB.x <= height; }
+  if(bottom) { bottom = nextTB.y <= height; }
   
   if(left && right && forward && back && top && bottom) return MapData(-1,0,-1);
   
-  if(!left) sides |= (0x1 << 0); // LEFT
-  if(!right) sides |= (0x1 << 1); // RIGHT
-  if(!top) sides |= (0x1 << 2); // TOP
-  if(!bottom) sides |= (0x1 << 3); // BOTTOM
-  if(!forward) sides |= (0x1 << 4); // FRONT
-  if(!back) sides |= (0x1 << 5); // BACK
+  if(!left) { sides |= (0x1 << 0); count++; } // LEFT
+  if(!right) {sides |= (0x1 << 1); count++; } // RIGHT
+  if(!top) { sides |= (0x1 << 2);  count++; }// TOP
+  if(!bottom) { sides |= (0x1 << 3);  count++; }// BOTTOM
+  if(!forward) { sides |= (0x1 << 4);  count++; }// FRONT
+  if(!back) { sides |= (0x1 << 5);  count++; } // BACK
   
-  if (sides <= 0) { h=-1; sides=0; }
-  if (h>1) { h=-1; sides=0; }
+  if((!bottom) && y>=0.41 && y<=0.42) { h=1; sides=127+4; }
+  if (sides <= 0 || h>1) { h=-1; sides=0; }
+  //else if ((y+S<height)) { h=-1; sides=0; }
+  //else h = 1+max(max(lh,rh), max(fh,bh));
+  else h=y;
 
-  //if (h<0.99) { h=-1; sides=0; }
-  return MapData(-1,sides,h);
+  return MapData(typ,sides,h);
 }
 
 vec3 getTypeSide(vec3 index){

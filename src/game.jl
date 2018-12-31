@@ -488,7 +488,9 @@ function uploadData()
       default_data = zeros(Float32,ARRAY_SIZE);
      
       if single_storage
-        max_chunks=100
+        maxsize = glGetIntegerval(GL_MAX_SHADER_STORAGE_BLOCK_SIZE)
+        info("GL_MAX_SHADER_STORAGE_BLOCK_SIZE: $maxsize")
+        max_chunks=40 #sizeof(Float32)*6*128^3*42 = 2113929216 bytes ~ 2.11 GB
         #= global =# CHUNK_ALL_BUFFERS = [createBuffer(default_data,max_chunks)]
         #= global =# CHUNK_BUFFERS = [createBuffer(default_data,max_chunks)]
         ##= global =# CHUNK_OCCLUDED_BUFFERS = [createBuffer(default_data,max_chunks)]

@@ -22,7 +22,7 @@ void main() {
   //v.size = vec4(0,0,0,0);
   //v.flags = vec4(0,0,127,iInstanceFlags.x);
   //v.flags = vec4(iInstanceFlags.x,0,iInstanceFlags.y,iInstanceFlags.z);
-  v.flags = vec4(data.type,0,data.sides,data.height);
+  v.flags = vec4(data.height,0,data.sides,data.type);
   //if(index == 0) pos = vec3(sin(iTime)*100,70+sin(iTime*3)*30,cos(iTime)*100);
   
   if(v.flags.w >= 0) {
