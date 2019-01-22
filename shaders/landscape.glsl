@@ -1,24 +1,7 @@
 #import "buffer.glsl"
 
-precision highp float;
-precision highp float;
-
-#define COLSIZE $CHUNK1D_SIZE //?^1
-#define ROWSIZE $CHUNK2D_SIZE //?^2
-#define MAXSIZE $CHUNK3D_SIZE //?^3
-#define LAST MAXSIZE-1
-#define DISPATCHSIZE ROWSIZE
-
-#define COLISIZE 1.0/COLSIZE
-#define ROWISIZE 1.0/ROWSIZE
-#define MAXISIZE 1.0/MAXSIZE
-
 #define SEED 43758.5453123
 #define NUM_OCTAVES 5
-
-float VOXEL_DIST = 1;
-float STARTDIST = (COLSIZE*VOXEL_DIST) / 2.0;
-vec3 START = vec3(-1,-1,1)*STARTDIST;
 
 layout(binding = 3) uniform sampler2D iHeightTexture;
 
@@ -28,21 +11,121 @@ struct MapData {
   float height;
 };
 
-BuffData create(BuffData data, MapData flags) { return BuffData(data.pos,flags.type,flags.sides,flags.height); }
+//BuffData create(BuffData data, MapData flags) { return BuffData(data.pos,flags.type,flags.sides,flags.height); }
 
-vec3 translate(vec3 index) { return START+index*vec3(1,1,-1)*VOXEL_DIST-vec3(0,STARTDIST,0); }
-
-vec3 getIndex(uint index, uint lod) {
-  float i = index;
-  float y = floor(i*ROWISIZE);
-  float height = y*ROWSIZE;
-  float z = floor((i-height)*COLISIZE);
-  float x = i-height-z*COLSIZE;
-  return vec3(x,y,z);
-}
+uint convertFlags(MapData flags) { return (uint(flags.type) << 0x9) | (uint(flags.sides) << 0x1); }
 
 float random (in float n) { return fract(sin(n)*43758.5453123); }
 float random (in vec2 _st) { return fract(sin(dot(_st.xy,vec2(12.9898,78.233)))*43758.5453123); }
+
+float hash( vec2 p ) {
+	float h = dot(p,vec2(127.1,311.7));	
+    return fract(sin(h)*43758.5453123);
+}
+float wave_noise( in vec2 p ) {
+    vec2 i = floor( p );
+    vec2 f = fract( p );	
+	vec2 u = f*f*(3.0-2.0*f);
+    return -1.0+2.0*mix( mix( hash( i + vec2(0.0,0.0) ), 
+                     hash( i + vec2(1.0,0.0) ), u.x),
+                mix( hash( i + vec2(0.0,1.0) ), 
+                     hash( i + vec2(1.0,1.0) ), u.x), u.y);
+}
+
+// sea
+float sea_octave(vec2 uv, float choppy) {
+    uv += wave_noise(uv);        
+    vec2 wv = 1.0-abs(sin(uv));
+    vec2 swv = abs(cos(uv));    
+    wv = mix(wv,swv,wv);
+    return pow(1.0-pow(wv.x * wv.y,0.65),choppy);
+}
+
+// sea
+const int ITER_GEOMETRY = 3;
+const int ITER_FRAGMENT = 5;
+const float SEA_HEIGHT = 0.6;
+const float SEA_CHOPPY = 4.0;
+const float SEA_SPEED = 0.8;
+const float SEA_FREQ = 0.16;
+const vec3 SEA_BASE = vec3(0.1,0.19,0.22);
+const vec3 SEA_WATER_COLOR = vec3(0.8,0.9,0.6);
+#define SEA_TIME (1.0 + iTime * SEA_SPEED)
+const mat2 octave_m = mat2(1.6,1.2,-1.2,1.6);
+
+const int NUM_STEPS = 8;
+//const float EPSILON	= 1e-3;
+
+float map(vec3 p) {
+    float freq = SEA_FREQ;
+    float amp = SEA_HEIGHT;
+    float choppy = SEA_CHOPPY;
+    vec2 uv = p.xz; uv.x *= 0.75;
+    
+    float d, h = 0.0;    
+    for(int i = 0; i < ITER_GEOMETRY; i++) {        
+    	d = sea_octave((uv+SEA_TIME)*freq,choppy);
+    	d += sea_octave((uv-SEA_TIME)*freq,choppy);
+        h += d * amp;        
+    	uv *= octave_m; freq *= 1.9; amp *= 0.22;
+        choppy = mix(choppy,1.0,0.2);
+    }
+    return p.y - h;
+}
+
+float heightMapTracing(vec3 ori, vec3 dir, out vec3 p) {  
+    float tm = 0.0;
+    float tx = 1000.0;    
+    float hx = map(ori + dir * tx);
+    if(hx > 0.0) return tx;   
+    float hm = map(ori + dir * tm);    
+    float tmid = 0.0;
+    for(int i = 0; i < NUM_STEPS; i++) {
+        tmid = mix(tm,tx, hm/(hm-hx));                   
+        p = ori + dir * tmid;                   
+    	float hmid = map(p);
+		if(hmid < 0.0) {
+        	tx = tmid;
+            hx = hmid;
+        } else {
+            tm = tmid;
+            hm = hmid;
+        }
+    }
+    return tmid;
+}
+
+// lighting
+float ldiffuse(vec3 n,vec3 l,float p) {
+    return pow(dot(n,l) * 0.4 + 0.6,p);
+}
+float lspecular(vec3 n,vec3 l,vec3 e,float s) {    
+    float nrm = (s + 8.0) / (PI * 8.0);
+    return pow(max(dot(reflect(e,n),l),0.0),s) * nrm;
+}
+
+// sky
+vec3 getSkyColor(vec3 e) {
+    e.y = max(e.y,0.0);
+    return vec3(pow(1.0-e.y,2.0), 1.0-e.y, 0.6+(1.0-e.y)*0.4);
+}
+
+vec3 getSeaColor(vec3 p, vec3 n, vec3 l, vec3 eye, vec3 dist) {  
+    float fresnel = clamp(1.0 - dot(n,-eye), 0.0, 1.0);
+    fresnel = pow(fresnel,3.0) * 0.65;
+        
+    vec3 reflected = getSkyColor(reflect(eye,n));    
+    vec3 refracted = SEA_BASE + ldiffuse(n,l,80.0) * SEA_WATER_COLOR * 0.12; 
+    
+    vec3 color = mix(refracted,reflected,fresnel);
+    
+    float atten = max(1.0 - dot(dist,dist) * 0.001, 0.0);
+    color += SEA_WATER_COLOR * (p.y - SEA_HEIGHT) * 0.18 * atten;
+    
+    color += vec3(lspecular(n,l,eye,60.0));
+    
+    return color;
+}
 
 float noise (in vec2 _st) {
     vec2 i = floor(_st);
@@ -79,13 +162,18 @@ float fbm (in vec2 _st) {
 vec2 texSize = vec2(1.0/1024.0);
 
 float createLandscapeHeight(vec2 uv) {
-  return clamp(fbm(uv * 2),0.0,1.0);
+  return clamp(fbm(uv*2),0.0,1.0);
 }
 
 float getLandscapeHeight(vec2 uv) {
- return clamp(fbm(uv*2),0.0,1.0);
- //return clamp(texture(iHeightTexture, uv).r,0.0,1.0);
+  return clamp(texture(iHeightTexture, uv).r,0.0,1.0);
 }
+
+float getLandscapeHeight(vec2 uv, float scale) {
+  return clamp(fbm(uv * scale)* 1/scale,0.0,1.0);
+  //return clamp(texture(iHeightTexture, (uv * scale)).r * 1/scale,0.0,1.0);
+}
+
 
   /*
   float typ = -1;
@@ -118,9 +206,7 @@ float getLandscapeHeight(vec2 uv) {
   */
 
 
-MapData getTypeSide2(vec3 index, uint lod){
-  float slod = 1.0 / float(lod + 1);
-
+MapData getTypeSide2(vec3 index, float scale){
   float S = COLISIZE;
   float y = index.y * S;
   vec2 uv = index.xz * S;
@@ -137,9 +223,9 @@ MapData getTypeSide2(vec3 index, uint lod){
   bool top = true; //nextTB.x >= 0 && nextTB.x < 1;
   bool bottom = true; //nextTB.y >= 0 && nextTB.y < 1;
   
-  float height = getLandscapeHeight(uv);
+  float height = getLandscapeHeight(uv,scale);
   float h = y/height;
-  int typ=-1;
+  int typ=0;
   uint sides=0;
   uint count=0;
   float lh = 0;
@@ -147,10 +233,10 @@ MapData getTypeSide2(vec3 index, uint lod){
   float fh = 0;
   float bh = 0;
 
-  if(left) { lh=getLandscapeHeight(vec2(next.x,uv.y)); left = y <= lh; lh=height-lh; if(lh<0) lh=0; }
-  if(right) { rh=getLandscapeHeight(vec2(next.y,uv.y)); right = y <= rh; rh=height-rh; if(rh<0) rh=0; }
-  if(forward) { fh=getLandscapeHeight(vec2(uv.x,next.z)); forward = y <= fh; fh=height-fh; if(fh<0) fh=0; }
-  if(back) { bh=getLandscapeHeight(vec2(uv.x,next.w)); back = y <= bh; bh=height-bh; if(bh<0) bh=0; }
+  if(left) { lh=getLandscapeHeight(vec2(next.x,uv.y),scale); left = y <= lh; lh=height-lh; if(lh<0) lh=0; }
+  if(right) { rh=getLandscapeHeight(vec2(next.y,uv.y),scale); right = y <= rh; rh=height-rh; if(rh<0) rh=0; }
+  if(forward) { fh=getLandscapeHeight(vec2(uv.x,next.z),scale); forward = y <= fh; fh=height-fh; if(fh<0) fh=0; }
+  if(back) { bh=getLandscapeHeight(vec2(uv.x,next.w),scale); back = y <= bh; bh=height-bh; if(bh<0) bh=0; }
   if(top) { top = nextTB.x <= height; }
   if(bottom) { bottom = nextTB.y <= height; }
   
@@ -162,13 +248,15 @@ MapData getTypeSide2(vec3 index, uint lod){
   if(!bottom) { sides |= (0x1 << 3);  count++; }// BOTTOM
   if(!forward) { sides |= (0x1 << 4);  count++; }// FRONT
   if(!back) { sides |= (0x1 << 5);  count++; } // BACK
-  
-  if((!bottom) && y>=0.41 && y<=0.42) { h=1; sides=127+4; }
-  if (sides <= 0 || h>1) { h=-1; sides=0; }
+
+  //if(!bottom && y>=0.41 && y<=0.42) { h=1; typ=16; sides=4; }
+  if (sides <= 0 || h>1) h=-1;
   //else if ((y+S<height)) { h=-1; sides=0; }
   //else h = 1+max(max(lh,rh), max(fh,bh));
-  else h=y;
-
+  else h=index.y; //*scale
+  
+  if (height <= 0) { sides = 0; }
+  
   return MapData(typ,sides,h);
 }
 

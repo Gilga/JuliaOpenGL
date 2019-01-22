@@ -23,26 +23,6 @@ layout(binding = 3, offset = 0) uniform atomic_uint counter;
 layout(std430, binding = 0) buffer inputBuffer { BuffData inputData[]; };
 layout(std430, binding = 1) buffer outputBuffer { BuffData outputData[]; };
 
-bool is_chunk_visible(vec3 center)
-{
-  if (frustum) {
-    int result = checkSphere(translate(center), 150);
-    if (result < 0) { return false; }
-  }
-  return true;
-}
-
-bool is_visible(vec3 pos)
-{
-  //if(!is_chunk_visible()) return false;
-
-  if (frustum) {
-    int result = checkSphere(pos, 1.5);
-    if (result < 0) return false;
-  }
-  return true;
-}
-
 void setDispatch()
 {
   //synchronize();
@@ -53,33 +33,21 @@ void setDispatch()
   atomicCounterExchange(DISPATCH, dispatch); // dispatch now
 }
 
-const vec3[] CHUNK_POSITIONS = vec3[](
-  vec3(0,0,0),
-  vec3(1,0,0), vec3(-1,0,0), vec3(0,0,1), vec3(0,0,-1), vec3(-1,0,-1), vec3(1,0,1), vec3(-1,0,1), vec3(1,0,-1),
-  vec3(2,0,0), vec3(-2,0,0), vec3(0,0,2), vec3(0,0,-2), vec3(-2,0,-2), vec3(2,0,2), vec3(-2,0,2), vec3(2,0,-2),
-  vec3(2,0,1), vec3(2,0,-1), vec3(-2,0,1), vec3(-2,0,-1), vec3(1,0,2), vec3(-1,0,2), vec3(1,0,-2), vec3(-1,0,-2),
-  vec3(3,0,0), vec3(-3,0,0), vec3(0,0,3), vec3(0,0,-3), vec3(-3,0,-3), vec3(3,0,3), vec3(-3,0,3), vec3(3,0,-3),
-  vec3(3,0,2), vec3(3,0,-2), vec3(-3,0,2), vec3(-3,0,-2), vec3(2,0,3), vec3(-2,0,3), vec3(2,0,-3), vec3(-2,0,-3),
-  vec3(3,0,1), vec3(3,0,-1), vec3(-3,0,1), vec3(-3,0,-1), vec3(1,0,3), vec3(-1,0,3), vec3(1,0,-3), vec3(-1,0,-3),
-  vec3(4,0,0), vec3(-4,0,0), vec3(0,0,4), vec3(0,0,-4), vec3(-4,0,-4), vec3(4,0,4), vec3(-4,0,4), vec3(4,0,-4),
-  vec3(4,0,3), vec3(4,0,-3), vec3(-4,0,3), vec3(-4,0,-3), vec3(3,0,4), vec3(-3,0,4), vec3(3,0,-4), vec3(-3,0,-4),
-  vec3(4,0,2), vec3(4,0,-2), vec3(-4,0,2), vec3(-4,0,-2), vec3(2,0,4), vec3(-2,0,4), vec3(2,0,-4), vec3(-2,0,-4),
-  vec3(4,0,1), vec3(4,0,-1), vec3(-4,0,1), vec3(-4,0,-1), vec3(1,0,4), vec3(-1,0,4), vec3(1,0,-4), vec3(-1,0,-4),
-  vec3(5,0,0), vec3(-5,0,0), vec3(0,0,5), vec3(0,0,-5), vec3(-5,0,-5), vec3(5,0,5), vec3(-5,0,5), vec3(5,0,-5),
-  vec3(5,0,4), vec3(5,0,-4), vec3(-5,0,4), vec3(-5,0,-4), vec3(4,0,5), vec3(-4,0,5), vec3(4,0,-5), vec3(-4,0,-5),
-  vec3(5,0,3), vec3(5,0,-3), vec3(-5,0,3), vec3(-5,0,-3), vec3(3,0,5), vec3(-3,0,5), vec3(3,0,-5), vec3(-3,0,-5),
-  vec3(5,0,2), vec3(5,0,-2), vec3(-5,0,2), vec3(-5,0,-2), vec3(2,0,5), vec3(-2,0,5), vec3(2,0,-5), vec3(-2,0,-5),
-  vec3(5,0,1), vec3(5,0,-1), vec3(-5,0,1), vec3(-5,0,-1), vec3(1,0,5), vec3(-1,0,5), vec3(1,0,-5), vec3(-1,0,-5)
-);
-
 BuffData data;
-MapData flags;
+MapData mapflags;
 bool visible;
 uint unique;
 uint dispatch;
 uint ident;
+vec3 pos;
+uint flags;
 
-uint CHUNK_COUNT = 9; // 9, 25, 49, 81, 121
+uint CHUNK_COUNT = 25; // 9, 25, 49, 81, 121
+
+float calculateLOD(vec3 chunk_pos){
+  float len = length((-iCamPos - translate(chunk_pos+vec3(COLSIZE*0.5)))*vec3(1,0,1));
+  return 1; //max(ceil(len/256.0),1.0); // uint
+}
  
 void main() {
   ident  = gl_GlobalInvocationID.x;
@@ -102,25 +70,38 @@ void main() {
         atomicCounterExchange(counter, 0);
       }
       
-      vec3 base_index = iCenter + getIndex(ident,0);
-      uint lod = 1; //uint(max(ceil(length(-iCamPos - pos)/COLSIZE),1.0));
-
-      //uint last = uint(ceil(LAST * 1));
       vec3 index;
       vec3 pos;
       vec3 chunk_pos;
-   
-      for(uint i=0; i<CHUNK_COUNT; i++){
-        chunk_pos = CHUNK_POSITIONS[i]*COLSIZE;
-        index = chunk_pos + base_index;
-        flags = getTypeSide2(index, lod);
-        if (flags.height <= 0) { flags.sides = 0; }
-      
-        if (flags.height >= 0) {
-          inputData[atomicCounterIncrement(dispatchCount)] = BuffData(index,flags.height,flags.sides,flags.height);
-          if (flags.height >= 0) {
-            pos = translate(index);
-            if(is_visible(pos)) outputData[atomicCounterIncrement(instanceCount)] = BuffData(pos,flags.height,flags.sides,flags.height);
+      float lod;
+      float scale;
+      float cut;
+      vec3 base_index = getIndexPos(ident) + iCenter;
+    
+      for(uint chunk=0; chunk<CHUNK_COUNT; chunk++)
+      {
+        chunk_pos = CHUNK_POSITIONS[chunk]*COLSIZE;
+        
+        lod = calculateLOD(chunk_pos);
+        scale = 1.0 / lod;
+        cut = scale * COLSIZE;
+        
+        index = chunk_pos*scale + base_index;
+        
+        //outputData[ident] = createBuffData();
+
+        if(base_index.x>cut || base_index.z>cut || base_index.y>cut) continue;
+        mapflags = getTypeSide2(index, lod);
+        
+        if (mapflags.height >= 0) {
+          flags = convertFlags(mapflags);
+          
+          inputData[atomicCounterIncrement(dispatchCount)] = createBuffData(ident,chunk,flags);
+          
+          if (mapflags.height >= 0) {
+            pos = translate(index); // //*(vec3(1,0,1)*1.0/scale+vec3(0,1,0));
+            //if(is_visible(pos))
+            outputData[atomicCounterIncrement(instanceCount)] = createBuffData(ident,chunk,flags);
           }
         }
       }
@@ -129,20 +110,22 @@ void main() {
       //if(ident == LAST) setDispatch();
       return;
     }
-    else if(STATE == 1) // faster
+    else if(STATE == 12) // change frustum
     {
       if(ident == 0) {
         atomicCounterExchange(instanceCount, 0);
         atomicCounterExchange(counter, 0);
       }
       
-      for(uint i=0; i<CHUNK_COUNT; i++){
+      for(uint chunk=0; chunk<CHUNK_COUNT; chunk++){
         unique = atomicCounterIncrement(counter);
-        if(unique<=atomicCounter(dispatchCount)) {
+        if(unique<=atomicCounter(dispatchCount))
+        {
           data = inputData[unique];
-          if (data.height >= 0) {
-             data.pos = translate(data.pos);
-            if (is_visible(data.pos)) outputData[atomicCounterIncrement(instanceCount)] = data;
+          if (inFrustum(data) || is_visible(getPos(data))) {
+            outputData[atomicCounterIncrement(instanceCount)] = data;
+            setInFrustum(data);
+            inputData[unique] = data;
           }
         }
       }
@@ -153,9 +136,8 @@ void main() {
       if(ident>atomicCounter(dispatchCount)) return;
       
       data = inputData[ident];
-      if (data.height < 0) return;
       
-      vec3 index = data.pos;
+      vec3 index = getPos(data);
       vec3 pos = translate(index);
       bool visible = is_visible(pos);
 
@@ -187,16 +169,16 @@ void main() {
         flags = getTypeSide2(index);
       }
       
-      if(invalid) inputData[ident] = BuffData(pos,0,flags.sides,-1);
+      if(invalid) inputData[ident] = createBuffData(pos,0,flags.sides,-1);
       if(invalid) return;
       */
       
       //if (!visible) return;
       
       unique = atomicCounterIncrement(instanceCount);
-      data.pos = pos;
-      data.type = unique;
-      data.height = 0;
+      //setPos(data, pos);
+      //data.flags = unique;
+      removeFlag(data,VISIBLE_FLAG);
       outputData[unique] = data;
       
       return;
@@ -214,7 +196,7 @@ void main() {
       data = outputData[unique];
       synchronize();
       
-      if(iRasterrize && data.height <= 0) {
+      if(iRasterrize && (!hasFlag(data,VISIBLE_FLAG))) {
         //outputData[ident].sides=0;
         return;
       }
@@ -223,7 +205,7 @@ void main() {
       outputData[unique] = data;
       
       //flags = MapData(data.type,data.sides,data.height);
-      //index = getIndex(ident) + iCenter * COLSIZE * 0;
+      //index = getIndexPos(ident) + iCenter * COLSIZE * 0;
       //flags = getTypeSide2(index);
       //pos = translate(index);
       //visible = is_visible(pos);
@@ -270,13 +252,15 @@ void main() {
     }
     if(change) return;
     */
+    /*
     if (flags.height < 0 || !visible) return;
     
     if(iCulling == 2) {
+      pos = getPos(data);
       vec2 zNearFar = vec2(gl_DepthRange.near,gl_DepthRange.far);
 
       float radius = 0.5;
-      vec3 view_center = (iView * vec4(data.pos, 1.0)).xyz;
+      vec3 view_center = (iView * vec4(pos, 1.0)).xyz;
       float nearest_z = view_center.z + radius;
       
       // Sphere clips against near plane, just assume visibility.
@@ -314,7 +298,7 @@ void main() {
       // Project our nearest Z value in view space.
       vec2 zw = mat2(iProj[2].zw, iProj[3].zw) * vec2(nearest_z, 1.0);
       
-      float dist = (1/(length(-iCamPos-data.pos)));
+      float dist = (1/(length(-iCamPos-pos)));
       
       nearest_z = 1 + (-1 + zw.x / zw.y) * 0.52; //clamp(dist,0.5,1.0);
 
@@ -346,8 +330,10 @@ void main() {
     //if(unique==0) { flags.type=9999; flags.sides=255; } // SUN
     
     outputData[unique] = create(data,flags);
+    */
   
   } else {
+  /*
     //if(ident == 0) atomicCounterExchange(counter, 0);
     //if(ident == 0) atomicCounterExchange(instanceCount, 0);
     //if(atomicCounter(counter) >= atomicCounter(instanceCount)) return;
@@ -357,5 +343,6 @@ void main() {
  
     //unique = atomicCounterIncrement(instanceCount);
     outputData[ident] = create(data,flags);
+    */
   }
 }

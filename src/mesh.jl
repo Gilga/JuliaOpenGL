@@ -19,26 +19,7 @@ export createBuffers
 export getMeshBufferRefID
 export createArrayObjects
 
-buffers = GLuint[]
-
-function cleanUp()
-  global buffers
-  glDeleteBuffers(length(buffers), buffers)
-  buffers = GLuint[]
-end
-
-function createBuffers(count)
-  lbuffers=zeros(GLuint,count)
-  glGenBuffers(count, lbuffers)
-  for buffer in lbuffers push!(buffers, buffer) end
-  lbuffers
-end
-
-function createBuffer()
-  buffer = glGenBuffer()
-  push!(buffers, buffer)
-  buffer
-end
+const GPU =  GraphicsManager
 
 """
 object which holds a transformation matrix and a model reference
@@ -119,24 +100,20 @@ end
 """
 creates vaos
 """
-function createArrayObjects(count=1)
-  arrays=zeros(GLuint,count)
-  glGenVertexArrays(count, arrays)
-  arrays
-end
+createArrayObjects(count=1) = GPU.create(:VERTEXARRAY, count)
 
 """
 creates gpu buffers
 """
 function createBuffers(this::MeshData)
-  if this.vao == 0 this.vao = glGenVertexArray() end
-  for (s,a) in this.arrays if a.refID == 0 && a.count > 0 a.refID = createBuffer() end end 
+  if this.vao == 0 this.vao = GPU.create(:VERTEXARRAY) end
+  for (s,a) in this.arrays if a.refID == 0 && a.count > 0 a.refID = GPU.create(:BUFFER) end end 
 end
 
 function createBuffers(data::AbstractArray, count=1; size=0, typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
   list=Array{MeshBuffer,1}(undef, count)
   
-  buffers=createBuffers(count)
+  buffers=GPU.create(:BUFFER, count)
   
   has_data = length(data) > 0
   if size <= 0 size = sizeof(data) end
@@ -154,7 +131,7 @@ function createBuffers(data::AbstractArray, count=1; size=0, typ=GL_ARRAY_BUFFER
 end
 
 function createBuffer(data::AbstractArray, count=1; typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
-  refID=createBuffer()
+  refID=GPU.create(:BUFFER)
     
   buffer=MeshBuffer(typ, usage, data; refID=refID,elems=1)
   sz=sizeof(buffer.data)

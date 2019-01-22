@@ -24,6 +24,9 @@ function catchError(func::Function)
   end
 end
 
+ # cleanUp: force garbage collection, free memory
+clean() = GC.gc()
+
 function game()
   loaded = false
   
@@ -40,8 +43,7 @@ function game()
     if isdefined(Game,:cleanUp) println("=== CleanUp ==="); catchError(Game.cleanUp) end
   end
   
-   # cleanUp: force garbage collection, free memory
-  GC.gc()
+  clean()
 end
 
 function run()
@@ -50,6 +52,7 @@ function run()
     input = getInput()
     if input == "q" || input == "quit" break #end program
     elseif input == "game" game()
+    elseif input == "clean" clean()
     else println("Unknown Command")
     end
   end
