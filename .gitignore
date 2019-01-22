@@ -7,6 +7,7 @@ bin/
 build/
 backup/
 tmp/
+.idea/
 
 src/*/.vs/
 src/*/bin/
