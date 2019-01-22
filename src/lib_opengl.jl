@@ -5,6 +5,10 @@ using ..LogManager
 
 using ModernGL
 
+DRIVER_INITALIZED = false
+
+init() = global DRIVER_INITALIZED = true
+
 ########################################################
 # ModernGL functions for Extension
 gl_lib = C_NULL
@@ -233,12 +237,14 @@ function glCheck(x=nothing)
   x
 end
 
-export glCheck
+macro GLCHECK(ex) :(glCheck($(esc(ex)))) end
+
+export @GLCHECK
 
 """
 TODO
 """
-glGetValue(f::Function, id, typ::DataType) = begin value=typ[0]; glCheck(f(id,value)); value[] end
+glGetValue(f::Function, id, typ::DataType) = begin value=typ[0]; @GLCHECK f(id,value); value[] end
 #ref = Ref(T(0)); #f(ref); #ref.x
 
 export glGetValue
@@ -246,14 +252,14 @@ export glGetValue
 """
 TODO
 """
-glGenOne(glGenFn) = begin id=GLuint[0]; glCheck(glGenFn(1, id)); id[] end
+glGenOne(glGenFn) = begin id=GLuint[0]; @GLCHECK glGenFn(1, id); id[] end
 
 export glGenOne
 
 """
 TODO
 """
-glDelOne(glDelFn, id) = begin ids=GLuint[id]; glCheck(glDelFn(1, ids)) end
+glDelOne(glDelFn, id) = begin ids=GLuint[id]; @GLCHECK glDelFn(1, ids) end
 
 export glDelOne
 
@@ -262,84 +268,60 @@ TODO
 """
 glGenBuffer() = glGenOne(glGenBuffers)
 
-export glGenBuffer
-
 """
 TODO
 """
 glDeleteBuffer(id) = glDelOne(glDeleteBuffers,id)
-
-export glDeleteBuffer
 
 """
 TODO
 """
 glGenFramebuffer() = glGenOne(glGenFramebuffers)
 
-export glGenFramebuffer
-
 """
 TODO
 """
 glDeleteFramebuffer(id) = glDelOne(glDeleteFramebuffers,id)
-
-export glDeleteFramebuffer
 
 """
 TODO
 """
 glGenRenderbuffer() = glGenOne(glGenRenderbuffers)
 
-export glGenRenderbuffer
-
 """
 TODO
 """
 glDeleteRenderbuffer(id) = glDelOne(glDeleteRenderbuffers,id)
-
-export glDeleteRenderbuffer
 
 """
 TODO
 """
 glGenVertexArray() = glGenOne(glGenVertexArrays)
 
-export glGenVertexArray
-
 """
 TODO
 """
 glDeleteVertexArray(id) = glDelOne(glDeleteVertexArrays,id)
-
-export glDeleteVertexArray
 
 """
 TODO
 """
 glGenTexture() = glGenOne(glGenTextures)
 
-export glGenTexture
-
 """
 TODO
 """
 glDeleteTexture(id) = glDelOne(glDeleteTextures, id)
-
-export glDeleteTexture
 
 """
 TODO
 """
 glGenSampler() = glGenOne(glGenSamplers)
 
-export glGenSampler
-
 """
 TODO
 """
 glDeleteSampler(id) = glDelOne(glDeleteSamplers, id)
-
-export glDeleteSampler
 
 """
 TODO
@@ -348,17 +330,82 @@ glGetIntegerval(name::GLenum) = glGetValue(glGetIntegerv, name, GLint)
 
 export glGetIntegerval
 
+##################################################
+lists = Dict{Symbol,Dict{Symbol,Any}}()
+lists[:BUFFER] = Dict(:LIST=>GLuint[],:CREATE=>glGenBuffers,:DELETE=>glDeleteBuffers)
+lists[:FRAMEBUFFER] = Dict(:LIST=>GLuint[],:CREATE=>glGenFramebuffers,:DELETE=>glDeleteFramebuffers)
+lists[:RENDERBUFFER] = Dict(:LIST=>GLuint[],:CREATE=>glGenRenderbuffers,:DELETE=>glDeleteRenderbuffers)
+lists[:VERTEXARRAY] = Dict(:LIST=>GLuint[],:CREATE=>glGenVertexArrays,:DELETE=>glDeleteVertexArrays)
+lists[:TEXTURE] = Dict(:LIST=>GLuint[],:CREATE=>glGenTextures,:DELETE=>glDeleteTextures)
+lists[:SAMPLER] = Dict(:LIST=>GLuint[],:CREATE=>glGenSamplers,:DELETE=>glDeleteSamplers)
+##################################################
+
+"""
+TODO
+"""
+function create(typ::Symbol, count::Number)
+  global lists; l=lists[typ]
+  objs=zeros(GLuint,count)
+  l[:CREATE](count, objs)
+  for obj in objs push!(l[:LIST], obj) end
+  objs
+end
+
+"""
+TODO
+"""
+function delete(typ::Symbol, ids::Array{GLuint,1})
+ global lists; l=lists[typ]
+  l[:DELETE](length(ids), ids)
+  l[:LIST] = filter!(e->e∉ids,l[:LIST])
+end
+
+"""
+TODO
+"""
+create(typ::Symbol) = create(typ, 1)[1]
+
+"""
+TODO
+"""
+delete(typ::Symbol, id::GLuint) = delete(typ, GLuint[id])
+
+"""
+TODO
+"""
+function delete(typ::Symbol)
+  global lists; l=lists[typ]
+  list=l[:LIST]
+  l[:DELETE](length(list), list)
+  l[:LIST] = eltype(list)[]
+end
+
+"""
+TODO
+"""
+cleanLists() = for typ in keys(lists) delete(typ) end
+
+"""
+TODO
+"""
+function cleanUp()
+  global DRIVER_INITALIZED
+  if DRIVER_INITALIZED == false return end
+  cleanLists()
+  global DRIVER_INITALIZED = false
+end
+
 """
 TODO
 """
 function getInfoLog(obj::GLuint)
   # Return the info log for obj, whether it be a shader or a program.
-  isShader = glCheck(glIsShader(obj))
+  isShader = @GLCHECK glIsShader(obj)
   getiv = isShader == GL_TRUE ? glGetShaderiv : glGetProgramiv
   getInfo = isShader == GL_TRUE ? glGetShaderInfoLog : glGetProgramInfoLog
   # Get the maximum possible length for the descriptive error message
   len = GLint[0]
-  glCheck(getiv(obj, GL_INFO_LOG_LENGTH, len))
+  @GLCHECK getiv(obj, GL_INFO_LOG_LENGTH, len)
   maxlength = len[]
   # TODO: Create a macro that turns the following into the above:
   # maxlength = @glPointer getiv(obj, GL_INFO_LOG_LENGTH, GLint)
@@ -366,7 +413,7 @@ function getInfoLog(obj::GLuint)
   if maxlength > 0
     buffer = zeros(GLchar, maxlength)
     sizei = GLsizei[0]
-    glCheck(getInfo(obj, maxlength, sizei, buffer))
+    @GLCHECK getInfo(obj, maxlength, sizei, buffer)
     len = sizei[]
     unsafe_string(pointer(buffer), len)
   else
@@ -392,8 +439,8 @@ end
 TODO
 """
 function compileShader(shader::GLuint, source::String)
-  glCheck(glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(string(source,"\x00")))])), C_NULL))
-  glCheck(glCompileShader(shader))
+  @GLCHECK glShaderSource(shader, 1, convert(Ptr{UInt8}, pointer([convert(Ptr{GLchar}, pointer(string(source,"\x00")))])), C_NULL)
+  @GLCHECK glCompileShader(shader)
   validateShader(shader)
 end
 
@@ -417,7 +464,7 @@ function createShader(programname::Symbol, infos::Dict{Symbol,Any})
   end
 
   # Create the shader
-  shader = glCheck(glCreateShader(typ)::GLuint)
+  shader = @GLCHECK glCreateShader(typ)::GLuint
   if shader == 0 LogManager.error("[$pname] Error creating $typname: ", glErrorMessage()); return -1 end
   
   tmpdir="shaders/tmp/"
@@ -474,7 +521,7 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeed
   # Create, link then return a shader program for the given shaders.
   # Create the shader program
   pname = stringColor(name;color=:yellow)
-  prog = glCheck(glCreateProgram())
+  prog = @GLCHECK glCreateProgram()
   if prog == 0
     LogManager.error("Error creating shader program $pname: ", glErrorMessage())
   end
@@ -489,7 +536,7 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeed
   for shader in shaders
     shaderID = createShader(name, shader)
     if shaderID > 0
-      glCheck(glAttachShader(prog, shaderID))
+      @GLCHECK glAttachShader(prog, shaderID)
       push!(shaderIDs, shaderID)
     end
   end
@@ -515,7 +562,7 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeed
     status = GLint[0]
     glGetProgramiv(prog, GL_LINK_STATUS, status)
 
-    (id->glCheck(glDeleteShader(id))).(shaderIDs) # remove shaders
+    (id->@GLCHECK glDeleteShader(id)).(shaderIDs) # remove shaders
 
     if status[] == GL_FALSE
       msg = getInfoLog(prog)
@@ -539,7 +586,7 @@ TODO
 """
 function createcontextinfo()
   global GLSL_VERSION
-  glsl = split(unsafe_string(glCheck(glGetString(GL_SHADING_LANGUAGE_VERSION))), ['.', ' '])
+  glsl = split(unsafe_string(@GLCHECK glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
   if length(glsl) >= 2
     glsl = VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
     GLSL_VERSION = string(glsl.major) * rpad(string(glsl.minor),2,"0")
@@ -547,7 +594,7 @@ function createcontextinfo()
     error("Unexpected version number string. Please report this bug! GLSL version string: $(glsl)")
   end
 
-  glv = split(unsafe_string(glCheck(glGetString(GL_VERSION))), ['.', ' '])
+  glv = split(unsafe_string(@GLCHECK glGetString(GL_VERSION)), ['.', ' '])
   if length(glv) >= 2
     glv = VersionNumber(parse(Int, glv[1]), parse(Int, glv[2]))
   else
@@ -556,8 +603,8 @@ function createcontextinfo()
   dict = Dict{Symbol,Any}(
       :glsl_version   => glsl,
       :gl_version     => glv,
-      :gl_vendor      => unsafe_string(glCheck(glGetString(GL_VENDOR))),
-      :gl_renderer  => unsafe_string(glCheck(glGetString(GL_RENDERER))),
+      :gl_vendor      => unsafe_string(@GLCHECK glGetString(GL_VENDOR)),
+      :gl_renderer  => unsafe_string(@GLCHECK glGetString(GL_RENDERER)),
       #:gl_extensions => split(unsafe_string(glGetString(GL_EXTENSIONS))),
   )
 end

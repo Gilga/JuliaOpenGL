@@ -6,13 +6,18 @@
 precision highp sampler2DShadow;
 precision highp sampler2D;
 
-//layout(early_fragment_tests) in;
-layout(location = 0) in Vertex v;
+layout(location = 0) flat in uint index;
+layout(location = 2) in float wave;
+layout(location = 3) in vec3 pos;
+layout(location = 4) in vec3 normal;
+
 layout(location = 0) out vec4 outColor;
 
 layout(binding = 0) uniform sampler2D iDepthMap;
 layout(binding = 2) uniform sampler2D iTexturePack;
 uniform int iDepth = 0;
+
+layout(std430) buffer inputBuffer { BuffData instances[]; };
 
 struct iMaterial {
   vec4 emission;    // Ecm, 16
@@ -30,57 +35,66 @@ struct iLight {
   int specular;	// 4
 } light;
 
-float near = 0.1; 
-float far  = 100.0; 
-  
-float LinearizeDepth(float depth) 
-{
-    float z = depth * 2.0 - 1.0; // back to NDC 
-    return (2.0 * near * far) / (far + near - z * (far - near));	
-}
+// void main() {
+  // outColor = vec4(1);
+// }
 
 void main() {
-  if(v.flags.w < 0) { discard; return; } //discard
   //int glow = v.texindex==15;
   
-  vec3 camPos = -iCamPos.xyz;
-  vec4 color = v.color; //vec4(0,0,0,1); //color.w = color.x*color.y*color.z;
+  BuffData data = instances[index];
+
+  vec3 vertex_pos = pos;
+  vec3 vertex_normal = normal; //normalize(vertex_pos);
   
+  vec3 world_obj_pos = getPos(data) + iCenter + iPosition;
+  vec3 world_pos = world_obj_pos + vertex_pos;
+  
+  vec4 color = getVertexColor(vertex_normal, 0); //color.w = color.x*color.y*color.z;
+  
+  vec3 cam_pos = -iCamPos;
+
   bool UseLight = true; //iUseLight;
+  uint lightType = 1;
   bool UseTexture = true; //iUseTexture;
-  
-  vec2 texUV = v.uvs.zw;
   bool water = false;
   
-  //float dist = abs(length(getUV(v.pos.xyz)-vec2(0.5)));
+  //float dist = abs(length(getUV(vertex_pos)-vec2(0.5)));
   //if(dist>0.5) discard;
 
-  if(texUV.y >= 0) {
-    float level = v.flags.w*0+0.5+sin(v.world_center.y/20.0)*-0.5;
-    float typ = 0;
+  if(true)
+  {
+    float level = getLevel(data);//+clamp(1+world_obj_pos.y/128.0,0,1);
+    uint typ = getType(data);
+    water = typ == 16;
   
-    //float level_air = height * 0.99;
-    float level_grass = 0.95;
-    float level_dirt = 0.9;
-    float level_stonebricks = 0.6;
+    //float level_air = 0.99;
+    float level_grass = 0.8;
+    float level_dirt = 0.65;
     float level_stone = 0.5;
+    float level_stonebricks = 0.4;
+    float level_sand =  0.3;
     float level_lava =  0.2;
+    float level_water =  0.42;
       
     //if (y >= level_air) typ = 0; // air or nothing
-    if (level <= level_lava) { typ = 15; color = vec4(1,0,0,1); } //lava
-    else if (level <= level_stone) { typ = 4; color = vec4(0.5,0.5,0.75,1); } //stone
-    else if (level <= level_stonebricks) { typ = 5; color = vec4(0.25,0.25,0.5,1); } //stonebricks
-    else if (level <= level_dirt) { typ = 1; color = vec4(0.75,0.5,0.5,1); } //dirt
+    if (level <= level_lava) { typ = 15; color = vec4(0.75,0,0,1); } //lava
+    else if (level <= level_sand) { typ = 9; color = vec4(0.75,0.75,0,1); } //sand
+    else if (level <= level_stonebricks) { typ = 5; color = vec4(0.5,0.5,0.6,1); } //stonebricks 
+    else if (level <= level_stone) { typ = 4; color = vec4(0.7,0.7,0.8,1); } //stone
+    else if (level <= level_dirt) { typ = 1; color = vec4(0.5,0.4,0.3,1); } //dirt
+    else if (level <= level_grass) { typ = 2; color = vec4(0.2,0.4,0.1,1); } //grass
+    else if (level > level_grass) { typ = 13; color = vec4(vec3(0.75),1); } //snow
  
-    if(v.flags.x  == 1 && v.flags.w > 0.40 && v.flags.w < 0.42) typ = 16;
-    //typ *= (0.5+sin(v.world_center.x*(1.0/18.0)+iTime*0)*0.5);
+    //if(isWater && level <= level_water) typ = 16;
+    //typ *= (0.5+sin(world_obj_pos.x*(1.0/18.0)+iTime*0)*0.5);
     
-    water = typ == 16;
-    if(water){ color = vec4(0,0,1,1); }
+    //water = typ == 16;
+    if(water){ color = vec4(0.25,0.5,0.75,1); }
     
     if(UseTexture && !water){
-      texUV = getTexUV(typ-1);
-      vec2 UV = getUV(v.pos.xyz*DIST)*0.25f;
+      vec2 texUV = getTexUV(typ-1);
+      vec2 UV = getUV(vertex_pos)*0.25f;
       
       // flip texture 
       UV.y=(1-UV.y);
@@ -92,42 +106,41 @@ void main() {
     }
   }
   
-  if(!UseTexture) color = vec4(vec3(0.5 + sin(v.world_center.x*(1.0/18.0))*0.5, 0.5 + sin(v.world_center.z*(1.0/18))*0.5,(0.5 + sin(v.world_center.y*(1.0/28.0)))),1);
+  //if(!UseTexture && !water) color = vec4(vec3(0.5 + sin(world_pos.x*(1.0/18.0))*0.5, 0.5 + sin(world_pos.z*(1.0/18))*0.5,(0.5 + sin(world_pos.y*(1.0/28.0)))),1);
+  float time = iTime*0+1;
+  vec3 lightPos = vec3(sin(time)*300,200+sin(time*3)*100,cos(time)*300);
+  vec3 lightDistVec = lightPos - world_pos;
+  vec3 lightDir = normalize(lightDistVec);
   
-  vec3 lightPos = vec3(sin(iTime)*100,70+sin(iTime*3)*30,cos(iTime)*100);
-  vec3 lightDir = lightPos - v.world_center.xyz;
-  float lightDist = length(lightDir);
-  float H2 = clamp(dot(normalize(lightDir), normalize(v.world_pos.xyz - v.world_center.xyz)),0.0,1.0);
-  float range = 1.0/(lightDist);
+  float lightDist = length(lightDistVec);
   
-  if(UseLight){ //use phong?
-    float lightAttenuation = 0.01f;
-    float gammaAmount = 2.2f;
-    float shininessCoefficient = 0;
+  float H2 = clamp(dot(lightDir, vertex_normal),0.0,1.0);
+  float range = 1.0/lightDist;
+  float alpha = radians(0);
   
-    float alpha = radians(0);
+  light.color = vec4(1,1,1,1);
+  light.energy = 100;
+  light.position = lightPos; //vec3(1000,500,-300); //vec3(sin(alpha),0,cos(alpha));
+  light.diffuse = 1;
+  light.specular = 1;
+  
+  float lightAttenuation = 0.01f;
+  float gammaAmount = 2.2f;
+  float shininessCoefficient = 1;
 
-    light.color = vec4(1,1,1,1);
-    light.energy = 20;
-    light.position = lightPos; //vec3(1000,500,-300); //vec3(sin(alpha),0,cos(alpha));
-    light.diffuse = 1;
-    light.specular = 1;
+  material.emission = vec4(0.0,0.0,0.0,1.0); //vec4(glow?1:0,glow?0.5:0,0,1);
+  material.ambient = vec4(0.0,0.0,0.0,1.0);
+  material.diffuse = vec4(1.0,1.0,1.0,1.0);
+  material.specular = vec4(1.0,1.0,1.0,1.0);
+  material.shininess = 0;
 
-    material.emission = vec4(0.0,0.0,0.0,1.0); //vec4(glow?1:0,glow?0.5:0,0,1);
-    material.ambient = vec4(0.0,0.0,0.0,1.0);
-    material.diffuse = vec4(1.0,1.0,1.0,1.0);
-    material.specular = vec4(1.0,1.0,1.0,1.0);
-    material.shininess = 1;
-     
-    //vec3 lightDir = light.position - v.world_pos.xyz;
-    //float lightDist = length(lightDir);
-    //float range = 1.0/lightDist;
-      
-    vec3 L = normalize(lightDir); // Direction of the light (from the fragment to the light)
-    vec3 N = normalize(v.world_pos.xyz - v.world_center.xyz); //v.normal.xyz; //normalize(v.normal.xyz); // Normal of the computed fragment, in camera space
+  
+  if(UseLight && !water && lightType == 1){ //use phong?
+    vec3 L = lightDir; // Direction of the light (from the fragment to the light)
+    vec3 N = vertex_normal; // Normal of the computed fragment, in camera space
  
-    float H = water ?  1 : clamp(dot(L, N),0.0,1.0);
-    float diffuseCoefficient = max(clamp(H,0.0,1.0),0.0);
+    float H = clamp(dot(L, N),0.0,1.0);
+    float diffuseCoefficient = H;
     
     vec3 ambient = vec3(0,0,0);
     vec3 diffuse = vec3(0,0,0);
@@ -136,9 +149,9 @@ void main() {
     vec3 difSpec = vec3(0,0,0);
     
     //attenuation
-    float distanceToLight = 1.0/lightDist;
+    float distanceToLight = range;
     //if(distanceToLight <= 0.01) distanceToLight=0;
-    float attenuation = clamp(distanceToLight * light.energy,0.0,1.0); // / (1.0 + lightAttenuation * pow(distanceToLight,2));
+    float attenuation = distanceToLight * light.energy; //clamp(,0.0,1.0); // / (1.0 + lightAttenuation * pow(distanceToLight,2));
     
     // phong_weight
     if(diffuseCoefficient > 0.0)
@@ -148,17 +161,17 @@ void main() {
         diffuse = material.diffuse.xyz * light.color.xyz * diffuseCoefficient * material.diffuse.w;
       }
       
-      if(!water && light.specular > 0 && shininessCoefficient > 0 && material.shininess > 0)
+      if(light.specular > 0 && shininessCoefficient > 0 && material.shininess > 0)
       {
-        vec3 E = normalize(camPos - v.world_center.xyz); //normalize(v.pos); // camera direction (towards the camera)
+        vec3 E = normalize(cam_pos - world_pos); // camera direction (towards the camera)
         vec3 R = reflect(-L, N); // Direction in which the triangle reflects the light
-        float cosTheta = max(0.0f, clamp(dot(E, R), 0.0, 1.0)); //E, R, R, L
+        float cosTheta = clamp(dot(E, R), 0.0, 1.0); //E, R, R, L
       
         float specularCoefficient = material.shininess > 0 ? pow( cosTheta, material.shininess * shininessCoefficient) : 0.0f;
         specular = material.specular.xyz * light.color.xyz * diffuseCoefficient * specularCoefficient * material.specular.w;
       }
 
-      difSpec += (diffuse + specular) * attenuation;
+      difSpec += (diffuse + specular);
     }
 
     emission = material.emission.xyz; //* emission Intensity
@@ -167,32 +180,55 @@ void main() {
     // replace alpha
     //ambient = vec4(mix(bgcolor.xyz,ambient.xyz, ambient.w*0.0),1);
     
-    vec3 all = (emission + ambient + color.xyz*mix(difSpec,vec3(1),attenuation) + color.xyz*difSpec) * gammaAmount;
-    color = vec4(all,color.w);
-    
-    if(water) {
-      float a = 1.0/(lightDist*0.01);
-      if(a<0.1) a = 0;
-      color=vec4(0,0,1,1-a);
-    }
-    
+    vec3 all = (emission  + ambient + mix(color.xyz*0.25,color.xyz,difSpec)) * attenuation * gammaAmount;
+    color = vec4(clamp(all,0,1),color.w);
+
     //color = vec4(pow(all, vec3(gammaAmount)),color.w)
-    
-    bool fog = false;
-    
-    if(fog) {
-      float dist = distance(-iCamPos,v.world_center.xyz);
-      float fogFactor = (dist/($CHUNK_SIZE*1.75)); //smoothstep(0.0f, 9.0f, dist/25);
-      float old_alpha = color.a;
-      color = mix(color,vec4(0.25,0.25,0.25,0.0),clamp(pow(fogFactor,10),0,1));
-      if(water)  color.a = old_alpha * color.a;
-    }
   }
-  else color = vec4(vec3(color.xyz*range*100),color.w);
+  else if(UseLight && !water && lightType == 2) {
+    float diff = clamp(dot(vertex_normal, lightDir), 0.0, 1.0);
+    vec3 diffuse = light.color.xyz * diff * range * 100;
+    color = vec4(diffuse,color.w);
+  }
+  else if(true) {
+    if(water) {
+      vec3 dir = normalize(cam_pos - world_pos);
+      float r = clamp(range*100,0,1);
+      if(r<0.01) r = 0; else if(r>0.99) r = 1;
+      float a = (1-clamp(r*0.25,0,1)); //*clamp(1-1/distance(cam_pos,world_pos)*10,0,1); //UseLight ? range*100 : 0.75;
+      //if(a<0.01) a = 0; else if(a>0.99) a = 1;
+      color.rgb = color.xyz*mix(SEA_WATER_COLOR, SEA_BASE, (wave)) * r;//(1-texUV.y)*f
+    
+      /*
+      vec3 light = normalize(vec3(0.0,1.0,0.8)); 
+      vec3 E = normalize(cam_pos - world_pos);
+      vec3 ldir = normalize(light - world_pos);
+      
+      // color
+      color.rgb = mix(
+      getSkyColor(ldir),
+      getSeaColor(vertex_pos,vertex_normal,light,E,light - world_pos),
+      pow(smoothstep(0.0,-0.05,ldir.y),0.3));*/
+      
+      
+      color.a=a; //clamp(a*(0.5+sin(1-texUV.y*0.5)*0.5),0,1);
+    }
+    else color = vec4(vec3(color.xyz*range*100),color.w);
+  }
+
+  bool fog = false;
+  
+  if(fog) {
+    float dist = distance(cam_pos,world_pos);
+    float fogFactor = (dist/($CHUNK_SIZE*1.75)); //smoothstep(0.0f, 9.0f, dist/25);
+    float old_alpha = color.a;
+    color = mix(color,vec4(0.25,0.25,0.25,0.0),clamp(pow(fogFactor,10),0,1));
+   //if(water)  color.a = old_alpha * color.a;
+  }
   
   if(iDepth == 1){
     float depth = gl_FragCoord.z;
-    //depth = 1 - (1.0/(length(camPos - v.world_center.xyz)));
+    //depth = 1 - (1.0/(length(cam_pos - world_pos)));
     vec2 duv = gl_FragCoord.xy / textureSize(iDepthMap,0);
     //float tdepth = texture(iDepthTexture, duv).x;
     float tdepth = texture(iDepthMap, duv).x + 0.00000003;

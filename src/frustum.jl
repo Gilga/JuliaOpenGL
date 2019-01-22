@@ -96,7 +96,8 @@ mutable struct Frustum
   ratio::Float32
   angle::Float32
   tang::Float32
-  
+  centerRadius::Float32
+
   nearTopLeft::Vec3f
   nearTopRight::Vec3f
   nearBottomLeft::Vec3f
@@ -115,7 +116,7 @@ mutable struct Frustum
   Dict(:FRUSTUM_TOP=>Plane3D(),:FRUSTUM_BOTTOM=>Plane3D(),:FRUSTUM_LEFT=>Plane3D(),:FRUSTUM_RIGHT=>Plane3D(),:FRUSTUM_NEAR=>Plane3D(),:FRUSTUM_FAR=>Plane3D()),
   Dict(:BOX_TOP=>Plane3D(),:BOX_BOTTOM=>Plane3D(),:BOX_LEFT=>Plane3D(),:BOX_RIGHT=>Plane3D()),
   Dict(:CENTER=>Vec3f(),:CAMERA=>Vec3f(),:TARGET=>Vec3f()),
-  0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,
   Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f(),Vec3f()) #Array{Plane3D,1}(6)
 end
 
@@ -281,6 +282,7 @@ function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f; near=0, 
   this.pos[:CENTER] = Vec3f((pos + target) / 2)
   this.pos[:CAMERA] = pos
   this.pos[:TARGET] = target
+  this.centerRadius = 0
 end
 
 export SetCamera

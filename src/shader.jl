@@ -1,3 +1,10 @@
+module ShaderManager
+
+using ..FileManager
+using ..GraphicsManager
+
+export loadShaders
+
 """
 load all content from shaders located in shaders folder in root dir
 """
@@ -71,3 +78,5 @@ function loadShaders(global_vars=Dict{Symbol,Any}();dir="shaders/")
 end
 
 #stat("nodes.txt").mtime
+
+end #ShaderManager

@@ -252,10 +252,8 @@ event which updates positions shifts (left,right,up,down,forward,back)
 key is (left,right,up,down,forward,back)
 m is direction value with weight (positive, negative)
 """
-function OnMove(camera::Camera, key::Symbol, m::Number)
+function OnMove(camera::Camera, key::Symbol, f::Number)
   global shiftposition
-  f=m*GetTimePassed()*10*(!speed ? 1 : 10)
-  
   if key == :FORWARD  move(camera, forward(camera)*f)
   elseif key == :RIGHT  move(camera, right(camera)*-f) #+Vec3f(-right*0.02f0,-up*0.02f0,forward*0.02f0)
   elseif key == :UP  move(camera, up(camera)*-f)
@@ -297,9 +295,10 @@ function OnUpdate(camera::Camera)
   #if isFocus return end
   
   if OnTime(0.01)
-    if keyFB != 0 OnMove(camera, :FORWARD, keyFB) end
-    if keyLR != 0 OnMove(camera, :RIGHT, keyLR) end
-    if keyUD != 0 OnMove(camera, :UP, keyUD) end
+    f=GetTimePassed()*(!speed ? 5 : 100)
+    if keyFB != 0 OnMove(camera, :FORWARD, keyFB*f) end
+    if keyLR != 0 OnMove(camera, :RIGHT, keyLR*f) end
+    if keyUD != 0 OnMove(camera, :UP, keyUD*f) end
   end
   
   if camera.moved

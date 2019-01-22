@@ -17,9 +17,9 @@ void main() {
   BuffData data = instances[index];
   //instances[index].height = 0;
 
-  vec3 pos = data.pos + iCenter + iPosition;
+  vec3 pos = getPos(data) + iCenter + iPosition;
 
-  v.flags = vec4(data.type*0+index,0,data.sides,data.height);
+  v.flags = vec4(getType(data)*0+index,0,getSides(data),getLevel(data)); //vec4(data.type*0+index,0,data.sides,data.height);
   
   if(v.flags.w >= 0) {
     v.world_center  = vec4(pos,1);

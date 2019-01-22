@@ -1,6 +1,7 @@
 module TextureManager
 
 using ..GraphicsManager
+const GPU =  GraphicsManager
 
 using Images
 using ModernGL
@@ -13,7 +14,7 @@ function uploadTextureGray(path)
   (imgwidth, imgheight) = size(img)
   gray = Array{Float32}(Gray.(img)) # do not vec
   
-  textureID = glGenTexture()
+  textureID = GPU.create(:TEXTURE)
   glActiveTexture(GL_TEXTURE0)
   glBindTexture(GL_TEXTURE_2D, textureID)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE) #GL_CLAMP_TO_EDGE,GL_REPEAT
@@ -39,7 +40,7 @@ function uploadTexture(path)
   (imgwidth, imgheight) = size(img)
   imga = reinterpret.(channelview(img)) # do not vec
 
-  textureID = glGenTexture()
+  textureID = GPU.create(:TEXTURE)
   glActiveTexture(GL_TEXTURE0)
   glBindTexture(GL_TEXTURE_2D, textureID)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE) #GL_CLAMP_TO_EDGE,GL_REPEAT
@@ -60,7 +61,7 @@ uploads a texture by given file path
 function uploadTexture(sz::Tuple{Integer,Integer})
   width, height = sz
   
-  textureID = glGenTexture()
+  textureID = GPU.create(:TEXTURE)
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, textureID);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE) #GL_CLAMP_TO_EDGE,GL_REPEAT
@@ -78,7 +79,7 @@ end
 function createTexture(sz::Tuple{Integer,Integer};level=1)
   width, height = sz
   
-  textureID = glGenTexture()
+  textureID = GPU.create(:TEXTURE)
   glActiveTexture(GL_TEXTURE0)
   glBindTexture(GL_TEXTURE_2D, textureID)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE) #GL_CLAMP_TO_EDGE,GL_REPEAT

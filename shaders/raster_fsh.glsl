@@ -43,7 +43,7 @@ void main() {
   if(tdepth<gl_FragCoord.z) discard;
  
   uint index = uint(v.flags.x);
-  instances[index].height = 1;
+  setFlag(instances[index], VISIBLE_FLAG);
   vec4 c = unpackUnorm4x8(index); c.a=0.0;
   FragColor = c;
 }
