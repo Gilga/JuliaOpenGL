@@ -1,7 +1,8 @@
 module SCRIPT
 
-using GLFW, ModernGL, SharedArrays
+using GLFW, ModernGL, SharedArrays, StaticArrays, Quaternions
 
+using ..WindowManager
 using ..GraphicsManager
 using ..DefaultModelData
 using ..CameraManager
@@ -11,12 +12,11 @@ using ..MeshManager
 using ..TextureManager
 using ..ShaderManager
 using ..ScriptManager
-
 using ..TimeManager
 using ..LogManager
 using ..Math
 
-const GPU =  GraphicsManager
+######################################
 
 struct IndirectCommand
          count::GLuint
@@ -28,7 +28,11 @@ struct IndirectCommand
   IndirectCommand(count=0, primCount=0) = new(count,primCount,0,0,0)
 end
 
+######################################
+
 println("Init Vars.")
+
+const GPU = GraphicsManager
 
 TITLE = "Blocks Game"
 STARTTIME = time()
@@ -38,10 +42,8 @@ MAX_FRAMES = 0
 FPS = 0
 MAX_FPS = 0
 ITERATION = 0
-BLOCK_COUNT = 0
-SIZE = 0
 
-prevTime = Ref(0.0)
+REF_PREVTIME = Ref(0.0)
 
 WIDTH = 1280 #800
 HEIGHT = 800 #600
@@ -50,6 +52,7 @@ SIZE = WIDTH * HEIGHT
 FOV = 60.0f0
 CLIP_NEAR = 0.001f0
 CLIP_FAR = 10000.0f0
+BLOCK_COUNT = 0
 
 CAM_LOCK = false
 WIREFRAME = false
@@ -58,16 +61,32 @@ LIGHTMODE = true
 FRUSTUM_CULLING = true
 HIDE_UNSEEN_CUBES = true
 RENDER_METHOD = 8
-mychunk = nothing
-programs = Dict{Symbol,GLint}(
+SCENE = 2
+
+FRUSTUM = nothing
+WINDOW = nothing
+
+CHUNK_SIZE = 128
+CHUNK1D_SIZE = CHUNK_SIZE
+CHUNK2D_SIZE = CHUNK1D_SIZE * CHUNK1D_SIZE
+CHUNK3D_SIZE = CHUNK2D_SIZE * CHUNK1D_SIZE
+
+GPU_FRUSTUM = true
+CAMERA = CameraManager.CAMERA
+GPU_CHUNKS = ChunkManager.GPU_CHUNKS
+GPU_CHUNKS_INIT = true
+CAMERA_UPDATED = true
+MSAA = false
+UPDATE_FRUSTUM = false
+WINDOW_FOCUS = true
+
+MYCHUNK = nothing
+
+PROGRAMS = Dict{Symbol,GLint}(
 :CHUNKS=>0,:NORMAL=>0, :SCREEN=>0, :COMPUTE=>0,
 :COMPUTE_CHUNKS=>0, :CHANGE_CHUNKS=>0, :INSTANCES=>0, :INDIRECT=>0,
 :BG=>0, :FG=>0, :DEPTH=>0, :RASTER=>0, :DEPTH_MIP=>0
 )
-
-SCENE = 2
-FRUSTUM = nothing
-WINDOW = nothing
 
 chunkData = nothing
 chunkData_upload = nothing
@@ -77,29 +96,24 @@ screenData = nothing
 boxData = nothing
 indirectData = nothing
 
-CHUNK_SIZE = 128
-CHUNK1D_SIZE = CHUNK_SIZE
-CHUNK2D_SIZE = CHUNK1D_SIZE * CHUNK1D_SIZE
-CHUNK3D_SIZE = CHUNK2D_SIZE * CHUNK1D_SIZE
-
 current_program = 0
-load_once = true
-workPool = nothing
 MVP = nothing
-render_ready = false
-fileredCount = 0
-uploaded = false
+
 texture_screen = 0
 texture_blocks = 0
 texture_heightMap = 0
 texture_depth = 0
 texture_msaa = 0
-shadow_sampler = 0
-GPU_FRUSTUM = true
-CAMERA = CameraManager.CAMERA
-GPU_CHUNKS = ChunkManager.GPU_CHUNKS
 
-#---------------------------------------------
+shadow_sampler = 0
+
+render_init = false
+render_ready = false
+uploaded = false
+
+fileredCount = 0
+
+#--------------------------------------------
 
 chunk_instances = SharedArray(Float32[])
 setChunkInstances(data) = global chunk_instances = data
@@ -113,66 +127,207 @@ box_vertices = SharedArray(Float32[])
 setBoxVertices(data) = global box_vertices = data
 getBoxVertices() = box_vertices
 
+#--------------------------------------------
+
+chunk_pos = [
+  Float32[0,0,0],
+  Float32[1,0,0],Float32[-1,0,0],Float32[0,0,1],Float32[0,0,-1],Float32[-1,0,-1],Float32[1,0,1],Float32[-1,0,1],Float32[1,0,-1],
+  Float32[2,0,0],Float32[-2,0,0],Float32[0,0,2],Float32[0,0,-2],Float32[-2,0,-2],Float32[2,0,2],Float32[-2,0,2],Float32[2,0,-2],
+  Float32[2,0,1],Float32[2,0,-1],Float32[-2,0,1],Float32[-2,0,-1],Float32[1,0,2],Float32[-1,0,2],Float32[1,0,-2],Float32[-1,0,-2]
+] * CHUNK_SIZE
+
+CHUNKS = Chunk[Chunk(;id=i,pos=chunk_pos[i]) for i=1:1] #length(chunk_pos) #Array{ChunkD,1}(undef, length(centers))
+
+CHUNK_COUNT = length(CHUNKS)
+DEPTH_SIZE = max(WIDTH, HEIGHT) #256
+DEPTH_SIZE_LOG2 = round(Integer,log2(DEPTH_SIZE)) #8
+LOD_LEVELS = DEPTH_SIZE_LOG2 + 1
+
+DISPATCH_RESETER = nothing
+CHUNK_ALL_BUFFERS = []
+CHUNK_BUFFERS = []
+CHUNK_OCCLUDED_BUFFERS = []
+DISPATCH_BUFFERS = []
+CHUNK_COUNTERS = []
+CHUNK_INDIRECT_DRAW_BUFFERS = []
+CHUNK_COUNTERS=[]
+DISPATCH_COUNTERS=[]
+CHUNK_OBJECTS=[]
+TRANSFORM_FEEDBACK_BUFFERS=[]
+
+frameBuffers = zeros(Integer,LOD_LEVELS)
+depthrenderbuffer = 0
+
+CHUNK_DATA = nothing
+ALL_CHUNK_SIZE = CHUNK3D_SIZE*(1+8+16+24+32+40)
+CHUNK_BUFFERS_SIZE = sizeof(Float32)*3*2*ALL_CHUNK_SIZE
+
+single_indirect = true
+single_storage = true
+
+fbo_msaa = 0
+rbo_msaa = 0
+fbo_intermediate = 0
+
+global_vars=Dict{Symbol,Any}()
+
+SLEEP=0 #1f0/200
+
+RENDER_CHUNKS_COUNT=0
+
+#frameBufferMax = length(CHUNKS)
+#frameBufferCounter=0
+
+ITIME = 0
+
+INDIRECT_DRAW_BUFFER_SIZE=sizeof(GLuint[0,1,0,0,0])
+
+VISIBLE_CHUNKS=Array{Chunk,1}(undef, length(CHUNKS))
+VISIBLE_CHUNKS_COUNT = 0
+
+#atrb=[("iInstancePos",Float32,3,0),("iInstanceFlags",Float32,3,0)]
+#buffsize=sizeof(Float32)*3*2*CHUNK3D_SIZE
+
+const BUFFER = zeros(Float32,128^3*100)
+
+println("Set Event Functions.")
+
+""" TODO """
+function main(args::Dict{Symbol,Any})
+	#$(this.args), 
+  WINDOW = args[:WINDOW]
+  println("Script: $(basename(@__FILE__)), $(args), time: $(mtime(@__FILE__))")
+  WindowManager.resize(WINDOW, (800,600))
+  glViewport(0, 0, WINDOW.size[1], WINDOW.size[2])
+end
+
+######################################
+
+""" TODO """
+function OnWindowFocus(focused::Bool)
+end
+
+""" TODO """
+function OnWindowResize(size::Array{Int32,1})
+end
+
+""" TODO """
+function OnKey(key::Number, scancode::Number, action::Number, mods::Number, unicode::Number)
+end
+
+""" TODO """
+function OnMouseKey(key::Number, action::Number, mods::Number)
+end
+
+""" TODO """
+function OnMousePos(pos::AbstractVector)
+end
+
+""" TODO """
+function OnMouseMove(pos::AbstractVector)
+end
+
+""" TODO """
+function OnCamRotate()
+end
+
+""" TODO """
+function OnMove(key::Symbol, m::Number)
+end
+
+""" TODO """
+function OnShaderReload(path)
+end
+
+""" TODO """
+function OnPreRender()
+end
+
+""" TODO """
+function OnPostRender()
+end
+
+""" TODO """
+function OnRender()
+  game_loop()
+end
+
+function OnPostDraw()
+end
+
+""" TODO """
+function OnPreDraw()
+end
+
+""" TODO """
+function OnRenderPause()
+end
+
+""" TODO """
+function OnUpdate()
+  UpdateTimers()
+  if !OnUpdatedKeys() return end
+end
+
+""" TODO """
+function OnStart()
+end
+
+""" TODO """
+function OnReload()
+	#global WINDOW=this.objref.WINDOW
+end
+
+""" TODO """
+function OnInit()
+  println("OnInit")
+  #global BUFFER = zeros(Float32,128^3*6*40)
+  
+  global FRUSTUM = Frustum()
+  
+  presetCamera()
+  
+  #if myid() == 1
+    global chunkData = MeshData()
+    global chunkData_upload = MeshData()
+    global planeData = MeshData()
+    global screenData = MeshData()
+    global boxData = MeshData()
+    global indirectData = MeshData()
+    presetTextures()
+    chooseRenderMethod()
+  #end
+  
+  #if myid() != 1 || length(procs()) <= 1
+  #  global MYCHUNK = Chunk()
+  #  createChunk(MYCHUNK)
+  #end
+  
+  game_start()
+end
+
+""" TODO """
+function OnUpdatedKeys()
+  keyValue, keyPressed = getKey()
+  if keyPressed
+    resetKeys()
+    
+    if keyValue == 82 #r
+      return false
+    end
+  end
+  true
+end
+
 #---------------------------------------------
 
 println("Set Functions.")
 
-"""
-TODO
-"""
-function UpdateCounters()
-  UpdateTimers()
-  showFrames()
-end    
-
-"""
-TODO
-"""
-function showFrames()
-  currenttime = time() #GetTimer("FRAME_TIMER")
-  
-  global FRAMES, MAX_FRAMES, ITERATION
-  
-  ITERATION +=1
-  if !OnTime(1.0, prevTime; time=currenttime) FRAMES += 1; return end
-
-  #FPS = FRAMES/(currenttime - PREVTIME)
-  #PREVTIME = currenttime
-  #if MAX_FPS < FPS MAX_FPS = FPS end
-  #if FPS > 15 COUNT += 1 end
-  #fpms = FPS > 0 ? (1000.0 / FPS) : 0
-  #max_fmps = MAX_FPS > 0 ? (1000.0 / MAX_FPS) : 0
-  #norm_fps = FPS/MAX_FPS
-  
-  if MAX_FRAMES < FRAMES MAX_FRAMES = FRAMES end
-  fps = FRAMES
-  max_fps = MAX_FRAMES
-  fpms = FRAMES > 0 ? (1000.0 / FRAMES) : 0
-  max_fmps = MAX_FRAMES > 0 ? (1000.0 / MAX_FRAMES) : 0
-  norm_fps = FRAMES / MAX_FRAMES
-  
-  GLFW.SetWindowTitle(WINDOW, "$(TITLE) - FPS $(round(fps; digits=2))[$(round(max_fps; digits=2))] | FMPS $(round(fpms; digits=2))[$(round(max_fmps; digits=2))] - Blocks $CHUNK_SIZE^3 ($BLOCK_COUNT) - IT $ITERATION")
-  FRAMES = 0
+""" TODO """
+function clearScreen()
 end
 
-"""
-sets glfw window size + viewport
-"""
-function rezizeWindow(window, width, height)
-  global WIDTH = width
-  global HEIGHT = height
-  global RATIO = WIDTH/(HEIGHT*1f0)
-  global SIZE = WIDTH * HEIGHT
-  GLFW.SetWindowSize(window, WIDTH, HEIGHT)
-  glViewport(0, 0, WIDTH, HEIGHT)
-end
-
-WINDOW_FOCUS = true
-
-function OnFocus(window, focus)
-  global WINDOW_FOCUS = focus > 0 ? true : false
-end
-
+""" TODO """
 function presetCamera()
   setPosition(CAMERA,[0f0,0,0])
   setProjection(CAMERA, projection_perspective(FOV, RATIO, CLIP_NEAR, CLIP_FAR))
@@ -182,20 +337,17 @@ function presetCamera()
   SetCamera(FRUSTUM, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0))
 end
 
+""" TODO """
 function presetTextures()
   global texture_blocks = uploadTexture("blocks.png")
   global texture_heightMap = uploadTexture((1024,1024)) #uploadTextureGray("heightmap.png")
   global texture_screen = uploadTexture((WIDTH,HEIGHT))
 end
 
-"""
-TODO
-"""
+""" TODO """
 useProgram(program) = begin global current_program = program; glUseProgram(program) end
 
-"""
-TODO
-"""
+""" TODO """
 function use_program(program, f::Function)
   if program != current_program
     @GLCHECK glUseProgram(program)
@@ -206,14 +358,10 @@ function use_program(program, f::Function)
   end
 end
 
-"""
-TODO
-"""
+""" TODO """
 setMatrix(program, name, m) = begin cm = SMatrix{4,4,Float32}(m); glUniformMatrix4fv(glGetUniformLocation(program, name), 1, false, cm) end #const smatrix
 
-"""
-TODO
-"""
+""" TODO """
 function setMVP(program, mvp)
   use_program(program, () -> begin
     @GLCHECK setMatrix(program, "iMVP", mvp)
@@ -251,22 +399,18 @@ function setMode(program::Number, name::String, value, mode="")
   end)
 end
 
-"""
-TODO
-"""
+""" TODO """
 function setFrustumMode()
   SetCamera(FRUSTUM, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0))
   if !GPU_FRUSTUM
-    updateChunk(mychunk)
-    global uploaded = :UPDATE
+    updateChunk(MYCHUNK)
+    #= global =# uploaded = :UPDATE
   end
 end
 
-"""
-TODO
-"""
+""" TODO """
 function updateChunk(this::Chunk)
-  #global chunkData, chunkData_upload, planeData, boxData
+  ##= global =# chunkData, chunkData_upload, planeData, boxData
   #println("update Chunk")
 
   if !GPU_FRUSTUM && FRUSTUM_CULLING
@@ -302,14 +446,13 @@ function createChunk(this::Chunk)
   update(this; unseen=HIDE_UNSEEN_CUBES)
   
   updateChunk(this)
-  global uploaded = :CREATE
+  #= global =# uploaded = :CREATE
 end
 
-"""
-TODO
-"""
+""" TODO """
 function chooseRenderMethod(method=RENDER_METHOD)
-  if method != RENDER_METHOD global RENDER_METHOD = method end
+  global RENDER_METHOD
+  if method != RENDER_METHOD RENDER_METHOD = method end
   
   name =
   method == 1 ? "INSTANCES of POINTS + GEOMETRY SHADER" :
@@ -329,54 +472,11 @@ function chooseRenderMethod(method=RENDER_METHOD)
   
   if name == "NOT DEFINED" return end
 
-  #createChunk(mychunk)
+  #createChunk(MYCHUNK)
   
   global uploaded = :YES
   global render_ready = false
 end
-
-render_init = false
-
-  
-chunk_pos = [
-  Float32[0,0,0],
-  Float32[1,0,0],Float32[-1,0,0],Float32[0,0,1],Float32[0,0,-1],Float32[-1,0,-1],Float32[1,0,1],Float32[-1,0,1],Float32[1,0,-1],
-  Float32[2,0,0],Float32[-2,0,0],Float32[0,0,2],Float32[0,0,-2],Float32[-2,0,-2],Float32[2,0,2],Float32[-2,0,2],Float32[2,0,-2],
-  Float32[2,0,1],Float32[2,0,-1],Float32[-2,0,1],Float32[-2,0,-1],Float32[1,0,2],Float32[-1,0,2],Float32[1,0,-2],Float32[-1,0,-2]
-] * CHUNK_SIZE
-
-CHUNKS = Chunk[Chunk(;id=i,pos=chunk_pos[i]) for i=1:1] #length(chunk_pos) #Array{ChunkD,1}(undef, length(centers))
-
-CHUNK_COUNT = length(CHUNKS)
-DEPTH_SIZE = max(WIDTH, HEIGHT) #256
-DEPTH_SIZE_LOG2 = round(Integer,log2(DEPTH_SIZE)) #8
-LOD_LEVELS = DEPTH_SIZE_LOG2 + 1
-
-DISPATCH_RESETER = nothing
-CHUNK_ALL_BUFFERS = []
-CHUNK_BUFFERS = []
-CHUNK_OCCLUDED_BUFFERS = []
-DISPATCH_BUFFERS = []
-CHUNK_COUNTERS = []
-CHUNK_INDIRECT_DRAW_BUFFERS = []
-CHUNK_COUNTERS=[]
-DISPATCH_COUNTERS=[]
-CHUNK_OBJECTS=[]
-TRANSFORM_FEEDBACK_BUFFERS=[]
-
-frameBuffers = zeros(Integer,LOD_LEVELS)
-depthrenderbuffer = 0
-CHUNK_DATA = nothing
-ALL_CHUNK_SIZE = CHUNK3D_SIZE*(1+8+16+24+32+40)
-CHUNK_BUFFERS_SIZE = sizeof(Float32)*3*2*ALL_CHUNK_SIZE
-
-single_indirect = true
-single_storage = true
-
-fbo_msaa = 0
-texture_msaa = 0
-rbo_msaa = 0
-fbo_intermediate = 0
 
 function uploadData()
   if !GPU_CHUNKS_INIT return end
@@ -493,7 +593,7 @@ function uploadData()
       
       # Sampler object that is used during occlusion culling.
       # We want GL_LINEAR shadow mode (PCF), but no filtering between miplevels as we manually specify the miplevel in the compute shader.
-      shadow_sampler = GPU.create(:SAMPLER)
+      global shadow_sampler = GPU.create(:SAMPLER)
       glSamplerParameteri(shadow_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST)
       glSamplerParameteri(shadow_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
       glSamplerParameteri(shadow_sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
@@ -534,10 +634,10 @@ function uploadData()
       
       # DEPTH, LOD
       
-      frameBuffers=GPU.create(:FRAMEBUFFER, LOD_LEVELS)
+      global frameBuffers=GPU.create(:FRAMEBUFFER, LOD_LEVELS)
       
       for lod=1:LOD_LEVELS
-        #global frameBuffers[lod] = glGenFramebuffer()
+        #frameBuffers[lod] = glGenFramebuffer()
         glBindFramebuffer(GL_FRAMEBUFFER, frameBuffers[lod])
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, texture_depth, lod-1)
         #glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, texture_depth, 0)
@@ -573,8 +673,8 @@ function reloadShaderProgram(program::Symbol, shaders::AbstractArray; transformf
     p = createShaderProgram(program, shaders; transformfeedback=transformfeedback)
     if p >= 0
       @GLCHECK glUseProgram(0)
-      @GLCHECK glDeleteProgram(programs[program])
-      global programs[program]=p
+      @GLCHECK glDeleteProgram(PROGRAMS[program])
+      PROGRAMS[program]=p
       result=true
     end
   catch e
@@ -584,7 +684,7 @@ end
 
 function bindBuffers()
   #if GPU_CHUNKS
-    #use_program(programs[:COMPUTE_CHUNKS]s, () -> begin
+    #use_program(PROGRAMS[:COMPUTE_CHUNKS]s, () -> begin
       #glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch].refID)
       #glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter].refID)
       #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:chunks_default].refID)
@@ -592,7 +692,7 @@ function bindBuffers()
     #end)
   #end
   
-  #use_program(programs[:INSTANCES], () -> begin
+  #use_program(PROGRAMS[:INSTANCES], () -> begin
     #glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].refID)
     #glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:indirect].refID)
     #glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indirectData.arrays[:points_default].refID)
@@ -600,11 +700,8 @@ function bindBuffers()
   #end)
 end
 
-global_vars=Dict{Symbol,Any}()
-
 function reloadShaderPrograms()
   method = RENDER_METHOD
-  #global global_vars
   global_vars[:CHUNK_SIZE] = CHUNK_SIZE
   global_vars[:CHUNK1D_SIZE] = CHUNK1D_SIZE
   global_vars[:CHUNK2D_SIZE] = CHUNK2D_SIZE
@@ -669,49 +766,40 @@ function reloadShaderPrograms()
   
   println("set Attributes ...")
   glBindVertexArray(CHUNK_OBJECTS[1])
-  setAttributes(CHUNK_DATA, programs[:INDIRECT], [("iInstancePos",Float32,3,0),("iInstanceFlags",Float32,3,0)])
+  setAttributes(CHUNK_DATA, PROGRAMS[:INDIRECT], [("iInstancePos",Float32,3,0),("iInstanceFlags",Float32,3,0)])
   glBindVertexArray(0)
-  #setAttributes(CHUNK_OBJECTS[1:1], CHUNK_BUFFERS[1:1], programs[:INDIRECT])
-  #setAttributes(indirectData, programs[:INDIRECT])
-  setAttributes(planeData, programs[:NORMAL])
-  setAttributes(boxData, programs[:NORMAL])
-  setAttributes(screenData, programs[:SCREEN])
-  setAttributes(chunkData, programs[:CHUNKS])
-  #setAttributes(screenData, programs[:BG])
-  #setAttributes(screenData, programs[:FG])
-  #setAttributes(screenData, programs[:DEPTH])
+  #setAttributes(CHUNK_OBJECTS[1:1], CHUNK_BUFFERS[1:1], PROGRAMS[:INDIRECT])
+  #setAttributes(indirectData, PROGRAMS[:INDIRECT])
+  setAttributes(planeData, PROGRAMS[:NORMAL])
+  setAttributes(boxData, PROGRAMS[:NORMAL])
+  setAttributes(screenData, PROGRAMS[:SCREEN])
+  setAttributes(chunkData, PROGRAMS[:CHUNKS])
+  #setAttributes(screenData, PROGRAMS[:BG])
+  #setAttributes(screenData, PROGRAMS[:FG])
+  #setAttributes(screenData, PROGRAMS[:DEPTH])
   
   println("set Uniforms...")
   
-  global location_position = glGetUniformLocation(programs[:CHUNKS], "iPosition")
-  global location_texindex = glGetUniformLocation(programs[:CHUNKS], "iTexIndex")
+  #= global =# location_position = glGetUniformLocation(PROGRAMS[:CHUNKS], "iPosition")
+  #= global =# location_texindex = glGetUniformLocation(PROGRAMS[:CHUNKS], "iTexIndex")
   
-  #setMVP(programs[:INDIRECT], MVP)
-  #setMVP(programs[:CHUNKS], MVP)
-  #setMode(programs[:INDIRECT], "iMVP", MVP)
-  #setMode(programs[:CHUNKS], "iMVP", MVP)
+  #setMVP(PROGRAMS[:INDIRECT], MVP)
+  #setMVP(PROGRAMS[:CHUNKS], MVP)
+  #setMode(PROGRAMS[:INDIRECT], "iMVP", MVP)
+  #setMode(PROGRAMS[:CHUNKS], "iMVP", MVP)
   
-  setMode(programs[:CHUNKS], "iUseLight", LIGHTMODE)
-  setMode(programs[:CHUNKS], "iUseTexture", TEXTUREMODE)
+  setMode(PROGRAMS[:CHUNKS], "iUseLight", LIGHTMODE)
+  setMode(PROGRAMS[:CHUNKS], "iUseTexture", TEXTUREMODE)
 end
 
-GPU_CHUNKS_INIT = true
-CAMERA_UPDATED = true
-MSAA = false
-UPDATE_FRUSTUM = false
-CLOSE = false
-
-"""
-TODO
-"""
+""" TODO """
 function checkForUpdate()
   uploadData()
   
-  global keyValue, keyPressed = getKey()
+  #= global =# keyValue, #= global =# keyPressed = getKey()
   
   if keyPressed
-    resetKeys()
-    
+  
     if keyValue == 80 #p
       setPosition(CAMERA,[0f0,0,0])
       
@@ -722,7 +810,7 @@ function checkForUpdate()
     elseif keyValue == 84 && render_ready #t
       global TEXTUREMODE=!TEXTUREMODE
       info("TEXTUREMODE: $TEXTUREMODE")
-      setMode(programs[:CHUNKS], "iUseTexture", TEXTUREMODE, "TEXTURE")
+      setMode(PROGRAMS[:CHUNKS], "iUseTexture", TEXTUREMODE, "TEXTURE")
       
     elseif keyValue == 85 #u
       global UPDATE_FRUSTUM = !UPDATE_FRUSTUM
@@ -731,17 +819,14 @@ function checkForUpdate()
     elseif keyValue == 76 && render_ready #l
       global LIGHTMODE=!LIGHTMODE
       info("LIGHTMODE: $LIGHTMODE")
-      setMode(programs[:CHUNKS], "iUseLight", LIGHTMODE, "LIGHT")
+      setMode(PROGRAMS[:CHUNKS], "iUseLight", LIGHTMODE, "LIGHT")
 
     elseif keyValue == 82 #r
       #chooseRenderMethod()
-      reloadShaderPrograms()
-      global GPU_CHUNKS_INIT = true
+      #reloadShaderPrograms()
+      #global GPU_CHUNKS_INIT = true
+      println("YES")
       
-    elseif keyValue == 88 #x
-      ScriptManager.reload()
-      global CLOSE = true
-     
     elseif (keyValue >= 290 && keyValue <= 301) # F1 - F12
       chooseRenderMethod(keyValue - 289)
       
@@ -772,7 +857,7 @@ function checkForUpdate()
     elseif keyValue == 77 #m
       #global SCENE = 2
       #chooseRenderMethod()
-      global MSAA = !MSAA
+      MSAA = !MSAA
       
     elseif keyValue == 70 #f
       global CAM_LOCK = !CAM_LOCK
@@ -781,8 +866,11 @@ function checkForUpdate()
       global FRUSTUM_CULLING = !FRUSTUM_CULLING
     elseif keyValue == 79 #o
       global HIDE_UNSEEN_CUBES = !HIDE_UNSEEN_CUBES
+
     end
   end
+    
+  #if keyPressed resetKeys() end
 end
 
 function setFrustumProgram(program)
@@ -800,16 +888,14 @@ function setFrustumProgram(program)
   end)
 end
 
-## PROGRAM
-
 function checkCamera()
-  if GPU_CHUNKS_INIT || OnUpdate(CAMERA)
+  if GPU_CHUNKS_INIT || CameraManager.OnUpdate(CAMERA)
     #println(CAMERA.position)
     #if !CAM_LOCK
       if RENDER_METHOD < 7 
-        #setMVP(programs[:CHUNKS], CAMERA.MVP)
-        #setMVP(programs[:NORMAL], CAMERA.MVP)
-        #setFrustumProgram(programs[:CHUNKS])
+        #setMVP(PROGRAMS[:CHUNKS], CAMERA.MVP)
+        #setMVP(PROGRAMS[:NORMAL], CAMERA.MVP)
+        #setFrustumProgram(PROGRAMS[:CHUNKS])
       end
     #end
     setFrustumMode()
@@ -817,34 +903,22 @@ function checkCamera()
   end
 end
 
-SLEEP=0 #1f0/200
-
-#i=0
-#frameBufferMax = length(CHUNKS)
-#frameBufferCounter=0
-itime = 0
-
-INDIRECT_DRAW_BUFFER_SIZE=0
-VISIBLE_CHUNKS=[]
-VISIBLE_CHUNKS_COUNT = 0
-
-atrb=[]
-buffsize=0
-
 function gpu_updateChunks()
+  global RENDER_CHUNKS_COUNT, VISIBLE_CHUNKS_COUNT
+  
   if GPU_CHUNKS_INIT || CAMERA_UPDATED
     #SetCamera(FRUSTUM, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0))
   
-    useProgram(programs[:CHANGE_CHUNKS])
+    useProgram(PROGRAMS[:CHANGE_CHUNKS])
     
-    setMode("iTime", itime)
+    setMode("iTime", ITIME)
     setMode("iCamPos", CAMERA.position)
     setMode("iCamAng", CAMERA.rotation)
     setMode("iProj", CAMERA.projectionMat)
     setMode("iView", CAMERA.viewMat)
     setMode("iMVP", CAMERA.MVP)
     
-    setFrustumProgram(programs[:CHANGE_CHUNKS])
+    setFrustumProgram(PROGRAMS[:CHANGE_CHUNKS])
     
     CHUNK_COUNTER=CHUNK_COUNTERS[1]
     #DISPATCH_BUFFER=DISPATCH_BUFFERS[1]
@@ -854,8 +928,8 @@ function gpu_updateChunks()
     glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 3, CHUNK_COUNTER.refID) #counter
     
     #buf = glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT)
-    global VISIBLE_CHUNKS_COUNT = 0
-    i = 0
+    VISIBLE_CHUNKS_COUNT = 0
+    RENDER_CHUNKS_COUNT = 0
     
     setMode("iCulling", 0)
         
@@ -865,11 +939,12 @@ function gpu_updateChunks()
       
       #if visible
         #if VISIBLE_CHUNKS_COUNT > 0 break end
-        global VISIBLE_CHUNKS_COUNT += 1
+        VISIBLE_CHUNKS_COUNT += 1
         VISIBLE_CHUNKS[VISIBLE_CHUNKS_COUNT] = chunk
       #end
       
-      i += 1
+      RENDER_CHUNKS_COUNT += 1
+      I_RENDER_CHUNKS_COUNT = (RENDER_CHUNKS_COUNT-1)
 
       setMode("iCenter", chunk.pos)
       
@@ -879,14 +954,14 @@ function gpu_updateChunks()
       glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 1, DISPATCH_COUNTER.refID) #dispatchCount (used after GPU_CHUNKS_INIT)
       
       if single_indirect
-        glBindBufferRange(GL_ATOMIC_COUNTER_BUFFER, 2, CHUNK_INDIRECT_DRAW_BUFFERS[1].refID, (i-1)*INDIRECT_DRAW_BUFFER_SIZE, sizeof(GLuint))
+        glBindBufferRange(GL_ATOMIC_COUNTER_BUFFER, 2, CHUNK_INDIRECT_DRAW_BUFFERS[1].refID, I_RENDER_CHUNKS_COUNT*INDIRECT_DRAW_BUFFER_SIZE, sizeof(GLuint))
       else
         glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, CHUNK_INDIRECT_DRAW_BUFFERS[chunk.id].refID) #instanceCount
       end
       
       if single_storage
-        #glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, CHUNK_ALL_BUFFERS[1].refID, (i-1)*CHUNK_BUFFERS_SIZE, CHUNK_BUFFERS_SIZE)
-        #glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, CHUNK_BUFFERS[1].refID, (i-1)*CHUNK_BUFFERS_SIZE, CHUNK_BUFFERS_SIZE)
+        #glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, CHUNK_ALL_BUFFERS[1].refID, I_RENDER_CHUNKS_COUNT*CHUNK_BUFFERS_SIZE, CHUNK_BUFFERS_SIZE)
+        #glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, CHUNK_BUFFERS[1].refID, I_RENDER_CHUNKS_COUNT*CHUNK_BUFFERS_SIZE, CHUNK_BUFFERS_SIZE)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, CHUNK_ALL_BUFFERS[1].refID)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, CHUNK_BUFFERS[1].refID)
       else
@@ -922,7 +997,7 @@ function gpu_updateChunks()
     use_depth = true
     if use_depth
     # depth buffer
-    useProgram(programs[:DEPTH])
+    useProgram(PROGRAMS[:DEPTH])
     
     # Render occlusion geometry to miplevel 0
     glBindFramebuffer(GL_FRAMEBUFFER, frameBuffers[1])
@@ -953,7 +1028,7 @@ function gpu_updateChunks()
     glBindTexture(GL_TEXTURE_2D, texture_depth)
    
     # Render occlusion geometry to miplevel > 0
-    useProgram(programs[:DEPTH_MIP])
+    useProgram(PROGRAMS[:DEPTH_MIP])
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) # make sure writing to image has finished before read
     glActiveTexture(GL_TEXTURE0)
     glBindTexture(GL_TEXTURE_2D, texture_depth)
@@ -1017,8 +1092,8 @@ function gpu_updateChunks()
       glDepthFunc(GL_LESS)
       #glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE)
 
-      useProgram(programs[:RASTER])
-      setMode("iTime", itime)
+      useProgram(PROGRAMS[:RASTER])
+      setMode("iTime", ITIME)
       setMode("iResolution", Float32[WIDTH,HEIGHT])
       setMode("iCamPos", CAMERA.position)
       setMode("iCamAng", CAMERA.rotation)
@@ -1046,7 +1121,7 @@ function gpu_updateChunks()
     
     ############################################################################ 
     
-    useProgram(programs[:CHANGE_CHUNKS])
+    useProgram(PROGRAMS[:CHANGE_CHUNKS])
     
     setMode("iRasterrize", rasterize)
     
@@ -1104,7 +1179,7 @@ function gpu_updateChunks()
     end
 
     #=
-    useProgram(programs[:CHANGE_CHUNKS])
+    useProgram(PROGRAMS[:CHANGE_CHUNKS])
     setMode("iCulling", 1) # Dispatch occlusion culling job
 
     setMode("STATE", -3) # SET DISPATCH VALUE
@@ -1150,10 +1225,10 @@ function gpu_updateChunks()
     =#
 
     glBindSampler(0, 0)
-    #setFrustumProgram(programs[:INSTANCES])
-    #setMVP(programs[:INSTANCES], CAMERA.MVP)
-    #setMode(programs[:INSTANCES], "iCamPos", CAMERA.position)
-    #setMode(programs[:INSTANCES], "iCamAng", CAMERA.rotation)
+    #setFrustumProgram(PROGRAMS[:INSTANCES])
+    #setMVP(PROGRAMS[:INSTANCES], CAMERA.MVP)
+    #setMode(PROGRAMS[:INSTANCES], "iCamPos", CAMERA.position)
+    #setMode(PROGRAMS[:INSTANCES], "iCamAng", CAMERA.rotation)
     glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , 0)
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0)
     glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, 0, 0, 0)
@@ -1166,8 +1241,8 @@ function gpu_updateChunks()
   glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT)
   =#
   #=
-  useProgram(programs[:INSTANCES])
-  setMode("iTime", itime)
+  useProgram(PROGRAMS[:INSTANCES])
+  setMode("iTime", ITIME)
     
   glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER , indirectData.arrays[:indirect_dispatch_instances].refID)
   glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, indirectData.arrays[:counter2].refID) #LIMIT
@@ -1182,7 +1257,7 @@ function gpu_updateChunks()
 end
 
 function drawChunk(center;single=false)
-  setMode("iTime", itime)
+  setMode("iTime", ITIME)
   setMode("iResolution", Float32[WIDTH,HEIGHT])
   setMode("iCamPos", CAMERA.position)
   setMode("iCamAng", CAMERA.rotation)
@@ -1191,12 +1266,12 @@ function drawChunk(center;single=false)
   setMode("iView", CAMERA.viewMat)
   setMode("iMVP", CAMERA.MVP)
   setMode("iDepth", 0)
-  
+
   #glBindVertexArray(indirectData.vao)
-  
+
   glBindVertexArray(CHUNK_OBJECTS[1])
-  iprogram=programs[:INDIRECT]
- 
+  iprogram=PROGRAMS[:INDIRECT]
+
   #for i=1:(single ? 1 : VISIBLE_CHUNKS_COUNT)
   #  chunk=VISIBLE_CHUNKS[i]
   #  buffer=CHUNK_BUFFERS[chunk.id]
@@ -1242,37 +1317,14 @@ function drawChunk(center;single=false)
       glDrawArraysIndirect(GL_POINTS, C_NULL)
     end
   end
-  
+
 
   glBindVertexArray(0)
 
 end
 
-function init(inputs::Dict{Symbol,Any})
-  global WINDOW = inputs[:WINDOW]
-  
-  rezizeWindow(WINDOW, WIDTH, HEIGHT)
-
-  global FRUSTUM = Frustum()
-  
-  presetCamera()
-  
-  #if myid() == 1
-    global chunkData = MeshData()
-    global chunkData_upload = MeshData()
-    global planeData = MeshData()
-    global screenData = MeshData()
-    global boxData = MeshData()
-    global indirectData = MeshData()
-    presetTextures()
-    chooseRenderMethod()
-  #end
-  
-  #if myid() != 1 || length(procs()) <= 1
-  #  global mychunk = Chunk()
-  #  createChunk(mychunk)
-  #end
-  
+""" TODO """
+function game_start()
   #------------------------------------------------------------------------------------
 
   #const mmvp = SMatrix{4,4,Float32}(CAMERA.MVP)
@@ -1320,35 +1372,20 @@ function init(inputs::Dict{Symbol,Any})
   =#
 
   global SLEEP=0 #1f0/200
-  global itime = 0
-
-  global INDIRECT_DRAW_BUFFER_SIZE=sizeof(GLuint[0,1,0,0,0])
-  
+  global RENDER_CHUNKS_COUNT=0
+  global ITIME = 0
   global VISIBLE_CHUNKS=Array{Chunk,1}(undef, length(CHUNKS))
   global VISIBLE_CHUNKS_COUNT = 0
-  
-  global atrb=[("iInstancePos",Float32,3,0),("iInstanceFlags",Float32,3,0)]
-  global buffsize=sizeof(Float32)*3*2*CHUNK3D_SIZE
 end
 
-function clean()
-  #println("I got cleaned")
-end
-
-function update()
-  if CLOSE return end
-end
-  
-function render()
-  showFrames()
-  if !WINDOW_FOCUS
+""" TODO """
+function game_loop()
+  #if !WINDOW_FOCUS
     sleep(0.1)
-  else
-    UpdateCounters()
+  #else
     checkForUpdate()
-    if CLOSE return end
-
-    # Pulse the background
+    
+   # Pulse the background
     #c=0.5 * (1 + sin(i * 0.01)); i+=1
     #glClearColor(c, c, c, 1.0)
     #glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -1367,8 +1404,8 @@ function render()
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, texture_blocks)
       
-        if fileredCount > 0 #isValid(mychunk)
-          useProgram(programs[:CHUNKS])
+        if fileredCount > 0 #isValid(MYCHUNK)
+          useProgram(PROGRAMS[:CHUNKS])
           #glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
           glBindVertexArray(chunkData.vao)
           
@@ -1378,7 +1415,7 @@ function render()
           #glDrawElementsInstancedBaseVertex(GL_TRIANGLES, chunkData.draw.count / 6, GL_UNSIGNED_INT, C_NULL, mychunk.count, 0)
           elseif RENDER_METHOD == 4
             #* thats slow! (glDrawElements ~60 fps, glDrawElementsInstanced ~ 200 fps !!!)
-            for b in getFilteredChilds(mychunk)
+            for b in getFilteredChilds(MYCHUNK)
               if location_texindex > -1 glUniform1f(location_texindex, b.typ) end
               if location_position > -1 glUniform3fv(location_position, 1, b.pos) end
               glDrawElements(GL_TRIANGLES, chunkData.draw.count, GL_UNSIGNED_INT, C_NULL)
@@ -1393,22 +1430,22 @@ function render()
       if RENDER_METHOD == 7
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
         
-        useProgram(programs[:COMPUTE])
+        useProgram(PROGRAMS[:COMPUTE])
         
         setMode("destTex", 0)
         setMode("roll", FRAMES*0.01f0)
         
-        #@GLCHECK glUniform1i(glGetUniformLocation(programs[:COMPUTE], "destTex"), 0)
-        #@GLCHECK glUniform1f(glGetUniformLocation(programs[:COMPUTE], "roll"), FRAMES*0.01f0)
+        #@GLCHECK glUniform1i(glGetUniformLocation(PROGRAMS[:COMPUTE], "destTex"), 0)
+        #@GLCHECK glUniform1f(glGetUniformLocation(PROGRAMS[:COMPUTE], "roll"), FRAMES*0.01f0)
         
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, texture_screen)
 
         glDispatchCompute(512/1, 512/1, 1)
         
-        useProgram(programs[:SCREEN])
+        useProgram(PROGRAMS[:SCREEN])
         setMode("srcTex", 0)
-        #@GLCHECK glUniform1i(glGetUniformLocation(programs[:SCREEN], "srcTex"), 0)
+        #@GLCHECK glUniform1i(glGetUniformLocation(PROGRAMS[:SCREEN], "srcTex"), 0)
         
         glBindVertexArray(screenData.vao)
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) # make sure writing to image has finished before read
@@ -1421,7 +1458,7 @@ function render()
         #frameBufferCounter+=1
         #if frameBufferCounter > frameBufferMax frameBufferCounter=1 end
         
-        itime = programTime()
+        global ITIME = programTime()
         
         #glBlendFunc(GL_ONE, GL_ZERO)
         #glDisable( GL_BLEND )
@@ -1445,8 +1482,8 @@ function render()
         
         # calculate landscape
         if GPU_CHUNKS_INIT || CAMERA_UPDATED
-          useProgram(programs[:COMPUTE])
-          setMode("iTime", itime)
+          useProgram(PROGRAMS[:COMPUTE])
+          setMode("iTime", ITIME)
           glDispatchCompute(512/1, 512/1, 1)
         end
                 
@@ -1454,9 +1491,9 @@ function render()
         
         glDepthMask(GL_FALSE)
         
-        useProgram(programs[:BG])
+        useProgram(PROGRAMS[:BG])
         
-        setMode("iTime", itime)
+        setMode("iTime", ITIME)
         setMode("iResolution", Float32[WIDTH,HEIGHT])
         setMode("iCamPos", CAMERA.position)
         setMode("iCamAng", CAMERA.rotation)
@@ -1480,7 +1517,7 @@ function render()
           glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
         end
         glPolygonMode(GL_FRONT_AND_BACK, WIREFRAME ? GL_LINE : GL_FILL)
-        useProgram(programs[:INDIRECT])
+        useProgram(PROGRAMS[:INDIRECT])
         drawChunk(Float32[0,0,0])
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
        
@@ -1493,7 +1530,7 @@ function render()
           # 3. now render quad with scene's visuals as its texture image
           glBindFramebuffer(GL_FRAMEBUFFER, 0);
           
-          useProgram(programs[:SCREEN])
+          useProgram(PROGRAMS[:SCREEN])
           setMode("srcTex", 0)
          
           glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT) # make sure writing to image has finished before read
@@ -1504,15 +1541,15 @@ function render()
         end
         #################################
         #=
-        useProgram(programs[:NORMAL])
+        useProgram(PROGRAMS[:NORMAL])
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         
         if GPU_CHUNKS_INIT #|| CAMERA_UPDATED
           SetCamera(FRUSTUM, Vec3f(CAMERA.position), Vec3f(CAMERA.position+CameraManager.forward(CAMERA)), Vec3f(0,1,0); far=100f0)
           linkData(planeData, :vertices=>(getVertices(FRUSTUM),3))
           linkData(boxData, :vertices=>(DATA_CUBE,3)) #getBox(FRUSTUM)
-          setAttributes(planeData, programs[:NORMAL])
-          setAttributes(boxData, programs[:NORMAL])
+          setAttributes(planeData, PROGRAMS[:NORMAL])
+          setAttributes(boxData, PROGRAMS[:NORMAL])
         end
         setMode("iMVP", CAMERA.MVP)
 
@@ -1534,8 +1571,8 @@ function render()
         
         #################################
  
-        useProgram(programs[:FG])
-        setMode("iTime", itime)
+        useProgram(PROGRAMS[:FG])
+        setMode("iTime", ITIME)
         setMode("iResolution", Float32[WIDTH,HEIGHT])
         setMode("iCamPos", CAMERA.position)
         setMode("iCamAng", CAMERA.rotation)
@@ -1562,10 +1599,10 @@ function render()
     end 
     if CAMERA_UPDATED global CAMERA_UPDATED=false end
     if GPU_CHUNKS_INIT global GPU_CHUNKS_INIT=false end
-    # Swap front and back buffers
+
     #if SLEEP>0 Libc.systemsleep(SLEEP) end
-    sleep(SLEEP)
-  end
+    #sleep(SLEEP)
+  #end
 end
 
-end #SCRIPT
+end # SCRIPT
