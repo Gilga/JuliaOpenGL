@@ -1,11 +1,11 @@
 <NotepadPlus>
     <UserLang name="Julia_Dark" ext="jl" udlVersion="2.1">
         <Settings>
-            <Global caseIgnored="no" allowFoldOfComments="yes" foldCompact="no" forcePureLC="0" decimalSeparator="0" />
+            <Global caseIgnored="no" allowFoldOfComments="no" foldCompact="no" forcePureLC="0" decimalSeparator="0" />
             <Prefix Keywords1="no" Keywords2="no" Keywords3="no" Keywords4="yes" Keywords5="no" Keywords6="no" Keywords7="yes" Keywords8="yes" />
         </Settings>
         <KeywordLists>
-            <Keywords name="Comments">00 01 02 03#= 04=#</Keywords>
+            <Keywords name="Comments">00 01 02 03 04</Keywords>
             <Keywords name="Numbers, prefix1"></Keywords>
             <Keywords name="Numbers, prefix2"></Keywords>
             <Keywords name="Numbers, extras1"></Keywords>
@@ -13,52 +13,52 @@
             <Keywords name="Numbers, suffix1"></Keywords>
             <Keywords name="Numbers, suffix2"></Keywords>
             <Keywords name="Numbers, range">d f</Keywords>
-            <Keywords name="Operators1">! % &amp; * , /  \ ^ | ~ + - &lt;: &lt; &gt; `; = ( ) [ ] { } . :: ?</Keywords>
-            <Keywords name="Operators2"></Keywords>
-            <Keywords name="Folders in code1, open"></Keywords>
+            <Keywords name="Operators1">! % &amp; * , . / ? \ ^ | ~ + - &lt; = &gt; ` :: ;</Keywords>
+            <Keywords name="Operators2">:</Keywords>
+            <Keywords name="Folders in code1, open">( { [</Keywords>
             <Keywords name="Folders in code1, middle"></Keywords>
-            <Keywords name="Folders in code1, close"></Keywords>
-            <Keywords name="Folders in code2, open">module function type struct begin do for foreach while else do for begin finally catch case if try elseif in then when or and let of to is</Keywords>
+            <Keywords name="Folders in code1, close">) } ]</Keywords>
+            <Keywords name="Folders in code2, open">baremodule module function type struct begin do for foreach while else do for begin finally catch case if try elseif in then when or and let</Keywords>
             <Keywords name="Folders in code2, middle"></Keywords>
             <Keywords name="Folders in code2, close">end</Keywords>
             <Keywords name="Folders in comment, open"></Keywords>
             <Keywords name="Folders in comment, middle"></Keywords>
             <Keywords name="Folders in comment, close"></Keywords>
-            <Keywords name="Keywords1">BINDIR VERSION JULIA_HOME C_NULL true false this undef stdout stderr nothing const</Keywords>
-            <Keywords name="Keywords2">not rescue unless break return next continue throw using import export include global local typealias abstract macro new where mutable</Keywords>
-            <Keywords name="Keywords3">InteractiveUtils Sys Libc Dates Base Threads Images Sys Printf</Keywords>
-            <Keywords name="Keywords4">Ptr Tuple Array Dict Union RefValue</Keywords>
-            <Keywords name="Keywords5">gc sizeof print println printf quote typeof pointer Ref push size length fill cfunction ccall open isfile isdir cp basename abspath setenv run cd replace deepcopy copy joinpath dirname time unsafe_pointer_to_objref pointer_to_objref round abs floor trunc systemsleep string info getindex setindex put take RemoteChannel Channel Task schedule yield vec eltype is_windows read write flush clear sum prod mean middle reduce float int isa isdefined filter normalize cross euclidean haskey printstyled sleep debug</Keywords>
+            <Keywords name="Keywords1">BINDIR VERSION JULIA_HOME C_NULL nothing true false nothing const this self undef stdout stderr stdin</Keywords>
+            <Keywords name="Keywords2">not rescue unless break return next continue throw using import export global local typealias abstract macro new where mutable</Keywords>
+            <Keywords name="Keywords3">InteractiveUtils Distributed Sys Libc Dates Base Threads Images Sys Printf GC Core</Keywords>
+            <Keywords name="Keywords4">Ptr Tuple Array Dict RefValue Union Matrix 0x GL_</Keywords>
+            <Keywords name="Keywords5">zeros ones gc sizeof print println printf quote typeof pointer Ref push size length fill cfunction ccall open isfile isdir cp basename abspath setenv run cd replace deepcopy copy joinpath dirname time unsafe_pointer_to_objref pointer_to_objref round abs floor trunc systemsleep string info getindex setindex put take RemoteChannel Channel Task schedule yield vec eltype is_windows read write flush clear sum prod mean middle reduce float int isa isdefined filter normalize cross euclidean haskey printstyled sleep debug names nameof isconst getfield supertype parentmodule</Keywords>
             <Keywords name="Keywords6">Module Expr DataType Nothing Void Symbol Any Bool String Number Real AbstractFloat Integer BigInt Int Signed Unsigned Int8 Int16 Int32 Int64 Int128 UInt8 UInt16 UInt32 UInt64 UInt128 BigFloat Float16 Float32 Float64 Cint Cuint Complex Irrational Rational Exception Function T N AbstractDict AbstractArray</Keywords>
-            <Keywords name="Keywords7">Error error Warn warn 0x</Keywords>
-            <Keywords name="Keywords8">@ $ : __ \ 0x GL_</Keywords>
-            <Keywords name="Delimiters">00&quot;&quot;&quot; 00doc&quot;&quot;&quot; 00doc&quot; 00@doc 01 02&quot;&quot;&quot; 02&quot;&quot;&quot; 02((EOL)) 02((EOL)) 03/* 04 05*/ 06## 07 08((EOL)) 09#-- 10 11((EOL)) 12 13 14 15 16 17 18# 19 20((EOL)) 21&quot; 21&apos; 22\ 22\ 23&quot; 23&apos;</Keywords>
+            <Keywords name="Keywords7">Error error Warn warn eval include</Keywords>
+            <Keywords name="Keywords8">@ $ __ \ : GL_</Keywords>
+            <Keywords name="Delimiters">00&quot;&quot;&quot; 00doc&quot;&quot;&quot; 00doc&quot; 00@doc 01 02&quot;&quot;&quot; 02&quot;&quot;&quot; 02((EOL)) 02((EOL)) 03 04 05 06#= 06# 07 08=# 08((EOL)) 09#=- 09## 09#-- 10 11=# 11((EOL)) 11((EOL)) 12 13 14 15 16 17 18 19 20 21&quot; 21&apos; 22\ 22\ 23&quot; 23&apos;</Keywords>
         </KeywordLists>
         <Styles>
             <WordsStyle name="DEFAULT" fgColor="E1E1E1" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
-            <WordsStyle name="COMMENTS" fgColor="008040" bgColor="000000" fontName="" fontStyle="2" nesting="2" />
+            <WordsStyle name="COMMENTS" fgColor="FFFFFF" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
             <WordsStyle name="LINE COMMENTS" fgColor="FFFFFF" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
-            <WordsStyle name="NUMBERS" fgColor="FFFF00" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="NUMBERS" fgColor="0080C0" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
             <WordsStyle name="KEYWORDS1" fgColor="FF8000" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
-            <WordsStyle name="KEYWORDS2" fgColor="800080" bgColor="000000" fontName="" fontStyle="1" nesting="0" />
+            <WordsStyle name="KEYWORDS2" fgColor="804040" bgColor="000000" fontName="" fontStyle="2" nesting="0" />
             <WordsStyle name="KEYWORDS3" fgColor="408080" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
-            <WordsStyle name="KEYWORDS4" fgColor="808000" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS4" fgColor="808040" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
             <WordsStyle name="KEYWORDS5" fgColor="8000FF" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
             <WordsStyle name="KEYWORDS6" fgColor="408080" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
             <WordsStyle name="KEYWORDS7" fgColor="FF0000" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
             <WordsStyle name="KEYWORDS8" fgColor="FF0080" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
-            <WordsStyle name="OPERATORS" fgColor="AF0000" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
-            <WordsStyle name="FOLDER IN CODE1" fgColor="004040" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="OPERATORS" fgColor="AF0000" bgColor="000000" fontName="" fontStyle="1" nesting="0" />
+            <WordsStyle name="FOLDER IN CODE1" fgColor="008040" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
             <WordsStyle name="FOLDER IN CODE2" fgColor="004040" bgColor="000000" fontName="" fontStyle="1" nesting="0" />
             <WordsStyle name="FOLDER IN COMMENT" fgColor="FFFFFF" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
-            <WordsStyle name="DELIMITERS1" fgColor="0080FF" bgColor="000000" fontName="" fontStyle="0" nesting="131072" />
-            <WordsStyle name="DELIMITERS2" fgColor="55552B" bgColor="000000" fontName="" fontStyle="0" nesting="117440512" />
-            <WordsStyle name="DELIMITERS3" fgColor="008040" bgColor="000000" fontName="" fontStyle="3" nesting="0" />
-            <WordsStyle name="DELIMITERS4" fgColor="1F1F1F" bgColor="000000" fontName="" fontStyle="2" nesting="0" />
-            <WordsStyle name="DELIMITERS5" fgColor="408080" bgColor="000000" fontName="" fontStyle="2" nesting="16785408" />
-            <WordsStyle name="DELIMITERS6" fgColor="808040" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
-            <WordsStyle name="DELIMITERS7" fgColor="008040" bgColor="000000" fontName="" fontStyle="2" nesting="2" />
-            <WordsStyle name="DELIMITERS8" fgColor="646464" bgColor="000000" fontName="" fontStyle="2" nesting="84017184" />
+            <WordsStyle name="DELIMITERS1" fgColor="0080FF" bgColor="000000" fontName="" fontStyle="3" nesting="131072" />
+            <WordsStyle name="DELIMITERS2" fgColor="FFFFFF" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS3" fgColor="008040" bgColor="000000" fontName="" fontStyle="2" nesting="131072" />
+            <WordsStyle name="DELIMITERS4" fgColor="808080" bgColor="000000" fontName="" fontStyle="1" nesting="131072" />
+            <WordsStyle name="DELIMITERS5" fgColor="FFFFFF" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS6" fgColor="FFFFFF" bgColor="000000" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS7" fgColor="FFFFFF" bgColor="000000" fontName="" fontStyle="1" nesting="67108864" />
+            <WordsStyle name="DELIMITERS8" fgColor="646464" bgColor="000000" fontName="" fontStyle="2" nesting="131072" />
         </Styles>
     </UserLang>
 </NotepadPlus>
