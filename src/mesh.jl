@@ -34,34 +34,64 @@ array which holds raw data of mesh
 """
 mutable struct MeshBuffer
   elements::UInt32
+  size::UInt32
+  length::UInt32
   count::UInt32
   refID::GLuint
   typ::GLenum
   usage::GLenum
   loaded::Bool
 
-  data::AbstractArray
+  data::Union{Nothing,AbstractArray}
   
-  function MeshBuffer(typ=GL_ARRAY_BUFFER,usage=GL_STATIC_DRAW,data=[]; refID=0, elems=1)
-    this=new(elems,0,refID,typ,usage,false,data)
-    if length(data)>0 setData(this, data) end
+  function MeshBuffer(id::Symbol, typ=GL_ARRAY_BUFFER,usage=GL_STATIC_DRAW,data=nothing; refID=0, elems=1)
+    this=new(elems,0,0,0,refID,typ,usage,false,data)
+    setData(this, data)
+    set(id,this)
     this
   end
-end
-
-function getMeshBufferRefID(buffers::Array{MeshBuffer,1})
-  [buffer.refID for buffer in buffers]
 end
 
 """
 data which holds various arrays of mesh 
 """
 mutable struct MeshData
+  id::Symbol
   vao::GLuint
   arrays::Dict{Symbol,MeshBuffer}
   draw::Union{Nothing,MeshBuffer}
 
-  MeshData() = new(0,Dict(),nothing)
+  function MeshData()
+    id = Symbol(length(LIST_DATA))
+    this = new(id,0,Dict(),nothing)
+    set(id,this)
+    this
+  end
+end
+
+LIST_BUFFER = Dict{Symbol, MeshBuffer}()
+LIST_DATA = Dict{Symbol, MeshData}()
+
+get(list::AbstractDict, id::Symbol) = haskey(list, id) ? list[id] : nothing
+
+function get(typ::DataType, id::Symbol)
+  list = nothing
+  if typ == MeshBuffer list = LIST_BUFFER
+  elseif typ == MeshData list = LIST_DATA
+  end
+  list != nothing ? get(list, id) : nothing
+end
+
+set(id::Symbol, buffer::MeshBuffer) = LIST_BUFFER[id] = buffer
+set(id::Symbol, data::MeshData) = LIST_DATA[id] = data
+
+function clean()
+  global LIST_BUFFER = typeof(LIST_BUFFER)()
+  global LIST_DATA = typeof(LIST_DATA)()
+end
+
+function getMeshBufferRefID(buffers::Array{MeshBuffer,1})
+  [buffer.refID for buffer in buffers]
 end
 
 gltypes=Dict(Float32=>GL_FLOAT,Float64=>GL_DOUBLE,UInt32=>GL_UNSIGNED_INT,Int32=>GL_INT)
@@ -100,55 +130,59 @@ end
 """
 creates vaos
 """
-createArrayObjects(count=1) = GPU.create(:VERTEXARRAY, count)
+createArrayObjects(count=1) = GPU.create(:VERTEXARRAY, :DEFAULT, count)
 
 """
 creates gpu buffers
 """
 function createBuffers(this::MeshData)
-  if this.vao == 0 this.vao = GPU.create(:VERTEXARRAY) end
-  for (s,a) in this.arrays if a.refID == 0 && a.count > 0 a.refID = GPU.create(:BUFFER) end end 
+  if this.vao == 0 this.vao = GPU.create(:VERTEXARRAY, this.id) end
+  for (s,a) in this.arrays if a.refID == 0 && a.count > 0 a.refID = GPU.create(:BUFFER, this.id) end end 
 end
 
-function createBuffers(data::AbstractArray, count=1; size=0, typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
+function createBuffers(id::Symbol, data::AbstractArray, count=1; size=0, typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
   list=Array{MeshBuffer,1}(undef, count)
   
-  buffers=GPU.create(:BUFFER, count)
+  buffers=GPU.create(:BUFFER, id, count)
   
   has_data = length(data) > 0
   if size <= 0 size = sizeof(data) end
   
   for i=1:count
-    buffer = MeshBuffer(typ, usage, data; refID=buffers[i],elems=1)
-    list[i]=buffer
+    refID=buffers[i]
     
-    glBindBuffer(typ, buffer.refID)
-    glBufferData(typ, size, has_data ? buffer.data : C_NULL,  usage)
+    glBindBuffer(typ, refID)
+    glBufferData(typ, size, has_data ? data : C_NULL,  usage)
+    
+    list[i] = MeshBuffer(Symbol(id,i), typ, usage, data; refID=refID,elems=1)
   end
   glBindBuffer(typ, 0)
   
   list
 end
 
-function createBuffer(data::AbstractArray, count=1; typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
-  refID=GPU.create(:BUFFER)
-    
-  buffer=MeshBuffer(typ, usage, data; refID=refID,elems=1)
-  sz=sizeof(buffer.data)
+function createBuffer(id::Symbol, data::AbstractArray, count=1; typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
+  if length(data) <= 0 return nothing end
   
-  glBindBuffer(buffer.typ, buffer.refID)
-  glBufferData(buffer.typ, count*sz, C_NULL, buffer.usage)
-  for i=1:count glBufferSubData(buffer.typ , (i-1)*sz, sz, buffer.data) end
-  glBindBuffer(buffer.typ, 0)
+  refID=GPU.create(:BUFFER, id)
+  size=sizeof(data)
   
-  buffer
+  this=MeshBuffer(id, typ, usage, nothing; refID=refID,elems=1)
+  
+  glBindBuffer(typ, refID)
+  glBufferData(typ, count*size, C_NULL, usage)
+  for i=1:count glBufferSubData(typ , (i-1)*size, size, data) end
+  glBindBuffer(typ, 0)
+  
+  this
 end
 
 """
 delete gpu buffer
 """
 function delete(this::MeshBuffer)
-  glDeleteBuffer(this.refID)
+  GPU.delete(:BUFFER, this.refID)
+  #GPU.glDeleteBuffer(this.refID)
 end
 
 """
@@ -162,8 +196,8 @@ export delete
 deletes gpu buffers
 """
 function deleteBuffers(this::MeshData)
-  if this.vao != 0 glDeleteVertexArray(this.vao); this.vao=0 end
-  for (s,a) in this.arrays if a.refID != 0 glDeleteBuffer(a.refID) end end 
+  if this.vao != 0 GPU.delete(:VERTEXARRAY, this.vao); this.vao=0 end
+  for (s,a) in this.arrays if a.refID != 0 GPU.delete(:BUFFER, a.refID) end end 
   this.arrays = Dict()
   this.draw = nothing
 end
@@ -217,9 +251,12 @@ end
 sets data
 """
 function setData(this::MeshBuffer, data, elems=0)
-  if elems != 0 this.elements = elems end
+  isNotNull = data != nothing
   this.data = data
-  this.count = length(this.data)/this.elements
+  this.size = isNotNull ? sizeof(this.data) : 0
+  this.length = isNotNull ? length(this.data) : 0
+  this.elements = elems 
+  this.count = isNotNull && elems > 0 ? this.length / this.elements : 0
 end
 
 """
@@ -228,15 +265,16 @@ uploads data
 function upload(this::MeshBuffer, usage=this.usage)
   if this.loaded || this.count == 0 return end
   glBindBuffer(this.typ, this.refID)
-  glBufferData(this.typ, sizeof(this.data), this.data, usage)
-  this.loaded=true
+  glBufferData(this.typ, this.size, this.data, usage)
+  this.data = nothing
+  this.loaded = true
 end
 
 """
 reset part data
 """
 function resetPart(this::MeshBuffer, id=1, value=0)
-  if id < 1 || id > length(this.data) return error("Invalid index for data") end
+  if id < 1 || id > this.length return error("Invalid index for data") end
   glBindBuffer(this.typ, this.refID)
   part=this.data[id]
   glBufferSubData(this.typ , 0, sizeof(part), typeof(part)[value])
@@ -287,7 +325,7 @@ function linkData(this::MeshData, args...)
       a = this.arrays[s]
       a.loaded = false
     else
-      this.arrays[s] = a = MeshBuffer()
+      this.arrays[s] = a = MeshBuffer(s)
       a.typ = btyp
       a.usage = usage
     end

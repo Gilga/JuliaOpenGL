@@ -310,6 +310,4 @@ function OnUpdate(camera::Camera)
   r
 end
 
-export OnUpdate
-
 end #CameraManager

@@ -42,7 +42,7 @@ uint ident;
 vec3 pos;
 uint flags;
 
-uint CHUNK_COUNT = 25; // 9, 25, 49, 81, 121
+uint CHUNK_COUNT = 121; // 9, 25, 49, 81, 121
 
 float calculateLOD(vec3 chunk_pos){
   float len = length((-iCamPos - translate(chunk_pos+vec3(COLSIZE*0.5)))*vec3(1,0,1));

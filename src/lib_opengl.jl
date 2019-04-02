@@ -330,54 +330,96 @@ glGetIntegerval(name::GLenum) = glGetValue(glGetIntegerv, name, GLint)
 
 export glGetIntegerval
 
+"""
+TODO
+"""
+glCreate(count::Number, arr::AbstractArray, func::Function, args...) = for i=1:count push!(arr, func(args...)) end
+
+"""
+TODO
+"""
+glDelete(ids::Array, func::Function, args...) = for id in ids func(id, args...) end
+
 ##################################################
+ListElementType = GLuint
+ListType = Dict{Symbol,Array{ListElementType, 1}}
 lists = Dict{Symbol,Dict{Symbol,Any}}()
-lists[:BUFFER] = Dict(:LIST=>GLuint[],:CREATE=>glGenBuffers,:DELETE=>glDeleteBuffers)
-lists[:FRAMEBUFFER] = Dict(:LIST=>GLuint[],:CREATE=>glGenFramebuffers,:DELETE=>glDeleteFramebuffers)
-lists[:RENDERBUFFER] = Dict(:LIST=>GLuint[],:CREATE=>glGenRenderbuffers,:DELETE=>glDeleteRenderbuffers)
-lists[:VERTEXARRAY] = Dict(:LIST=>GLuint[],:CREATE=>glGenVertexArrays,:DELETE=>glDeleteVertexArrays)
-lists[:TEXTURE] = Dict(:LIST=>GLuint[],:CREATE=>glGenTextures,:DELETE=>glDeleteTextures)
-lists[:SAMPLER] = Dict(:LIST=>GLuint[],:CREATE=>glGenSamplers,:DELETE=>glDeleteSamplers)
+lists[:BUFFER] = Dict(:LIST=>ListType(),:CREATE=>glGenBuffers,:DELETE=>glDeleteBuffers)
+lists[:FRAMEBUFFER] = Dict(:LIST=>ListType(),:CREATE=>glGenFramebuffers,:DELETE=>glDeleteFramebuffers)
+lists[:RENDERBUFFER] = Dict(:LIST=>ListType(),:CREATE=>glGenRenderbuffers,:DELETE=>glDeleteRenderbuffers)
+lists[:VERTEXARRAY] = Dict(:LIST=>ListType(),:CREATE=>glGenVertexArrays,:DELETE=>glDeleteVertexArrays)
+lists[:TEXTURE] = Dict(:LIST=>ListType(),:CREATE=>glGenTextures,:DELETE=>glDeleteTextures)
+lists[:SAMPLER] = Dict(:LIST=>ListType(),:CREATE=>glGenSamplers,:DELETE=>glDeleteSamplers)
+#lists[:PROGRAM] = Dict(:LIST=>GLuint[],:CREATE=>(count,objs)->glCreate(count,objs,glCreateProgram),:DELETE=>(len,ids)->glDelete(ids,glDeleteProgram))
 ##################################################
 
 """
 TODO
 """
-function create(typ::Symbol, count::Number)
-  global lists; l=lists[typ]
-  objs=zeros(GLuint,count)
-  l[:CREATE](count, objs)
-  for obj in objs push!(l[:LIST], obj) end
+function create(typ::Symbol, id::Symbol, count::Number)
+  l=lists[typ]
+  biglist=l[:LIST]
+
+  #objs=zeros(GLuint,count)
+  #l[:CREATE](count, objs)
+  #for obj in objs push!(l[:LIST], obj) end
+  
+  if !haskey(biglist, id) biglist[id] = ListElementType[] end
+  list = biglist[id]
+  
+  if count > length(list)
+    objs=zeros(ListElementType,count)
+    l[:CREATE](count, objs)
+    for obj in objs push!(list, obj) end
+  else
+    objs = ListElementType[]
+    index=0
+    checkList = Dict{ListElementType,Nothing}()
+    for obj in list
+      if haskey(checkList, obj) warn("$typ : $id has duplicated id = $obj")
+      elseif obj <= 0  warn("$typ : $id has wrong id <= 0")
+      else
+        checkList[obj] = nothing
+        push!(objs, obj)
+        index+=1
+      end
+      #end
+      if index>=count break end
+    end
+  end
+  
   objs
 end
 
 """
 TODO
 """
-function delete(typ::Symbol, ids::Array{GLuint,1})
- global lists; l=lists[typ]
-  l[:DELETE](length(ids), ids)
-  l[:LIST] = filter!(e->e∉ids,l[:LIST])
+function delete(typ::Symbol, ids::Array{ListElementType,1})
+  error("Not implemented yet!")
+  #global lists; l=lists[typ]
+  #l[:DELETE](length(ids), ids)
+  #l[:LIST] = filter!(e->e∉ids,l[:LIST])
 end
 
 """
 TODO
 """
-create(typ::Symbol) = create(typ, 1)[1]
+create(typ::Symbol, id::Symbol) = create(typ, id, 1)[1]
 
 """
 TODO
 """
-delete(typ::Symbol, id::GLuint) = delete(typ, GLuint[id])
+delete(typ::Symbol, id::ListElementType) = delete(typ, ListElementType[id])
 
 """
 TODO
 """
 function delete(typ::Symbol)
-  global lists; l=lists[typ]
-  list=l[:LIST]
-  l[:DELETE](length(list), list)
-  l[:LIST] = eltype(list)[]
+  l=lists[typ]
+  rmlist=ListElementType[]
+  for (_, list) in l[:LIST] rmlist = vcat(rmlist, list...) end
+  l[:DELETE](length(rmlist), rmlist)
+  l[:LIST] = typeof(l[:LIST])()
 end
 
 """

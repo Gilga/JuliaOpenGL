@@ -112,9 +112,9 @@ function include_module(mod::Module, path::String; name::Symbol=:anonymous)
     expr = Expr(:toplevel,
       :(free!() = $mgr.safe_clean!(@__MODULE__)),
       :(safe_invoke(link::Expr, args...) = $mgr.safe_invoke(@__MODULE__, link, args...)),
-      :(safe_eval(x::Any) = $mgr.safe_eval(@__MODULE__, x)),
-      :(safe_call(x::Any) = $mgr.safe_call(@__MODULE__, x)),
-      :(safe_clean!(x::Any) = $mgr.safe_clean!(@__MODULE__, x)),
+      :(safe_eval(args...) = $mgr.safe_eval(@__MODULE__, args...)),
+      :(safe_call(args...) = $mgr.safe_call(@__MODULE__, args...)),
+      :(safe_clean!(args...) = $mgr.safe_clean!(@__MODULE__, args...)),
       :(include_module(path::String;name=:anonymous) = $mgr.include_module(@__MODULE__, path; name=name)),
       )
       
