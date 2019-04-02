@@ -249,7 +249,7 @@ MapData getTypeSide2(vec3 index, float scale){
   if(!forward) { sides |= (0x1 << 4);  count++; }// FRONT
   if(!back) { sides |= (0x1 << 5);  count++; } // BACK
 
-  //if(!bottom && y>=0.41 && y<=0.42) { h=1; typ=16; sides=4; }
+  //if(!bottom && y>=0.41 && y<=0.42) { h=1; typ=16; sides=4; } // water
   if (sides <= 0 || h>1) h=-1;
   //else if ((y+S<height)) { h=-1; sides=0; }
   //else h = 1+max(max(lh,rh), max(fh,bh));
