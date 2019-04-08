@@ -1,4 +1,4 @@
-module Math
+module MathManager
 
 using LinearAlgebra
 using Quaternions
@@ -115,7 +115,7 @@ function rotation(q::Quaternion{T}) where {T}
   sx, sy, sz = 2q.s*q.v1,  2q.s*q.v2,   2q.s*q.v3
   xx, xy, xz = 2q.v1^2,    2q.v1*q.v2,  2q.v1*q.v3
   yy, yz, zz = 2q.v2^2,    2q.v2*q.v3,  2q.v3^2
-  
+
   T[
       1-(yy+zz)  xy+sz        xz-sy        0
       xy-sz        1-(xx+zz)  yz+sx        0
@@ -134,7 +134,7 @@ function computeRotation(r::Array{T,1}) where {T}
   dirBackwards= T[-1,0,0]
   dirRight = T[0,0,1]
   dirUp = T[0,1,0] #cross(dirRight, dirBackwards)
-  
+
   q = qrotation(dirRight, r[3]) * qrotation(dirUp, r[1]) * qrotation(dirBackwards, r[2])
 
   #q = qrotation(T[1,1,1],0)
@@ -218,13 +218,13 @@ TODO
 function lookat(eye::Array{T,1}, lookAt::Array{T,1}, up::Array{T,1}) where {T}
   (length(eye) < 3) && error("eye has less than 3 elements!")
   (length(lookAt) < 3) && error("lookAt has less than 3 elements!")
-  (length(up) < 3) && error("up has less than 3 elements!")  
-    
+  (length(up) < 3) && error("up has less than 3 elements!")
+
   zaxis  = normalize(eye-lookAt)
   xaxis  = normalize(cross(up,zaxis))
   yaxis  = normalize(cross(zaxis, xaxis))
   eaxis = T[ -dot(xaxis,eye), -dot(yaxis,eye), -dot(zaxis,eye) ]
-  
+
   T[
       xaxis[1] yaxis[1] zaxis[1] 0;
       xaxis[2] yaxis[2] zaxis[2] 0;
@@ -301,4 +301,4 @@ end
 
 # glm::mat4 rotate = glm::transpose(glm::toMat4(m_Rotation));
 
-end #Math
+end #MathManager

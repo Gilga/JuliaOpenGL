@@ -1,7 +1,9 @@
+__precompile__(false)
+
 module GraphicsManager
 
-using ..FileManager
-using ..LogManager
+using FileManager
+using LogManager
 
 using ModernGL
 
@@ -52,9 +54,9 @@ macro glfunc(opengl_func)
     func_name_str   = string(func_name)
     ptr_expr        = :(ModernGL.getprocaddress_e($func_name_str))
     #debug_opengl_expr = ModernGL.debug_opengl_expr
-    
+
     wasOpenLib=true
-    
+
     if iswindows() # windows has some function pointers statically available and some not, this is how we deal with it:
         wasOpenLib=isOpenLib()
         lib=openLib()
@@ -167,7 +169,7 @@ TODO
 """
 function glDebug(debug::Bool)
   if !debug return end
-  
+
   @static if Sys.isapple()
 			warn("OpenGL debug message callback not available on osx")
 			return
@@ -188,7 +190,7 @@ function showExtensions()
   count = GLint[0]
   glGetIntegerv(GL_NUM_EXTENSIONS, count)
   count=count[]
-  file="gl_exentsioninfo.txt"
+  file=joinpath(@__DIR__,"../gl_exentsioninfo.txt")
   open(file, "w") do f
     for i=1:count
       name=unsafe_string(glGetStringi(GL_EXTENSIONS, i-1))
@@ -363,10 +365,10 @@ function create(typ::Symbol, id::Symbol, count::Number)
   #objs=zeros(GLuint,count)
   #l[:CREATE](count, objs)
   #for obj in objs push!(l[:LIST], obj) end
-  
+
   if !haskey(biglist, id) biglist[id] = ListElementType[] end
   list = biglist[id]
-  
+
   if count > length(list)
     objs=zeros(ListElementType,count)
     l[:CREATE](count, objs)
@@ -387,7 +389,7 @@ function create(typ::Symbol, id::Symbol, count::Number)
       if index>=count break end
     end
   end
-  
+
   objs
 end
 
@@ -508,28 +510,28 @@ function createShader(programname::Symbol, infos::Dict{Symbol,Any})
   # Create the shader
   shader = @GLCHECK glCreateShader(typ)::GLuint
   if shader == 0 LogManager.error("[$pname] Error creating $typname: ", glErrorMessage()); return -1 end
-  
-  tmpdir="shaders/tmp/"
-  backupdir="shaders/backup/"
-  
+
+  tmpdir=joinpath(@__DIR__,"../shaders/tmp/")
+  backupdir=joinpath(@__DIR__,"../shaders/backup/")
+
   if !isdir(tmpdir) mkdir(tmpdir) end
   if !isdir(backupdir) mkdir(backupdir) end
-  
+
   tmpfile=abspath(tmpdir*file)
   backupfile=abspath(backupdir*file)
-  
+
   # Compile the shader
   #try
   # load previous backup
   if !haskey(BackupSource, key) && isfile(backupfile)
     BackupSource[key]=fileGetContents(backupfile)
   end
-  
+
   open(tmpfile, "w") do f write(f,source) end
   result=compileShader(shader, source)
   if !result
     LogManager.warn("[$pname] $typname ($file) compile error: ", getInfoLog(shader))
-    
+
     # get backup
     if haskey(BackupSource, key)
       result=compileShader(shader, BackupSource[key])
@@ -567,14 +569,14 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeed
   if prog == 0
     LogManager.error("Error creating shader program $pname: ", glErrorMessage())
   end
-  
+
   LogManager.debug("Created shader program $pname.")
-  
+
   # attributes
   #glBindAttribLocation(prog,0,"iVertex") # bind attribute always
-  
+
   shaderIDs = Int32[]
-  
+
   for shader in shaders
     shaderID = createShader(name, shader)
     if shaderID > 0
@@ -582,13 +584,13 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeed
       push!(shaderIDs, shaderID)
     end
   end
-  
+
   if length(shaderIDs) == 0
     glDeleteProgram(prog)
     prog = -1
     LogManager.error("No valid shaders for shader program $pname found.")
   else
-  
+
     if transformfeedback
       #Ptr{Ptr{GLchar}}
       r = [
@@ -597,10 +599,10 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeed
       ]
       glTransformFeedbackVaryings(prog, 2, r, GL_INTERLEAVED_ATTRIBS)
     end
-    
+
     # link the program and check for errors
     glLinkProgram(prog)
-    
+
     status = GLint[0]
     glGetProgramiv(prog, GL_LINK_STATUS, status)
 
@@ -612,10 +614,10 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeed
       LogManager.error("Shader Program($prog) $pname: Error Linking: $msg")
       prog=-1
     end
-    
+
     LogManager.debug("Shader Program($prog) $pname is initalized.")
-  end 
-    
+  end
+
   prog
 end
 

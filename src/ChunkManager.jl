@@ -1,8 +1,8 @@
 module ChunkManager
 
-using ..Math
-using ..LogManager
-using ..FrustumManager
+using MathManager
+using LogManager
+using FrustumManager
 
 using StaticArrays
 using JLD2
@@ -34,7 +34,7 @@ mutable struct Neighbours6{T} <: FieldVector{6, T}
   back::Union{T,Nothing}
   top::Union{T,Nothing}
   bottom::Union{T,Nothing}
-  
+
   Neighbours6{T}() where T = new(nothing,nothing,nothing,nothing,nothing,nothing)
 end
 
@@ -49,7 +49,7 @@ const BlockNeighbours = Neighbours6{IBlock}
 mutable struct Node6{T} <: INode
   value::Union{T,Nothing}
   next::NodeNeighbours6
-  
+
   Node6{T}() where T = new(nothing,NodeNeighbours6())
   Node6{T}(value::T) where T = new(value,NodeNeighbours6())
 end
@@ -67,7 +67,7 @@ mutable struct Block <: IBlock
   next::BlockNeighbours
   nexts::Array{Float32,1}
   id::Float32
-  
+
   Block(parent::IChunk, pos=Vec3f(), nexts=Float32[], typ=0; id=0) = new(true,true,false,typ,0,pos,Vec3f(pos.x,pos.z,pos.y),resetSides(),parent,BlockNeighbours(),nexts,id) #,zeros(Mat4x4f),zeros(Mat4x4f))
 end
 
@@ -81,7 +81,7 @@ mutable struct ChunkNode <: IChunk
   index::Vec3f
   nodes::Array{INode,1}
   parent::Union{Nothing,IChunk}
-  
+
   function ChunkNode(parent::IChunk, len::Integer)
     this = new(true,true,Vec3f(),Vec3f(),Array{INode}(undef,len),parent)
   end
@@ -99,7 +99,7 @@ mutable struct Chunk <: IChunk
   filtered::Array{Block,1}
   nodes::Array{ChunkNode,1}
   parent::Union{Nothing,IChunk}
-  
+
   Chunk(;id=0,pos=Vec3f()) = new(id,true,true,pos,Vec3f(),0,0,Array{Block}(undef,0,0,0),Block[],Array{ChunkNode}(undef,0),nothing)
 end
 
@@ -107,7 +107,7 @@ function init(this::Chunk, size::Integer)
     this.count = size^3
     this.childs = Array{Block}(undef,size,size,size)
     createBlocks(this)
-        
+
     #if GPU_CHUNKS linkBlockNeighbours(this); return end
     #createChunkNodes(this)
     #linkBlockNeighbours(this)
@@ -214,14 +214,14 @@ function createChunkNodes(this::Chunk)
       node=node.parent
       continue
     end
-    
+
     x,z,y = cindex = getIndex(index, scale[depth], depth == 1 ? default_index : node.index)
     child = depth < max_depth ? ChunkNode(node, 8) : this.childs[UInt(x),UInt(z),UInt(y)]
     child.index = cindex
-    
+
     node.nodes[index] = child
     child.parent=node
-    
+
     if depth < max_depth depth+=1; node=child; else count+=1;end
   end
 end
@@ -278,18 +278,18 @@ function checkInFrustum(this::Chunk, fstm::Frustum)
   len=length(this.childs)
   node = this
   list = Block[]
-    
+
   #setFilteredChilds(this,getValidChilds(this))
   #return true
-  
+
   #for b in this.childs setVisible(b, false) end
-  
+
   #println("done.")
   #open("nodes.txt", "w") do f
   while depth > 0 && count <= len
     depths[depth]+=1
     index = depths[depth]
-    
+
     if index <= 1
       #write(f, string(repeat(" ",depth-1),"{ ",scale[depth]," : ",  depth>1 ? depths[depth-1] : 0, "\n"))
     elseif index > 8
@@ -324,7 +324,7 @@ function checkInFrustum(this::Chunk, fstm::Frustum)
     end
   end
   #end
-  
+
   setFilteredChilds(this,list)
   #setFilteredChilds(this,getValidChilds(this))
 end
@@ -341,7 +341,7 @@ function createBlocks(this::Chunk)
     z>1 ? i+X : 0,
     z<Z ? i-X : 0];id=i)
   end; end; end
-  
+
   open("chunks.txt", "w") do f
     for b in this.childs
       write(f, string(b.id," : ",b.index.x,", ",b.index.y,", ",b.index.z,"\n"))
@@ -352,7 +352,7 @@ end
 function linkBlockNeighbours(this::Chunk)
   a = this.childs
   X, Y, Z = size(this.childs)
-  for y=1:Y; for z=1:Z; for x=1:X; 
+  for y=1:Y; for z=1:Z; for x=1:X;
     pos = (x,y,z)
     b = getBlock(this,pos)
     b.next.left = getBlock(this,pos,LEFT_SIDE)
@@ -397,32 +397,32 @@ function hideUnseen(this::Chunk)
       r=b.sides[LEFT_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
-    
+
     if (next=b.next.right) != nothing
       r=b.sides[RIGHT_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
- 
+
     if (next=b.next.bottom) != nothing
       r=b.sides[BOTTOM_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
-    
+
     if (next=b.next.top) != nothing
       r=b.sides[TOP_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
-    
+
     if (next=b.next.back) != nothing
       r=b.sides[BACK_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
-    
+
     if (next=b.next.front) != nothing
       r=b.sides[FRONT_SIDE]=!isSeen(next)
       if !r blocked+=1 end
     end
-    
+
     setSurrounded(b,blocked >= 6)
   end
 end
@@ -469,14 +469,14 @@ function getData(this::Block)
     if side > 0 sides |= (0x1 << i) end
     i+=1
   end
-  
+
   #if this.sides[LEFT_SIDE] > 0 sides |= 0x1 end
   #if this.sides[RIGHT_SIDE] > 0 sides |= 0x2 end
   #if this.sides[TOP_SIDE] > 0 sides |= 0x4 end
   #if this.sides[BOTTOM_SIDE] > 0 sides |= 0x8 end
   #if this.sides[FRONT_SIDE] > 0 sides |= 0x10 end
   #if this.sides[BACK_SIDE] > 0 sides |= 0x20 end
-  
+
   #[n-1 for n in this.nexts]...,
   SVector(Float32[this.index.x-1, this.index.z-1, this.index.y-1, this.typ, sides]...)
 end
@@ -508,7 +508,7 @@ function createExample(this::Chunk)
     b.typ=rand(1:16)
     #model = Mat4x4f(translation(Array(b.pos)))
     #push!(refblocks, pointer_from_objref(b))
-    
+
     x += 1; if x > X
       z += 1; x=1;
       if z > Z y += 1; z=1;
@@ -516,7 +516,7 @@ function createExample(this::Chunk)
       end
     end
   end
-  
+
   h=round(UInt,X/2)
   b = this.childs[h,h,h]
   b.typ=7
@@ -525,7 +525,7 @@ end
 function createLandscape(this::Chunk)
   if true return nothing end
   #Texture* heightTexture = m_pRenderer->GetTexture(m_pChunkManager->GetHeightMapTexture());
-  
+
   rgbImage=Images.load("heightmap.jpg")
   (imgwidth, imgheight) = size(rgbImage)
 
@@ -535,16 +535,16 @@ function createLandscape(this::Chunk)
   X, Y, Z = size(this.childs)
   w = imgwidth/X
   h = imgheight/Y
-  
+
   #DIST = Vec3f(2,2,2)
   #START = Vec3f(-(X*DIST.x) / 2.0f0, -(Y*DIST.y) / 2.0f0, (Z*DIST.z) / 2.0f0)
   #translate(x,y,z) = Vec3f(START.x+x*DIST.x, START.y+y*DIST.y, START.z-z*DIST.z)
-  
+
   for z=1:Z
     for x=1:X
       # Use the height map texture to get the height value of x, z
       height = (imgMatrix[UInt32(trunc(z*h)), UInt32(trunc(x*w))] / 0xFF)* 1.25 * Y
-      
+
       level_air = height * 0.95
       level_grass = height * 0.9
       level_dirt = height * 0.8
@@ -566,12 +566,12 @@ function createLandscape(this::Chunk)
       end
     end
   end
-   
+
   h=round(UInt, X/2)
   b = this.childs[h,h,h]
   #b.pos=Vec3f(0,0,0)
   b.typ=7
-  
+
   this.childs[1,1,1].typ=0
 end
 
@@ -589,7 +589,7 @@ end
 
 """
   Spiral 3D Search List
-  
+
   clock wise neighbour search around a center point (shell by shell search)
   first and last layer (z-axis) full 2D spiral search (whole layer is shell)
   layers in between: search outside (next shell) and already searched area (core) will be skipped
@@ -600,12 +600,12 @@ function create_spiral3D_searchlist(this::Chunk)
   Z, Y, X = sz = size(this.childs)
   MAX = length(sz)
   r = Array{Int}(undef, MAX)
-    
+
   file="spiral3D_searchlist_chunk_"*string(X)*"x"*string(Y)*"x"*string(Z)*".jld2"
   if isfile(file) @load file r; return r; end
-  
+
   XH, YH, ZH = X/2, Y/2, Z/2
-  
+
   lastElement = true
   endOflayer = false
   endOflBox = false
@@ -623,9 +623,9 @@ function create_spiral3D_searchlist(this::Chunk)
   maxlength = 0
   layerElementCount = 0
   layerElementCountPrev =0
-  
+
   r[element]=ZH*YH*XH;
-  
+
   println("create search coordinates...")
   open(file*".txt", "w") do f
   while true
@@ -637,12 +637,12 @@ function create_spiral3D_searchlist(this::Chunk)
       endOflayer = false
       endOflBox = false
       layerElement = 0
-      
+
       dimMAX = 1 + j*2
       layerCount = dimMAX
       layerElementCountPrev = layerElementCount
       layerElementCount = dimMAX^2 # X*Y
-      
+
       xyz=[0,0,j]
       xt=1; yt=-1;
       count=[1,1]
@@ -655,22 +655,22 @@ function create_spiral3D_searchlist(this::Chunk)
       layerElement += 1
       element+=1
       if element > MAX break end
-      
+
       notFirst = !(layer == 1 && layerElement == 1)
       firstLayer = layer <= 1
       lastLayer = layer >= layerCount
       max = layerElementCount-(firstLayer || lastLayer ? (lastLayer ? 1 : 0) : layerElementCountPrev)
       endOflayer = (layerElement > max)
       border = [abs(xyz[1]) >= count[1],abs(xyz[2]) >= count[2]]
-     
+
       if notFirst
         switch = [turn && border[1],!turn && border[2]]
         if switch[1] xt=-xt; elseif switch[2] yt=-yt; end
         if switch[1] || switch[2] turn=!turn; end
       end
-      
+
       if border[1] && border[2] edge+=1 end
-      
+
       if endOflayer
         layerElement=1
         layer+=1
@@ -679,7 +679,7 @@ function create_spiral3D_searchlist(this::Chunk)
         lastLayer = layer >= layerCount
         lastElement = layer > layerCount
         count=[j,j]
-        
+
         if lastLayer
           xt=1
           xyz=[0,0,xyz[3]]
@@ -690,7 +690,7 @@ function create_spiral3D_searchlist(this::Chunk)
         if !lastElement xyz[3]-=1; end
         if log print("\$"); if !lastElement print("\n////// |") end end
       end
-      
+
       if edge > 3
         if log print("#") end
         edge=0
@@ -698,19 +698,19 @@ function create_spiral3D_searchlist(this::Chunk)
         count+=[1,1]
         turn = true
       end
-      
+
       endOfCube = lastLayer && endOflayer
       firstLayerElement = layerElement == 1
       lastLayerElement = endOflayer || layerElement == max
       lastElement = layer > layerCount
-      
+
       if notFirst; if turn xyz[1]+=xt; else xyz[2]+=yt; end; end
       if lastElement xyz=[0,0,xyz[3]]; end
-      
+
       x,y,z = (xyz[2]+XH), (xyz[1]+YH), (xyz[3]+ZH)
       r[element] = index = z*Y*X + y*X + x
       write(f, string([z,y,x]," = ", index, "\n"));
-      
+
       if log print(x>=0 ? " " : "",x, "" , y>=0 ? " " : "",y,"",z>=0 ? " " : "", z," |") end
     end
   end
@@ -728,7 +728,7 @@ printList(list,n=1) = begin
   println(typeof(list)," with ",length(list)," entries shows each ",n,n==1 ? "st" : (n==2 ? "nd" : (n==3 ? "rd" : "th"))," element:")
   i=0; for (k,v) in list; i+=1; if i == n i=0; println(" ",k) end; end
   println()
-  
+
   #a = collect(keys(list))[1:X:end]
   #Base.showarray(STDOUT,a,false)
   #show(STDOUT, "text/plain", a)
@@ -739,39 +739,39 @@ end
 function checkInFrustum2(this::Chunk, fstm::Frustum)
   pos = getNearPosition(fstm)
   list = DataStructures.SortedDict()
-  
+
   #open("frustum.txt", "w") do f
     for b in this.childs
       result = checkSphere(fstm, b.pos, 1.5)
       clist = result[2]
       visible = result[1] != :FRUSTUM_OUTSIDE
       setVisible(b,visible)
-      
+
       # sort
       if visible
         (x,y,z) = (clist[:X],clist[:Y],clist[:Z])
         write(f, string("[",x,", ",y,", ",z,"]")*"\n")
-        
+
         rx=round(x)
         ry=round(y)
         rz=round(z)
-        
+
         if rx % 2 != 0
           rx+=1;
         end
 
         k = (rx,ry)
-        
+
         if (abs(x) <= 1 && abs(y) <= 1 && abs(z) <= 1) || z < 0
           setVisible(b,false)
         else
           kv=z=>b
           if haskey(list,k)
-          
+
             p = first(list[k])
             list[k][z] = b
             q = first(list[k])
-            
+
             if p[1] == q[1] kv=p[1]=>p[2] else b=p[2] end
             setVisible(b,false)
           end
@@ -791,7 +791,7 @@ function checkInFrustum3(this::Chunk, fstm::Frustum)
     result = checkSphere(fstm, b.pos, 1.5)
     visible = result[1] != :FRUSTUM_OUTSIDE
     setVisible(b,visible)
-  
+
     #=
     clist = result[2]
     if visible && false
@@ -808,11 +808,11 @@ function checkInFrustum3(this::Chunk, fstm::Frustum)
           b = nlist[:FRUSTUM_BOTTOM] < clist[:FRUSTUM_BOTTOM]
           n = nlist[:FRUSTUM_NEAR] < clist[:FRUSTUM_NEAR]
           f = nlist[:FRUSTUM_FAR] > clist[:FRUSTUM_FAR]
-          
+
           #lr = l>r ? l : r
           #tb = t>b ? t : b
           #nf = n<f ? n : f
-        
+
           if lt
             if l
               next = parent.next.left
@@ -839,26 +839,26 @@ function checkInFrustum3(this::Chunk, fstm::Frustum)
             end
           end
         end
-        
-      end 
+
+      end
     end
     =#
     return visible
   end
-  
+
   proceed2 = function(x,y,z)
       if !isassigned(this.childs, x,y,z) return false end
       proceed(this.childs[x,y,z])
   end
   for b in this.childs proceed1(b) end
-    
+
   #printList(list,length(list)/10)
 
   #for (k,z) in list
     #p = k1 + Vec3f(0,0,0)
     #l = k1 + Vec3f(-1,-1,-1)
     #r = k1 + Vec3f(1,1,1)
-    
+
     #skip = true
     #for (k2,b) in z
       #if skip skip=false; continue end
@@ -871,7 +871,7 @@ function checkInFrustum3(this::Chunk, fstm::Frustum)
       #setVisible(b,false)
     #end
   #end
- 
+
 end
 
 end #ChunkManager

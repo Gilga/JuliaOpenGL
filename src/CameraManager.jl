@@ -1,11 +1,14 @@
-module CameraManager
+__precompile__(false)
 
-using ..Math
-using ..TimeManager
+module CameraManager
 
 using Distributed
 using GLFW
 using ModernGL
+
+using MathManager
+using TimeManager
+using WindowManager
 
 lastCursorPos = [0,0]
 cursorPos_old = [0,0]
@@ -38,11 +41,11 @@ camera object with holds position, rotation, scaling and various matrices like M
 """
 mutable struct Camera
   moved::Bool
-  
+
   position::AbstractArray
   rotation::AbstractArray
   scale::AbstractArray
-  
+
   viewMat::AbstractArray
   projectionMat::AbstractArray
   modelMat::AbstractArray
@@ -50,9 +53,9 @@ mutable struct Camera
   translateMat::AbstractArray
   rotationMat::AbstractArray
   scalingMat::AbstractArray
-  
+
   MVP::AbstractArray
-  
+
   Camera() = new(true, zerosVector3f,zerosVector3f,onesVector3f,
   eyeMat4x4f,eyeMat4x4f,eyeMat4x4f,eyeMat4x4f,eyeMat4x4f,eyeMat4x4f,eyeMat4x4f)
 end
@@ -64,21 +67,21 @@ CAMERA = Camera()
 """
 gets forward vector of camera direction
 """
-forward(camera::Camera) = Math.forward(camera.rotationMat)
+forward(camera::Camera) = MathManager.forward(camera.rotationMat)
 
 export forward
 
 """
 gets right vector of camera direction
 """
-right(camera::Camera) = Math.right(camera.rotationMat)
+right(camera::Camera) = MathManager.right(camera.rotationMat)
 
 export right
 
 """
 gets up vector of camera direction
 """
-up(camera::Camera) = Math.up(camera.rotationMat)
+up(camera::Camera) = MathManager.up(camera.rotationMat)
 
 export up
 
@@ -100,21 +103,18 @@ VIEW_KEYS=false
 
 """
 event which catches keyboard inputs.
-here keys for wireframe, fullscreen and camera movement are defined 
+here keys for wireframe, fullscreen and camera movement are defined
 """
-function OnKey(window, key, scancode, action, mods)
-  key = Int32(key)
-  action = Int32(action)
-  scancode = Int32(action)
-  mods = Int32(action)
-  
+function OnKey(window::Window, key::Number, scancode::Number, action::Number, mods::Number, unicode::Number)
+  #key, scancode, action, mods, unicode = Int32(key), Int32(scancode), Int32(action), Int32(mods), Int32(unicode)
+
   if key == 70 && action == 1 # f
     # ...
   elseif key == 71 && action == 1 # g
     #global wireframe
     #wireframe = !wireframe
     #println("Wireframe: ",wireframe)
-    
+
   elseif key == 72 && action == 1 # h
     #global fullscreen=!fullscreen
 
@@ -133,12 +133,12 @@ function OnKey(window, key, scancode, action, mods)
   elseif key == 340 #lshift
     global speed = (action > 0)
   end
-  
+
   if key == 75 && action == 1 #k
     global VIEW_KEYS = !VIEW_KEYS
     println("VIEW_KEYS = $VIEW_KEYS")
   end
-  
+
   if VIEW_KEYS println("K: ", key, " A: ", action, " C: ", scancode, " M: ", mods) end
 
   if action == 1 global keyPressed = true end
@@ -152,22 +152,22 @@ export OnKey
 """
 event which catches mouse key inpits and hides/shows cursor when mouse button is pressed
 """
-function OnMouseKey(window, key, action, mods)
+function OnMouseKey(window::Window, key::Number, action::Number, mods::Number)
   key = Int32(key)
   action = Int32(action)
   mods = Int32(mods)
-  
+
   if keyPressing return end
-   
+
   global cursorPos_old, cursorPos
   global mouseKeyPressed = action != 0
-  
+
   if action == 1
     cursorPos_old = cursorPos
-    GLFW.SetInputMode(window, GLFW.CURSOR, GLFW.CURSOR_DISABLED)
+    GLFW.SetInputMode(window.ref, GLFW.CURSOR, GLFW.CURSOR_DISABLED)
   end
   if action == 0
-    GLFW.SetInputMode(window, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
+    GLFW.SetInputMode(window.ref, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
   end
   nothing
 end
@@ -177,16 +177,16 @@ export OnMouseKey
 """
 event which catches mouse position for camera rotation event
 """
-function OnCursorPos(window, x::Number, y::Number)
+function OnCursorPos(window::Window, pos::Tuple{Number,Number}) #window, x::Number, y::Number)
   global CAMERA, lastCursorPos, cursorPos, mouseMove, mouseKeyPressed
-
+  (x,y) = pos
   t = [x/800f0,y/600f0]
   cursorPos = t
   l = lastCursorPos; if l == [] l = t end
   n = l - t
   lastCursorPos = t
   mouseMove = n
-  
+
   if mouseKeyPressed OnRotate(CAMERA) end
   nothing
 end
@@ -258,16 +258,16 @@ function OnMove(camera::Camera, key::Symbol, f::Number)
   elseif key == :RIGHT  move(camera, right(camera)*-f) #+Vec3f(-right*0.02f0,-up*0.02f0,forward*0.02f0)
   elseif key == :UP  move(camera, up(camera)*-f)
   end
-  
+
   #dif = camera.position
   #step = trunc.(dif)
-  #shiftposition = dif - step 
+  #shiftposition = dif - step
   #step = abs.(step)
-  
+
   #if step[1] >= 2 camera.position[1] = 0 end
   #if step[2] >= 2 camera.position[2] = 0 end
   #if step[3] >= 2 camera.position[3] = 0 end
-  
+
   #  dist = sqrt(camera.position[1]^2+camera.position[2]^2+camera.position[3]^2)
   # if dist >= 1 camera.position = [0f0,0,0] end
 end
@@ -275,7 +275,7 @@ end
 export OnMove
 
 """
-update function where camera translation is update only when camera was moved by input. 
+update function where camera translation is update only when camera was moved by input.
 here cameras MVP Matrix is updated aswell
 """
 function Update(camera::Camera)
@@ -293,18 +293,18 @@ this event resets camera moved state
 """
 function OnUpdate(camera::Camera)
   #if isFocus return end
-  
+
   if OnTime(0.01)
     f=GetTimePassed()*(!speed ? 5 : 100)
     if keyFB != 0 OnMove(camera, :FORWARD, keyFB*f) end
     if keyLR != 0 OnMove(camera, :RIGHT, keyLR*f) end
     if keyUD != 0 OnMove(camera, :UP, keyUD*f) end
   end
-  
+
   if camera.moved
     Update(camera)
   end
-  
+
   r = camera.moved
   camera.moved = false
   r

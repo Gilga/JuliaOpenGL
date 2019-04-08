@@ -1,6 +1,6 @@
 module FrustumManager
 
-using ..Math
+using MathManager
 
 using LinearAlgebra
 
@@ -11,12 +11,12 @@ mutable struct Plane3D
 	mPoint::Vec3f
 	mNormal::Vec3f
 	d::Float32
-  
+
   """
   TODO
   """
   Plane3D() = new(Vec3f(),Vec3f(),0)
-  
+
   """
   TODO
   """
@@ -25,7 +25,7 @@ mutable struct Plane3D
     d= -(dot(mNormal, mPoint))
     new(mPoint,mNormal,d)
   end
-  
+
   """
   TODO
   """
@@ -35,7 +35,7 @@ mutable struct Plane3D
     d= -(dot(mNormal, mPoint))
     new(mPoint,mNormal,d)
   end
-  
+
   """
   TODO
   """
@@ -47,7 +47,7 @@ mutable struct Plane3D
 
     # Compute the length of the vector
     lLength = length(mNormal)
-    
+
     # Normalize the vector
     mNormal = Vec3f(a / lLength, b / lLength, c / lLength)
 
@@ -86,7 +86,7 @@ mutable struct Frustum
   planes::Dict{Symbol,Plane3D} #Array{Plane3D,1}
   box::Dict{Symbol,Plane3D}
   pos::Dict{Symbol,Vec3f}
-   
+
   nearDistance::Float32
   farDistance::Float32
   nearWidth::Float32
@@ -106,7 +106,7 @@ mutable struct Frustum
   farTopRight::Vec3f
   farBottomLeft::Vec3f
   farBottomRight::Vec3f
-  
+
   nearfarTopLeft::Vec3f
   nearfarTopRight::Vec3f
   nearfarBottomLeft::Vec3f
@@ -158,16 +158,16 @@ function getBox(this::Frustum)
 
     this.nearfarTopRight, this.nearfarBottomRight, this.farBottomRight,
     this.nearfarTopRight, this.farBottomRight, this.nearfarBottomRight,
-    
+
     this.farTopLeft, this.farTopRight, this.farBottomLeft,
     this.farTopLeft, this.farBottomLeft, this.farTopRight,
-    
+
     this.farTopRight, this.farBottomRight, this.farBottomLeft,
     this.farTopRight, this.farBottomLeft, this.farBottomRight,
-    
+
     this.farTopLeft, this.farTopRight, this.farBottomLeft,
     this.farTopLeft, this.farBottomLeft, this.farTopRight,
-    
+
     this.nearfarTopRight, this.nearfarBottomRight, this.nearfarBottomLeft,
     this.nearfarTopRight, this.nearfarBottomLeft, this.nearfarBottomRight,
   ]
@@ -203,10 +203,10 @@ function getVertices(this::Frustum)
 
     this.nearTopRight, this.nearBottomRight, this.farBottomRight,
     this.nearTopRight, this.farBottomRight, this.nearBottomRight,
-    
+
     this.farTopLeft, this.farTopRight, this.farBottomLeft,
     this.farTopLeft, this.farBottomLeft, this.farTopRight,
-    
+
     this.farTopRight, this.farBottomRight, this.farBottomLeft,
     this.farTopRight, this.farBottomLeft, this.farBottomRight,
   ]
@@ -259,7 +259,7 @@ function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f; near=0, 
 	this.farTopRight = fc + Y * this.farHeight + X * this.farWidth
 	this.farBottomLeft = fc - Y * this.farHeight - X * this.farWidth
 	this.farBottomRight = fc - Y * this.farHeight + X * this.farWidth
-  
+
 	this.nearfarTopLeft = nc + Y * this.farHeight - X * this.farWidth
 	this.nearfarTopRight = nc + Y * this.farHeight + X * this.farWidth
 	this.nearfarBottomLeft = nc - Y * this.farHeight - X * this.farWidth
@@ -271,14 +271,14 @@ function SetCamera(this::Frustum, pos::Vec3f, target::Vec3f, up::Vec3f; near=0, 
 	this.planes[:FRUSTUM_RIGHT] = Plane3D(this.nearBottomRight, this.nearTopRight, this.farBottomRight)
 	this.planes[:FRUSTUM_NEAR] = Plane3D(this.nearTopLeft, this.nearTopRight, this.nearBottomRight)
 	this.planes[:FRUSTUM_FAR] = Plane3D(this.farTopRight, this.farTopLeft, this.farBottomLeft)
-  
+
   this.box[:BOX_TOP] = Plane3D(this.nearfarTopRight, this.nearfarTopLeft, this.farTopLeft) #Plane3D_Rect(this.nearfarTopRight, this.farTopLeft)
   this.box[:BOX_BOTTOM] = Plane3D(this.nearfarBottomLeft, this.nearfarBottomRight, this.farBottomRight) #Plane3D_Rect(this.nearfarBottomLeft, this.farBottomRight)
   this.box[:BOX_LEFT] = Plane3D(this.nearfarTopLeft, this.nearfarBottomLeft, this.farBottomLeft) #Plane3D_Rect(this.nearfarTopLeft, this.farBottomLeft)
   this.box[:BOX_RIGHT] = Plane3D(this.nearfarBottomRight, this.nearfarTopRight, this.farBottomRight) #Plane3D_Rect(this.nearfarBottomRight, this.farBottomRight)
   this.box[:BOX_NEAR] = Plane3D(this.nearfarTopLeft, this.nearfarTopRight, this.nearfarBottomRight)
   this.box[:BOX_FAR] = this.planes[:FRUSTUM_FAR]
-  
+
   this.pos[:CENTER] = Vec3f((pos + target) / 2)
   this.pos[:CAMERA] = pos
   this.pos[:TARGET] = target
@@ -293,15 +293,15 @@ TODO
 function checkPoint2(this::Frustum, pos::Vec3f)
   result = :FRUSTUM_INSIDE
   distances = Dict{Symbol,Float32}()
-  
+
   for (k,plane) in this.planes
     if (distances[k] = GetPointDistance(plane, pos)) < 0 result = :FRUSTUM_OUTSIDE end
   end
-  
+
   for (k,plane) in this.box
     distances[k] = GetPointDistance(plane, pos)
   end
-  
+
   for (k,v) in this.pos
     origin = this.pos[k]
     distances[k] = euclidean(origin,pos)
@@ -309,17 +309,17 @@ function checkPoint2(this::Frustum, pos::Vec3f)
     distances[Symbol(k,:_Y)] = origin.y - pos.y
     distances[Symbol(k,:_Z)] = origin.z - pos.z
   end
-  
+
   X = distances[:BOX_LEFT] #distances[:CAMERA_X]
   Y = distances[:CAMERA_Y]
   Z = distances[:CAMERA_Z]
-  
+
   #X,Y = normalize([X,Y])
-  
+
   distances[:X] = X
   distances[:Y] = Y
   distances[:Z] = Z
-  
+
   (result, distances)
 end
 
@@ -350,14 +350,14 @@ TODO
 function checkPoint(this::Frustum, pos::Vec3f)
   result = :FRUSTUM_INSIDE
   distances = Dict{Symbol,Float32}()
-  
+
   for (k,plane) in this.planes
     distance = distances[k] = GetPointDistance(plane, pos)
     if distance < 0 result = :FRUSTUM_OUTSIDE
     elseif distance == 0 result = :FRUSTUM_INTERSECT
     end
   end
-  
+
   (result, distances)
 end
 
@@ -369,7 +369,7 @@ TODO
 function checkSphere(this::Frustum, pos::Vec3f, radius::Number)
   result = :FRUSTUM_INSIDE
   distances = Dict{Symbol,Float32}()
-  
+
   for (k,plane) in this.planes
     distance = distances[k] = GetPointDistance(plane, pos)
 		if distance < -radius result = :FRUSTUM_OUTSIDE
@@ -389,14 +389,14 @@ function checkCube(this::Frustum, center::Vec3f, size::Vec3f)
   result = :FRUSTUM_INSIDE
 	distance = 0f0
   distances = Dict{Symbol,Dict{Symbol,Float32}}()
-  
+
   for (k,plane) in this.planes
     # Reset counters for corners in and out
     out = 0
     in = 0
-    
+
     distance = Dict{Symbol,Float32}(:LDB=>0f0,:RDB=>0f0,:LDF=>0f0,:RDF=>0f0,:LUB=>0f0,:RUB=>0f0,:LUF=>0f0,:RUF=>0f0)
-    
+
     if (distance[:LDB] = GetPointDistance(plane, center + Vec3f(-size.x, -size.y, -size.z))) < 0 out+=1
     else in+=1
     end
@@ -428,15 +428,15 @@ function checkCube(this::Frustum, center::Vec3f, size::Vec3f)
     if (distance[:RUF] = GetPointDistance(plane, center + Vec3f(size.x, size.y, size.z))) < 0 out+=1
     else in+=1
     end
-    
+
     distances[k] = distance
-    
+
     # If all corners are out
     if in <= 0 result = :FRUSTUM_OUTSIDE
-    # If some corners are out and others are in	
+    # If some corners are out and others are in
     elseif out > 0 && result != :FRUSTUM_OUTSIDE result = :FRUSTUM_INTERSECT
     end
-    
+
   end
 
   (result, distances)
