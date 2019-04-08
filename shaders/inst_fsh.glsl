@@ -56,7 +56,7 @@ void main() {
 
   bool UseLight = true; //iUseLight;
   uint lightType = 1;
-  bool UseTexture = true; //iUseTexture;
+  bool UseTexture = false; //iUseTexture;
   bool water = false;
   
   //float dist = abs(length(getUV(vertex_pos)-vec2(0.5)));

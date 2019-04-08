@@ -48,6 +48,14 @@ vec3 getIndexPos(float index)
   return vec3(x,y,z);
 }
 
+vec3 getIndex2DPos(float index)
+{
+  float i = index;
+  float y = floor(i*COLSIZE);
+  float x = i-y*COLSIZE;
+  return vec3(x,0,y);
+}
+
 float getIndex(vec3 indexPos) { return indexPos.y*ROWSIZE+indexPos.z*COLSIZE+indexPos.x; }
 
 //float = 1 * 4 bytes 
@@ -63,6 +71,9 @@ BuffData createBuffData(uint ident, uint chunk, uint flags) {
   vec3 index = getIndexPos(ident);
   return BuffData((chunk << 24) | (uint(index.y) << 16) | (uint(index.z) << 8) | uint(index.x), flags);
 }
+BuffData createBuffData(vec3 index, uint chunk, uint flags) {
+  return BuffData((chunk << 24) | (uint(index.y) << 16) | (uint(index.z) << 8) | uint(index.x), flags);
+}
 
 float getLOD(BuffData data) { return 1; }
 uint getFlags(BuffData data) { return data.flags; }
@@ -70,7 +81,7 @@ void setFlags(inout BuffData data, uint flags) { data.flags = flags; }
 
 vec3 getIndex(BuffData data) {
   uint chunk = (data.index >> 24) & 0xFF;
-  vec3 index = vec3(data.index & 0xFF, (data.index >> 16) & 0xFF, (data.index >> 8) & 0xFF);
+  vec3 index = vec3(data.index & 0xFF, ((data.index >> 16) & 0xFF), (data.index >> 8) & 0xFF);
   return index * getLOD(data) + CHUNK_POSITIONS[chunk]*COLSIZE;
 }
 

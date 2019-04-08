@@ -1,8 +1,8 @@
 module MeshManager
 
-using ..Math
-using ..LogManager
-using ..GraphicsManager
+using MathManager
+using LogManager
+using GraphicsManager
 
 using ModernGL
 
@@ -43,7 +43,7 @@ mutable struct MeshBuffer
   loaded::Bool
 
   data::Union{Nothing,AbstractArray}
-  
+
   function MeshBuffer(id::Symbol, typ=GL_ARRAY_BUFFER,usage=GL_STATIC_DRAW,data=nothing; refID=0, elems=1)
     this=new(elems,0,0,0,refID,typ,usage,false,data)
     setData(this, data)
@@ -53,7 +53,7 @@ mutable struct MeshBuffer
 end
 
 """
-data which holds various arrays of mesh 
+data which holds various arrays of mesh
 """
 mutable struct MeshData
   id::Symbol
@@ -97,14 +97,14 @@ end
 gltypes=Dict(Float32=>GL_FLOAT,Float64=>GL_DOUBLE,UInt32=>GL_UNSIGNED_INT,Int32=>GL_INT)
 
 """
-set attributes for shader 
+set attributes for shader
 """
 function setAttributes(this::MeshBuffer, program, attrb; flexible=false, typ=0, bindbuffer=true)
   if this.count == 0 return end
-  
+
   STRIDE = GLsizei(length(attrb)<=1 ? 0 : reduce(+, (x->sizeof(x[2])*x[3]).(attrb)))
   OFFSET =  C_NULL
-  
+
   if bindbuffer glBindBuffer(typ<=0 ? this.typ : typ, this.refID) end
   #glBufferData(this.typ, sizeof(this.data), this.data,  this.usage)
 
@@ -123,7 +123,7 @@ function setAttributes(this::MeshBuffer, program, attrb; flexible=false, typ=0, 
     else warn("Could not load Attribute \"$name\"")
     end
   end
-  
+
   if bindbuffer glBindBuffer(this.typ, 0) end
 end
 
@@ -137,43 +137,43 @@ creates gpu buffers
 """
 function createBuffers(this::MeshData)
   if this.vao == 0 this.vao = GPU.create(:VERTEXARRAY, this.id) end
-  for (s,a) in this.arrays if a.refID == 0 && a.count > 0 a.refID = GPU.create(:BUFFER, this.id) end end 
+  for (s,a) in this.arrays if a.refID == 0 && a.count > 0 a.refID = GPU.create(:BUFFER, this.id) end end
 end
 
 function createBuffers(id::Symbol, data::AbstractArray, count=1; size=0, typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
   list=Array{MeshBuffer,1}(undef, count)
-  
+
   buffers=GPU.create(:BUFFER, id, count)
-  
+
   has_data = length(data) > 0
   if size <= 0 size = sizeof(data) end
-  
+
   for i=1:count
     refID=buffers[i]
-    
+
     glBindBuffer(typ, refID)
     glBufferData(typ, size, has_data ? data : C_NULL,  usage)
-    
+
     list[i] = MeshBuffer(Symbol(id,i), typ, usage, data; refID=refID,elems=1)
   end
   glBindBuffer(typ, 0)
-  
+
   list
 end
 
 function createBuffer(id::Symbol, data::AbstractArray, count=1; typ=GL_ARRAY_BUFFER, usage=GL_STATIC_DRAW)
   if length(data) <= 0 return nothing end
-  
+
   refID=GPU.create(:BUFFER, id)
   size=sizeof(data)
-  
+
   this=MeshBuffer(id, typ, usage, nothing; refID=refID,elems=1)
-  
+
   glBindBuffer(typ, refID)
   glBufferData(typ, count*size, C_NULL, usage)
   for i=1:count glBufferSubData(typ , (i-1)*size, size, data) end
   glBindBuffer(typ, 0)
-  
+
   this
 end
 
@@ -197,13 +197,13 @@ deletes gpu buffers
 """
 function deleteBuffers(this::MeshData)
   if this.vao != 0 GPU.delete(:VERTEXARRAY, this.vao); this.vao=0 end
-  for (s,a) in this.arrays if a.refID != 0 GPU.delete(:BUFFER, a.refID) end end 
+  for (s,a) in this.arrays if a.refID != 0 GPU.delete(:BUFFER, a.refID) end end
   this.arrays = Dict()
   this.draw = nothing
 end
 
 """
-sets attributes for shader 
+sets attributes for shader
 """
 function setAttributes(this::MeshData, program; flexible=false)
   glBindVertexArray(this.vao)
@@ -215,7 +215,7 @@ function setAttributes(this::MeshData, program; flexible=false)
 end
 
 """
-sets attributes for shader 
+sets attributes for shader
 """
 function setAttributes(this::MeshData, buffers::Array{MeshBuffer,1}, program)
   glBindVertexArray(this.vao)
@@ -226,7 +226,7 @@ function setAttributes(this::MeshData, buffers::Array{MeshBuffer,1}, program)
 end
 
 """
-sets attributes for shader 
+sets attributes for shader
 """
 function setAttributes(vaos::Array{GLuint,1}, buffers::Array{MeshBuffer,1}, program)
   len=length(vaos)
@@ -255,7 +255,7 @@ function setData(this::MeshBuffer, data, elems=0)
   this.data = data
   this.size = isNotNull ? sizeof(this.data) : 0
   this.length = isNotNull ? length(this.data) : 0
-  this.elements = elems 
+  this.elements = elems
   this.count = isNotNull && elems > 0 ? this.length / this.elements : 0
 end
 
@@ -308,19 +308,19 @@ links data
 """
 function linkData(this::MeshData, args...)
   d=Dict(args)
-  
+
   deleteBuffers(this)
-  
+
   for (s,x) in d
     l=isa(x,Tuple) ? length(x) : 0
-    
+
     data = l>0 ? x[1] : x
     dtyp = eltype(data)
     elems = l>1 ? x[2] : 1
     btyp = l>2 ? x[3] : GL_ARRAY_BUFFER
     usage = l>3 ? x[4] : GL_STATIC_DRAW
     draw = l>4 ? x[5] : false
-    
+
     if haskey(this.arrays,s)
       a = this.arrays[s]
       a.loaded = false
@@ -329,9 +329,9 @@ function linkData(this::MeshData, args...)
       a.typ = btyp
       a.usage = usage
     end
-    
+
     setData(a, data, elems)
-    
+
     if draw this.draw = a
     elseif this.draw == nothing this.draw = a
     end

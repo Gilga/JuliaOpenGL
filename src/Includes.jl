@@ -1,12 +1,8 @@
-include("TimeManager.jl")
-include("LogManager.jl")
-include("ThreadManager.jl")
-
 import Base.print, Base.println
 
-using ..TimeManager
-using ..LoggerManager
-using ..ThreadManager
+using TimeManager
+using LoggerManager
+using ThreadManager
 
 using Distributed
 
@@ -34,7 +30,7 @@ error(args...) = thread_call(() -> LoggerManager.error(args...);mutex=PrintMutex
 ######################################################
 
 Messages = String[] #shared object among threads
-function message(this::Thread, args... ;mode="", title="", lineBreak=true) 
+function message(this::Thread, args... ;mode="", title="", lineBreak=true)
   global Messages
   thread_push!(Messages, LoggerManager.msg(args... ;time=true, name=thread_id()*":"*this.name, mode=mode, title=title, lineBreak=lineBreak))
 end
@@ -42,7 +38,7 @@ end
 function showMessages()
   global Messages
   msgs = String[]
-  
+
   # copy & clear messages
   thread_call(() -> begin msgs = deepcopy(Messages); Messages = Array{String,1}() end ;mutex=PushMutex)
 

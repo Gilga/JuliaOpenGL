@@ -60,7 +60,7 @@ export safe_include
 
 """ TODO """
 function cleanCode(code::String)
-	
+
 	# problem using match(): only "function (name)" will be detected!
 	# for x in eachmatch(r"function \s(\w)", code) println(x.captures[1]) end
 
@@ -89,38 +89,41 @@ end
 #add *= "const self = "*name*LF
 #add *= "safe_eval(x) = $mgr.safe_eval("*name*", x)"*LF
 #add *= "safe_call(x) = $mgr.safe_call("*name*", x)"*LF
-#add *= "include_module(x;name=:anonymous) = $mgr.include_module("*name*", x; name=name)"*LF
+#add *= "include_module(x;name=:Nothing) = $mgr.include_module("*name*", x; name=name)"*LF
 #add *= "safe_clean!(x) = $mgr.safe_clean!("*name*", x)"*LF
 #code = "module "*name*LF*code*LF*"end; println(names("*name*")); "
 
 """ TODO """
-function include_module(mod::Module, path::String; name::Symbol=:anonymous)
+function include_module(mod::Module, path::String; name::Symbol=:Nothing)
   result = (false, nothing)
-  
+
 	code = print_backtrace(() -> begin  code = ""; open(abspath(path)) do fp	code = read(fp, String) end; code; end)
-	if code != nothing 
-    find = r"^\s*module\s+(\w+)\s*.*$"is
+	if code != nothing
+    find = r"^.*\s*module\s+(\w+)\s*.*$"is
     if occursin(find, code) name = Symbol(replace(code,find=>s"\1")) end
   end
-  
-  if isdefined(mod,name) safe_clean!(mod, name) end
+
+  if name == :Nothing
+    print_backtrace(()->error("No module found!"))
+
+  elseif isdefined(mod,name) safe_clean!(mod, name) end
   print_backtrace(() -> begin
     result = (true, Core.include(mod, abspath(path)))
     mgr=@__MODULE__
     mod_child = get_module(mod, name)
-    
+
     expr = Expr(:toplevel,
       :(free!() = $mgr.safe_clean!(@__MODULE__)),
       :(safe_invoke(link::Expr, args...) = $mgr.safe_invoke(@__MODULE__, link, args...)),
       :(safe_eval(args...) = $mgr.safe_eval(@__MODULE__, args...)),
       :(safe_call(args...) = $mgr.safe_call(@__MODULE__, args...)),
       :(safe_clean!(args...) = $mgr.safe_clean!(@__MODULE__, args...)),
-      :(include_module(path::String;name=:anonymous) = $mgr.include_module(@__MODULE__, path; name=name)),
+      :(include_module(path::String;name=:Nothing) = $mgr.include_module(@__MODULE__, path; name=name)),
       )
-      
+
     Core.eval(mod_child, expr)
   end)
-  
+
   result
 end
 export include_module
@@ -179,12 +182,12 @@ function safe_clean!(mod::Module; clean_child_modules=false, bare=false)
       symbol = Symbol(mod)
       name = nameof(mod) #split(string(mod),".")[end] #nameof(mod)
       for sym in names(mod, all=true)
-        try 
+        try
         try value = getfield(mod,sym); catch z; value = sym end
         typ = typeof(value)
         if isa(sym, Symbol) && isdefined(mod, sym)
           if occursin(r"^\#",string(sym)); value = Function; end
-          try 
+          try
             if value == Symbol || isa(value, Symbol) #ignore
             elseif value == Module || isa(value, Module) if clean_child_modules && !in(mod,mods_done) && Symbol("Main.",sym) != symbol && sym != symbol && sym != name push!(mods,getModule(mod, sym)) end #TODO
             elseif value == Function || isa(value, Function); Core.eval(mod, :($sym() = nothing));
@@ -193,14 +196,14 @@ function safe_clean!(mod::Module; clean_child_modules=false, bare=false)
               elseif isa(value, Number) Core.eval(mod,:(const $sym = $typ(0))) #set to default
               else Core.eval(mod,:(const $sym = $typ())) #set to default constructor -> when it fails it fails
               end
-            else Distributed.clear!(sym;mod=mod) 
+            else Distributed.clear!(sym;mod=mod)
             #warn("$mod.$sym::$typ is not supported!")
             end
           catch x
             warn("$mod.$sym::$typ -> error!")
           end
         else warn("$mod.$sym::$typ is not valid!")
-        end 
+        end
         catch xxx
           debug("Symbol $mod.$sym error!")
         end

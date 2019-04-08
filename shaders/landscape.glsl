@@ -206,7 +206,7 @@ float getLandscapeHeight(vec2 uv, float scale) {
   */
 
 
-MapData getTypeSide2(vec3 index, float scale){
+MapData getValidBlock(vec3 index, float scale){
   float S = COLISIZE;
   float y = index.y * S;
   vec2 uv = index.xz * S;
@@ -224,7 +224,7 @@ MapData getTypeSide2(vec3 index, float scale){
   bool bottom = true; //nextTB.y >= 0 && nextTB.y < 1;
   
   float height = getLandscapeHeight(uv,scale);
-  float h = y/height;
+  float h = (y==0?1:y)/height;
   int typ=0;
   uint sides=0;
   uint count=0;
@@ -249,7 +249,8 @@ MapData getTypeSide2(vec3 index, float scale){
   if(!forward) { sides |= (0x1 << 4);  count++; }// FRONT
   if(!back) { sides |= (0x1 << 5);  count++; } // BACK
 
-  //if(!bottom && y>=0.41 && y<=0.42) { h=1; typ=16; sides=4; } // water
+  //if(!bottom && y>=0.41 && y<=0.42) { h=1; typ=16; sides=4; }
+  
   if (sides <= 0 || h>1) h=-1;
   //else if ((y+S<height)) { h=-1; sides=0; }
   //else h = 1+max(max(lh,rh), max(fh,bh));

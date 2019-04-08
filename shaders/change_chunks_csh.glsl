@@ -42,7 +42,7 @@ uint ident;
 vec3 pos;
 uint flags;
 
-uint CHUNK_COUNT = 121; // 9, 25, 49, 81, 121
+uint CHUNK_COUNT = 25; // 9, 25, 49, 81, 121
 
 float calculateLOD(vec3 chunk_pos){
   float len = length((-iCamPos - translate(chunk_pos+vec3(COLSIZE*0.5)))*vec3(1,0,1));
@@ -76,7 +76,11 @@ void main() {
       float lod;
       float scale;
       float cut;
-      vec3 base_index = getIndexPos(ident) + iCenter;
+      //vec3 tex_index = getIndex2DPos(ident); 
+      vec3 tex_index = getIndexPos(ident); //tex_index.y=0;
+      vec3 base_index = tex_index + iCenter;
+      
+      //if(ident>=ROWSIZE) return;
     
       for(uint chunk=0; chunk<CHUNK_COUNT; chunk++)
       {
@@ -91,16 +95,19 @@ void main() {
         //outputData[ident] = createBuffData();
 
         if(base_index.x>cut || base_index.z>cut || base_index.y>cut) continue;
-        mapflags = getTypeSide2(index, lod);
         
-        if (mapflags.height >= 0) {
+        mapflags = getValidBlock(index, lod);
+        float height = 0; //getLandscapeHeight(index.xz,1); mapflags.height=1; mapflags.sides=127;
+        
+        if (mapflags.height >= 0 && mapflags.sides > 0) {
           flags = convertFlags(mapflags);
+          ident += uint(height * ROWSIZE);
           
           inputData[atomicCounterIncrement(dispatchCount)] = createBuffData(ident,chunk,flags);
           
-          if (mapflags.height >= 0) {
+          if (mapflags.sides > 0) {
             pos = translate(index); // //*(vec3(1,0,1)*1.0/scale+vec3(0,1,0));
-            //if(is_visible(pos))
+            if(is_visible(pos))
             outputData[atomicCounterIncrement(instanceCount)] = createBuffData(ident,chunk,flags);
           }
         }
@@ -110,7 +117,7 @@ void main() {
       //if(ident == LAST) setDispatch();
       return;
     }
-    else if(STATE == 12) // change frustum
+    else if(STATE == 1) // change frustum
     {
       if(ident == 0) {
         atomicCounterExchange(instanceCount, 0);

@@ -1,50 +1,92 @@
+__precompile__(false)
+
 module Game
 
 ## INCLUDES
-println("Include libs.")
-include("libs.jl")
-include("cubeData.jl")
-include("camera.jl")
-include("frustum.jl")
-include("chunk.jl")
-include("mesh.jl")
-include("texture.jl")
-include("shader.jl")
+include(joinpath(@__DIR__,"libs.jl"))
 
-using .GraphicsManager
-using .DefaultModelData
-using .CameraManager
-using .FrustumManager
-using .ChunkManager
-using .MeshManager
-using .TextureManager
-using .ShaderManager
-using ..CodeManager
+################################################################################
+
+####################
+# JULIA
+####################
+using InteractiveUtils #versioninfo
+using Dates
+using Distributed
+using SharedArrays
+
+####################
+# PACKAGES
+####################
+using DataStructures #SortedDict
+using Images
+using ImageMagick
+using JLD2
+using StaticArrays
+using ModernGL
+using GLFW
+
+####################
+# CUSTOM
+####################
+#using ThreadManager
+using TimeManager
+using FileManager
+using LogManager
+using MathManager
+using GraphicsManager
+using DefaultModelData
+using CameraManager
+using FrustumManager
+using ChunkManager
+using MeshManager
+using TextureManager
+using ShaderManager
+using CodeManager
+using WindowManager
+
+################################################################################
+
+const Window = WindowManager.Window
 
 WINDOW_FOCUS = true
 
-function OnFocus(window, focus)
+function OnFocus(window::Window,focus::Number)
   global WINDOW_FOCUS = focus > 0 ? true : false
 end
 
 function createWindow()
   println("Create Window...")
+  #GraphicsManager.cleanUp()
+
+  window=WindowManager.Window()
+
+  WindowManager.open(window,[
+    :OPENGL_DEBUG_CONTEXT=>true,
+    :CONTEXT_VERSION_MAJOR=>4,
+    :CONTEXT_VERSION_MINOR=>6,
+    #:SAMPLES=>4,
+  ])
+
+  WindowManager.setListener(window, :OnWindowFocus, OnFocus)
+  WindowManager.setListener(window, :OnMousePos, OnCursorPos)
+  WindowManager.setListener(window, :OnKey, OnKey)
+  WindowManager.setListener(window, :OnMouseKey, OnMouseKey)
+
+#=
   # remove previous Window
-  GraphicsManager.cleanUp()
   GLFW.Terminate()
-  
   # OS X-specific GLFW hints to initialize the correct version of OpenGL
   GLFW.Init()
-      
   # Create a windowed mode window and its OpenGL context
-  window = GLFW.CreateWindow(100, 100, "")
+  window_ref = GLFW.CreateWindow(100, 100, "")
 
   # Make the window's context current
-  GLFW.MakeContextCurrent(window)
+  GLFW.MakeContextCurrent(window_ref)
 
   # Window settings
   GLFW.SwapInterval(0) # intervall between canvas images (min. 2 images)
-  
+
   # Graphcis Settings
   GLFW.WindowHint(GLFW.OPENGL_DEBUG_CONTEXT,true) #show debug
   #GLFW.WindowHint(GLFW.SAMPLES,4) #MSAA
@@ -52,17 +94,18 @@ function createWindow()
   # OpenGL Version
   GLFW.WindowHint(GLFW.CONTEXT_VERSION_MAJOR,4)
   GLFW.WindowHint(GLFW.CONTEXT_VERSION_MINOR,6)
-  
+
   # Event Hooks
-  GLFW.SetWindowFocusCallback(window, OnFocus)
-  GLFW.SetCursorPosCallback(window, OnCursorPos)
-  GLFW.SetKeyCallback(window, OnKey)
-  GLFW.SetMouseButtonCallback(window, OnMouseKey)
+  GLFW.SetWindowFocusCallback(this.ref, OnFocus)
+  GLFW.SetCursorPosCallback(this.ref, OnCursorPos)
+  GLFW.SetKeyCallback(this.ref, OnKey)
+  GLFW.SetMouseButtonCallback(this.ref, OnMouseKey)
 
   #setEventCallbacks(OnCursorPos,OnKey,OnMouseKey)
 
-  GLFW.ShowWindow(window)
-  
+  GLFW.ShowWindow(this.ref)
+  =#
+
   GraphicsManager.init()
 
   glDebug(true) # set debugging
@@ -76,7 +119,7 @@ function createWindow()
   showExtensions()
   println("---------------------------------------------------------------------")
   sleep(0)
-  
+
   window
 end
 
@@ -91,11 +134,13 @@ MAX_FPS = 0
 ITERATION = 0
 REF_PREVTIME = Ref(0.0)
 
-""" TODO """
-function showFrames(window)
+"""
+TODO
+"""
+function showFrames(this::Window)
   global FRAMES, ITERATION, MAX_FRAMES, REF_PREVTIME, BLOCK_COUNT
   currenttime = time() #GetTimer("FRAME_TIMER")
-  
+
   ITERATION +=1
   if !OnTime(1.0, REF_PREVTIME; time=currenttime) FRAMES += 1; return end
 
@@ -106,22 +151,22 @@ function showFrames(window)
   #fpms = FPS > 0 ? (1000.0 / FPS) : 0
   #max_fmps = MAX_FPS > 0 ? (1000.0 / MAX_FPS) : 0
   #norm_fps = FPS/MAX_FPS
-  
+
   if MAX_FRAMES < FRAMES MAX_FRAMES = FRAMES end
   fps = FRAMES
   max_fps = MAX_FRAMES
   fpms = FRAMES > 0 ? (1000.0 / FRAMES) : 0
   max_fmps = MAX_FRAMES > 0 ? (1000.0 / MAX_FRAMES) : 0
   norm_fps = FRAMES / MAX_FRAMES
-  
-  GLFW.SetWindowTitle(window, "$(TITLE) - FPS $(round(fps; digits=2))[$(round(max_fps; digits=2))] | FMPS $(round(fpms; digits=2))[$(round(max_fmps; digits=2))] - IT $ITERATION")
+
+  WindowManager.title(this,"$(TITLE) - FPS $(round(fps; digits=2))[$(round(max_fps; digits=2))] | FMPS $(round(fpms; digits=2))[$(round(max_fmps; digits=2))] - IT $ITERATION")
   FRAMES = 0
 end
 
 function cleanUp()
   info("cleanUp")
   GraphicsManager.cleanUp()
-  GLFW.Terminate()
+  WindowManager.cleanUp()
   CodeManager.safe_clean!(@__MODULE__, :SCRIPT)
 end
 
@@ -144,42 +189,42 @@ script_OnRender = EMPTY_FUNCTION
 OnUpdate = () -> script_call(script_OnUpdate)
 OnRender = () -> script_call(script_OnRender)
 
-function script_init(window)
+function script_init(window::Window)
   println("Include Script...")
-  include_module("scripts/scenes/script.jl")
+  include_module(joinpath(@__DIR__,"../scripts/scenes/script.jl"))
   args = Dict{Symbol,Any}()
-  args[:WINDOW] = window
-  
+  args[:WINDOW] = window.ref
+
   println("Init Script...")
   global script_OnUpdate = script_function(:OnUpdate)
   global script_OnRender = script_function(:OnRender)
-  
+
   script_call(script_function(:main), args)
   script_call(script_function(:OnInit))
-  
+
   #SCRIPT.main(args)
   #SCRIPT.OnInit()
   #global script_OnUpdate = SCRIPT.OnUpdate
   #global script_OnRender = SCRIPT.OnRender
 end
 
-function OnUpdatedKeys(window)
+function OnUpdatedKeys(window::Window)
   keyValue, keyPressed = getKey()
   if keyPressed
-    if keyValue == 82
+    if keyValue == 88 #x
       reload(window)
       return false
     end
   end
 end
 
-function reload(window)
+function reload(window::Window)
   println("Reload Script...")
   #script_call(script_function(:OnDestroy))
   #GraphicsManager.cleanUp() #remove all
   #CodeManager.safe_clean!(@__MODULE__, :SCRIPT)
   #safe_invoke(:(SCRIPT.free!))
-  
+
   #waitTime = programTime() + 3
   #print("Wait...")
   #while programTime() <= waitTime
@@ -189,7 +234,7 @@ function reload(window)
   #  if OnTime(1.0, REF_PREVTIME) print(".") end
   #end #wait
   #println()
-  
+
   script_init(window)
   script_call(script_function(:OnReload))
 end
@@ -198,13 +243,13 @@ function run2()
   println("---------------------------------------------------------------------")
   println("Start Program @ ", Dates.time())
   InteractiveUtils.versioninfo()
-  
+
   window = createWindow()
   script_init(window)
-  
-  while !GLFW.WindowShouldClose(window)
+
+  while WindowManager.isOpen(window)
     CameraManager.resetKeys()
-    GLFW.PollEvents() # Poll for and process events
+    WindowManager.OnUpdateEvents() # Poll for and process events
     UpdateTimers()
     showFrames(window)
     OnUpdatedKeys(window)
@@ -215,13 +260,13 @@ function run()
   println("---------------------------------------------------------------------")
   println("Start Program @ ", Dates.time())
   InteractiveUtils.versioninfo()
-  
+
   window = createWindow()
   script_init(window)
-  
-  while !GLFW.WindowShouldClose(window)
+
+  while WindowManager.isOpen(window)
     CameraManager.resetKeys()
-    GLFW.PollEvents() # Poll for and process events
+    WindowManager.OnUpdateEvents() # Poll for and process events
     UpdateTimers()
     showFrames(window)
     if !WINDOW_FOCUS
@@ -231,7 +276,7 @@ function run()
       OnUpdate()
       OnRender()
       # Swap front and back buffers
-      GLFW.SwapBuffers(window)
+      WindowManager.swap(window)
       #if SLEEP>0 Libc.systemsleep(SLEEP) end
       #sleep(SLEEP)
     end
