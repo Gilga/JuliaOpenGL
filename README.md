@@ -17,7 +17,8 @@ See [Controls.md](Controls.md)
 Full detailed documentation can be found [here](https://gilga.github.io/JuliaOpenGL/).
 
 ## Requirements (Packages)
-See [Project.toml](Project.toml)
+~~See [Project.toml](Project.toml)~~
+See [REQUIRE](REQUIRE)
 
 ## Compiling
 See [Compiling with BuildExecutable.jl](https://github.com/Gilga/BuildExecutable.jl#compiling)

@@ -2,6 +2,7 @@ __precompile__(false)
 
 module ShaderManager
 
+using RessourceManager
 using FileManager
 using GraphicsManager
 
@@ -10,7 +11,7 @@ export loadShaders
 """
 load all content from shaders located in shaders folder in root dir
 """
-function loadShaders(global_vars=Dict{Symbol,Any}();dir=joinpath(@__DIR__,"../shaders/"))
+function loadShaders(global_vars=Dict{Symbol,Any}();dir=RessourceManager.getPath(:SHADERS)) #joinpath(@__DIR__,"../shaders/"))
   types=["VSH","FSH","GSH","CSH"]
 
   #shader_files = filter(x->isfile(dir*x) && uppercase(replace(splitext(x)[end],"."=>"")) == "GLSL",readdir(dir))

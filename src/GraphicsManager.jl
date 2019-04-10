@@ -5,6 +5,7 @@ module GraphicsManager
 using ModernGL
 
 using CodeGeneration
+using RessourceManager
 using FileManager
 using LogManager
 using WindowManager
@@ -501,8 +502,9 @@ function createShader(programname::Symbol, infos::Dict{Symbol,Any})
   shader = @GLCHECK glCreateShader(typ)::GLuint
   if shader == 0 LogManager.error("[$pname] Error creating $typname: ", glErrorMessage()); return -1 end
 
-  tmpdir=joinpath(@__DIR__,"../shaders/tmp/")
-  backupdir=joinpath(@__DIR__,"../shaders/backup/")
+  shdir=RessourceManager.getPath(:SHADERS)
+  tmpdir=joinpath(shdir,"tmp/") #joinpath(@__DIR__,"../shaders/tmp/")
+  backupdir=joinpath(shdir,"backup/") #joinpath(@__DIR__,"../shaders/backup/")
 
   if !isdir(tmpdir) mkdir(tmpdir) end
   if !isdir(backupdir) mkdir(backupdir) end
@@ -628,17 +630,14 @@ function getExtensions()
   glGetIntegerv(GL_NUM_EXTENSIONS, count)
   count=count[]
   exts=[]
-  file=joinpath(@__DIR__,"../gl_exentsioninfo.txt")
-  open(file, "w") do f
-    for i=1:count
-      name=unsafe_string(glGetStringi(GL_EXTENSIONS, i-1))
-      push!(exts,name)
-      #if strcmp(ccc, (const GLubyte *)"GL_ARB_debug_output") == 0
-      #  # The extension is supported by our hardware and driver
-      #  # Try to get the "glDebugMessageCallbackARB" function :
-      #  glDebugMessageCallbackARB  = (PFNGLDEBUGMESSAGECALLBACKARBPROC) wglGetProcAddress("glDebugMessageCallbackARB");
-      #end
-    end
+  for i=1:count
+    name=unsafe_string(glGetStringi(GL_EXTENSIONS, i-1))
+    push!(exts,name)
+    #if strcmp(ccc, (const GLubyte *)"GL_ARB_debug_output") == 0
+    #  # The extension is supported by our hardware and driver
+    #  # Try to get the "glDebugMessageCallbackARB" function :
+    #  glDebugMessageCallbackARB  = (PFNGLDEBUGMESSAGECALLBACKARBPROC) wglGetProcAddress("glDebugMessageCallbackARB");
+    #end
   end
   exts
 end
