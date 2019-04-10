@@ -29,6 +29,7 @@ using GLFW
 ################################################################################
 
 using CodeManager
+using RessourceManager
 #using ThreadManager
 using TimeManager
 using FileManager
@@ -43,6 +44,15 @@ using ChunkManager
 using MeshManager
 using TextureManager
 using ShaderManager
+
+################################################################################
+# PATHS
+RessourceManager.setPath(:LOGS,"logs")
+RessourceManager.setPath(:ASSETS,"assets")
+RessourceManager.setPath(:SCRIPTS,"assets/scripts")
+RessourceManager.setPath(:MODELS,"assets/models")
+RessourceManager.setPath(:TEXTURES,"assets/textures")
+RessourceManager.setPath(:SHADERS,"assets/shaders")
 
 ################################################################################
 
@@ -83,7 +93,7 @@ function createWindow()
   println("GLSL $(stringColor(glinfo[:glsl_version];color=:red))")
   println("Vendor $(stringColor(glinfo[:gl_vendor];color=:red))")
   println("Renderer $(stringColor(glinfo[:gl_renderer];color=:red))")
-  file=joinpath(@__DIR__,"../gl_exentsioninfo.txt")
+  file=RessourceManager.getPath(:LOGS,"gl_exentsioninfo.txt")
   open(file, "w") do f
     for name in glinfo[:gl_extensions]
       write(f,string(name,"\n"))
@@ -167,7 +177,7 @@ OnRender = () -> script_call(script_OnRender)
 
 function script_init(window::Window)
   println("Include Script...")
-  include_module(joinpath(@__DIR__,"../scripts/scenes/blockWorld.jl"))
+  include_module(RessourceManager.getPath(:SCRIPTS,"scenes/blockWorld.jl"))
   args = Dict{Symbol,Any}()
   args[:WINDOW] = window.ref
 
