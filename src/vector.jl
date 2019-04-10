@@ -1,3 +1,5 @@
+__precompile__(false)
+
 export zerosVector3f
 export onesVector3f
 

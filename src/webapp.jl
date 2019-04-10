@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module WebApp
 
 using Blink
@@ -8,7 +10,7 @@ closed = false
 isclosed(win::Window) = closed
 #Blink.@dot win on("closed", ()->)global closed = true)
 
-const WEB_FILE = abspath(joinpath(@__DIR__,"../web/index.html")) #"C:/Users/Mario/AppData/Local/Julia-1.0.0/JuliaOpenGL/JuliaOpenGL/web/index.html" 
+const WEB_FILE = abspath(joinpath(@__DIR__,"../web/index.html")) #"C:/Users/Mario/AppData/Local/Julia-1.0.0/JuliaOpenGL/JuliaOpenGL/web/index.html"
 
 webWindow = nothing
 
@@ -48,7 +50,7 @@ end
 
 function cleanUp()
   #close(webWindow)
-  #Blink.AtomShell.uninstall() 
+  #Blink.AtomShell.uninstall()
 end
 
 end #WebApp

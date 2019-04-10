@@ -1,7 +1,10 @@
+__precompile__(false)
+
 module TextureManager
 
 using GraphicsManager
 const GPU =  GraphicsManager
+GPU.addListener(@__MODULE__)
 
 using Images
 using ModernGL
@@ -23,7 +26,7 @@ LIST = Dict{Symbol, Texture}()
 get(id::Symbol) = haskey(LIST, id) ? LIST[id] : nothing
 set(id::Symbol, tex::Texture) = LIST[id] = tex
 
-function clean()
+function cleanUp()
   global LIST = typeof(LIST)()
 end
 

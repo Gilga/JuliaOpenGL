@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module ScriptManager
 
 mutable struct Script
@@ -9,7 +11,7 @@ mutable struct Script
   update::Union{Nothing, Function}
   render::Union{Nothing, Function}
   clean::Union{Nothing, Function}
-  
+
   Script(name::String) = new(name,false,Dict(),Dict(),nothing,nothing,nothing,nothing)
 end
 

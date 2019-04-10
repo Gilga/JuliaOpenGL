@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module LoggerManager
 
 using Dates
@@ -29,7 +31,7 @@ end
 
 
 begin print(xs...;stream=stdout) = open(f -> (Base.print(f, xs...); Base.print(stream, xs...)), LOGGER_OUT, "a+") end
-macro printf(stream=:STDOUT,xs...) open(f -> (:(Base.@printf(f, $xs...)); :(Base.@printf(stream, $xs...))),LOGGER_OUT, "a+") end 
+macro printf(stream=:STDOUT,xs...) open(f -> (:(Base.@printf(f, $xs...)); :(Base.@printf(stream, $xs...))),LOGGER_OUT, "a+") end
 begin println(xs...;stream=stdout) = open(f -> (Base.println(f, TimeManager.programTimeStr(), " ", xs...); Base.println(stream, xs...)), LOGGER_OUT, "a+") end
 
 begin info(xs...) = open(f -> (Base.println(f, TimeManager.programTimeStr(), " INFO: ", xs...); Base.println("INFO: ",xs...;stream=stdout)), LOGGER_OUT, "a+") end
@@ -46,7 +48,7 @@ function logException(ex::Exception, title="")
 			Base.showerror(f, ex, catch_backtrace())
 			Base.println(f, "\n----------")
 	end, LOGGER_ERROR, "a+")
-  
+
   Base.println(stderr, "\x1b[91m", m, "\x1b[0m")
   Base.print("Program will close in 3 sec")
   for i=1:3 Libc.systemsleep(1); Base.print(".") end

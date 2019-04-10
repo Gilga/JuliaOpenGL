@@ -4,7 +4,12 @@ module WindowManager
 
 using GLFW
 
+using CodeGeneration
 using SystemManager
+
+###############################################################################
+
+CodeGeneration.module_listeners(@__MODULE__)
 
 ###############################################################################
 
@@ -47,7 +52,7 @@ mutable struct Window
 
   function Window(id::Union{Nothing,Symbol}=nothing)
     this=new(generateID(id), #random id
-    nothing,(0,0),(1,1),"",false,false,
+    nothing,(0,0),(1,1),"",true,false,
     Dict(),[],[],[],(1,1))
     WindowList[this.id]=this
     this
@@ -63,6 +68,7 @@ KEYS=Dict{Number,Number}()
 
 function cleanUp()
   global WindowList, WindowRefList
+  callOnListeners(:cleanUp)
   WindowList = typeof(WindowList)()
   WindowRefList = typeof(WindowRefList)()
   GLFW.Terminate()
@@ -183,7 +189,11 @@ OnWindowClose(this::WindowRef) = OnEvent(getWindow(this), :OnWindowClose)
 """
 TODO
 """
-OnWindowFocus(this::WindowRef, focused::Number) = OnEvent(getWindow(this), :OnWindowFocus, focused)
+function OnWindowFocus(this::WindowRef, focused::Number)
+  window = getWindow(this)
+  window.focus = focused
+  OnEvent(window, :OnWindowFocus, focused)
+end
 
 """
 TODO
@@ -302,7 +312,7 @@ end
 """
 TODO
 """
-setListener(this::Window, eventName::Symbol, callback::Function; id::Union{Nothing,Symbol}=nothing) =
+addListener(this::Window, eventName::Symbol, callback::Function; id::Union{Nothing,Symbol}=nothing) =
 	this.listenList[generateID(id)] = (eventName, callback)
 
 """
@@ -377,8 +387,13 @@ isOpen(this::Window) = !GLFW.WindowShouldClose(this.ref)
 """
 TODO
 """
+hasFocus(this::Window) = this.focus
+
+"""
+TODO
+"""
 function update(this::Window)
-  swap(this)
+  if hasFocus(this) swap(this) end
 	OnUpdateEvents()
 end
 
@@ -387,8 +402,10 @@ Loop until the user closes the window
 """
 function loop(this::Window, repeat::Function)
 	while isOpen(this)
-		repeat(this)
-		update(this) # update window
+    if !hasFocus(this) sleep(0.1)
+    else repeat(this)
+    end
+    update(this) # update window
 	end
 	close(this)
 end

@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module CodeManager
 
 using Distributed
@@ -34,8 +36,7 @@ end
 export print_backtrace
 
 """ TODO """
-get_module(mod::Module, sym::Symbol) = Core.eval(Main, Meta.parse(string(Symbol(mod,:.,sym))))
-export get_module
+modulechild(mod::Module, sym::Symbol) = Core.eval(Base.moduleroot(mod), Meta.parse(string(mod)*"."*string(sym)))
 
 """ TODO """
 function safe_include(mod::Module, path::String)
@@ -110,7 +111,7 @@ function include_module(mod::Module, path::String; name::Symbol=:Nothing)
   print_backtrace(() -> begin
     result = (true, Core.include(mod, abspath(path)))
     mgr=@__MODULE__
-    mod_child = get_module(mod, name)
+    child = modulechild(mod, name)
 
     expr = Expr(:toplevel,
       :(free!() = $mgr.safe_clean!(@__MODULE__)),
@@ -121,7 +122,7 @@ function include_module(mod::Module, path::String; name::Symbol=:Nothing)
       :(include_module(path::String;name=:Nothing) = $mgr.include_module(@__MODULE__, path; name=name)),
       )
 
-    Core.eval(mod_child, expr)
+    Core.eval(child, expr)
   end)
 
   result
@@ -142,7 +143,7 @@ end
 export safe_invoke
 
 """ TODO """
-safe_call(mod::Module, value::Expr) = safe_eval(mod, :($value()))
+safe_call(mod::Module, value::Union{Symbol, Expr}) = safe_eval(mod, :($value()))
 
 """ TODO """
 safe_call(mod::Module, value::Function) = safe_eval(mod, value)
@@ -165,8 +166,7 @@ end
 export safe_eval
 
 """ TODO """
-safe_clean!(mod::Module, sym::Symbol) = safe_clean!(get_module(mod, sym))
-export safe_clean!
+safe_clean!(mod::Module, sym::Symbol) = safe_clean!(modulechild(mod, sym))
 
 """ TODO """
 #Base.compilecache()
@@ -189,11 +189,17 @@ function safe_clean!(mod::Module; clean_child_modules=false, bare=false)
           if occursin(r"^\#",string(sym)); value = Function; end
           try
             if value == Symbol || isa(value, Symbol) #ignore
-            elseif value == Module || isa(value, Module) if clean_child_modules && !in(mod,mods_done) && Symbol("Main.",sym) != symbol && sym != symbol && sym != name push!(mods,getModule(mod, sym)) end #TODO
-            elseif value == Function || isa(value, Function); Core.eval(mod, :($sym() = nothing));
+            elseif value == Module || isa(value, Module)
+              if clean_child_modules && !in(mod,mods_done) && Symbol("Main.",sym) != symbol && sym != symbol && sym != name
+                push!(mods,getModule(mod, sym)) #TODO: DEEPWALK
+              end
+            elseif value == Function || isa(value, Function) Core.eval(mod, :($sym() = nothing))
             elseif isconst(mod, sym)
               if isa(value, Module); #ignore
               elseif isa(value, Number) Core.eval(mod,:(const $sym = $typ(0))) #set to default
+              #elseif isprimitivetype(typ)
+              #elseif isstructtype(typ) Core.eval(mod,:(const $sym = $typ()))
+              #elseif typ == DataType  debug("Custom: $mod.$sym::$typ")
               else Core.eval(mod,:(const $sym = $typ())) #set to default constructor -> when it fails it fails
               end
             else Distributed.clear!(sym;mod=mod)
@@ -217,6 +223,6 @@ function safe_clean!(mod::Module; clean_child_modules=false, bare=false)
 
   force_gc()
 end
-export clean
+export safe_clean!
 
 end #CodeManager

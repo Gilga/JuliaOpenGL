@@ -10,10 +10,14 @@ using MathManager
 using TimeManager
 using WindowManager
 
-lastCursorPos = [0,0]
-cursorPos_old = [0,0]
-cursorPos = [0,0]
-mouseMove = [0,0]
+function reset()
+  global lastCursorPos = [0,0]
+  global cursorPos_old = [0,0]
+  global cursorPos = [0,0]
+  global mouseMove = [0,0]
+end
+
+reset()
 
 #MVP = eye(Mat4x4f)
 #MVP *= transform([0.0f0,0.0f0,0.0f0],[0.0f0,0.0f0,0.0f0],Float32[])
@@ -35,6 +39,11 @@ export getKey
 resetKeys() = global keyPressed = false
 
 export resetKeys
+
+function cleanUp()
+  reset()
+  resetKeys()
+end
 
 """
 camera object with holds position, rotation, scaling and various matrices like MVP
@@ -106,6 +115,7 @@ event which catches keyboard inputs.
 here keys for wireframe, fullscreen and camera movement are defined
 """
 function OnKey(window::Window, key::Number, scancode::Number, action::Number, mods::Number, unicode::Number)
+  #println("K")
   #key, scancode, action, mods, unicode = Int32(key), Int32(scancode), Int32(action), Int32(mods), Int32(unicode)
 
   if key == 70 && action == 1 # f
@@ -153,6 +163,8 @@ export OnKey
 event which catches mouse key inpits and hides/shows cursor when mouse button is pressed
 """
 function OnMouseKey(window::Window, key::Number, action::Number, mods::Number)
+  #println("M")
+
   key = Int32(key)
   action = Int32(action)
   mods = Int32(mods)
@@ -179,6 +191,7 @@ event which catches mouse position for camera rotation event
 """
 function OnCursorPos(window::Window, pos::Tuple{Number,Number}) #window, x::Number, y::Number)
   global CAMERA, lastCursorPos, cursorPos, mouseMove, mouseKeyPressed
+  #println("C")
   (x,y) = pos
   t = [x/800f0,y/600f0]
   cursorPos = t
@@ -198,8 +211,9 @@ rotates camera
 """
 function rotate(camera::Camera, rotation::AbstractArray)
   camera.rotation += rotation
+  camera.rotationMat = computeRotation(camera.rotation)
   camera.moved=true
-  if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
+  #if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
   #println("rotated")
 end
 
@@ -210,8 +224,9 @@ moves camera, adds vector to current position
 """
 function move(camera::Camera, position::AbstractArray)
   camera.position += position
+  camera.translateMat = translation(camera.position)
   camera.moved=true
-  if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
+  #if length(procs()) > 1 put!(channels[:CAMERA],(camera.position,camera.rotation)) end
   #println("moved")
 end
 
@@ -279,8 +294,6 @@ update function where camera translation is update only when camera was moved by
 here cameras MVP Matrix is updated aswell
 """
 function Update(camera::Camera)
-  camera.translateMat = translation(camera.position)
-  camera.rotationMat = computeRotation(camera.rotation)
   camera.viewMat = camera.scalingMat * camera.rotationMat * camera.translateMat
   camera.MVP = camera.modelMat * camera.projectionMat * camera.viewMat
 end

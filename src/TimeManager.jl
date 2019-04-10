@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module TimeManager
 
 export programStartTime
@@ -37,7 +39,7 @@ TODO
 function UpdateTimers()
   global TIMERS
   time = GetTimer("FRAME_TIMER")
-  
+
   LOCAL_TIMERS = filter(tuple -> (f=first(tuple); isa(f,AbstractFloat) || isa(f,Integer)), collect(TIMERS))
   for (milisec,prevTime) in LOCAL_TIMERS
     r=(time - Base.getindex(prevTime)) >= milisec
@@ -55,14 +57,14 @@ TODO
 """
 function OnTime(milisec::Number)
   global TIMERS
-  
+
   if !haskey(TIMERS,milisec)
     prevTime = 0.0
     SetTimer(milisec, 0.0)
   else
     prevTime = GetTimer(milisec)
   end
-  
+
   SetTimePassed(GetTimer("FRAME_TIMER") - prevTime) >= milisec
 end
 

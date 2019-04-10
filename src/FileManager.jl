@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module FileManager
 
 """
@@ -51,15 +53,15 @@ function findFiles(dir, target_ext="TXT")
   list=Dict{Symbol,Dict{Symbol,Any}}()
   list_paths=Dict{Symbol,Dict{Symbol,Any}}()
   target_ext=uppercase(target_ext)
-  
+
   for f in readdir(dir)
     split=splitext(f)
     path=abspath(dir*f)
     name=split[1]
     ext=uppercase(replace(split[end],"."=>""))
-    
+
     if !isfile(path) || ext != target_ext continue end
-  
+
     file=Dict{Symbol,Any}()
     file[:file] = f
     file[:name] = name
@@ -70,7 +72,7 @@ function findFiles(dir, target_ext="TXT")
 
     list_paths[Symbol(path)] = list[key] = file
   end
-  
+
   list, list_paths
 end
 
