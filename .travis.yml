@@ -1,6 +1,6 @@
 language: julia
 rvm:
-  - 0.6.2
+  - 1.1.0
 branches:
   only:
     - master
