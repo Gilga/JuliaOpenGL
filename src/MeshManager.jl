@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module MeshManager
 
 using MathManager
@@ -20,6 +22,7 @@ export getMeshBufferRefID
 export createArrayObjects
 
 const GPU =  GraphicsManager
+GPU.addListener(@__MODULE__)
 
 """
 object which holds a transformation matrix and a model reference
@@ -85,7 +88,7 @@ end
 set(id::Symbol, buffer::MeshBuffer) = LIST_BUFFER[id] = buffer
 set(id::Symbol, data::MeshData) = LIST_DATA[id] = data
 
-function clean()
+function cleanUp()
   global LIST_BUFFER = typeof(LIST_BUFFER)()
   global LIST_DATA = typeof(LIST_DATA)()
 end

@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module DefaultModelData
 
 const DATA_DUMMY = Float32[0,0,0]

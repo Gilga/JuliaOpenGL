@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module LogManager
 
 export stringColor
@@ -12,7 +14,7 @@ FONT_COLOR = RESET_COLOR
 function stringColor(s...;color=:normal, save=false)
   global FONT_COLOR
   colorstr=FONT_COLOR
-  
+
   if color == :yellow colorstr="\x1b[93m"
   elseif color == :darkyellow colorstr="\x1b[33m"
   elseif color == :red colorstr="\x1b[91m"
@@ -23,9 +25,9 @@ function stringColor(s...;color=:normal, save=false)
   elseif color == :darkmagenta colorstr="\x1b[35m"
   elseif color == :reset colorstr=RESET_COLOR
   end
-  
+
   if save FONT_COLOR=colorstr end
-  
+
   return string(colorstr,s...,FONT_COLOR)
 end
 

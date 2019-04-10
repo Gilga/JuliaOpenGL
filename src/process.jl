@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module Process
 
 using Distributed
@@ -26,7 +28,7 @@ function createProcess(pool)
       #chs = Dict([c for c in remoteChannels])
       println("updateChannels")
       updateChannels(chs)
-      
+
       has = haskey(chs, :JOBS)
       if has
         println("GET JOB")
@@ -35,7 +37,7 @@ function createProcess(pool)
         job() # execute job
         println("END JOB")
       end
-      
+
       sleep(has ? 0 : 1)
     end
     true
@@ -131,7 +133,7 @@ end
 # Does not work with OpenGL, because OpenGL has to be on main thread...
 function start_threads()
   return false
-  
+
   println("Start Threads")
 
   max=Threads.nthreads()
@@ -158,16 +160,16 @@ end
 
 function waitAndUpdateChunks()
   global CAMERA, FRUSTUM_CULLING, HIDE_UNSEEN_CUBES
-  
+
   println("Presets")
-  
+
   cameradata=channels[:CAMERA]
   bools=channels[:BOOL]
 
   init()
-  
+
   trigger=false
-  
+
   println("start update")
   while true
 
@@ -176,7 +178,7 @@ function waitAndUpdateChunks()
       Update(CAMERA)
       #println("updated Camera")
     end
-    
+
     while isready(bools)
       v=take!(bools)
       id, value = v
@@ -185,12 +187,12 @@ function waitAndUpdateChunks()
       end
       trigger = true
     end
-    
+
     if trigger
       trigger = false
       setFrustumMode()
     end
-      
+
     sleep(0.1)
   end
   nothing
@@ -198,14 +200,14 @@ end
 
 updateChunk(this::Chunk) =   #println("send Chunk data")
    if myid() != 1 remotecall(setChunkInstances, 1, chunk_instances) end
-   
- createChunk(this::Chunk)= 
-   
+
+ createChunk(this::Chunk)=
+
   if myid() != 1
     sz=channels[:SCENE]
     if isready(sz) SCENE=take!(sz) end
   end
-  
+
 
 function uploadChunk(s)
   global uploaded = s
@@ -230,18 +232,18 @@ end
 uploadData()
   m=loadChunk()
   if m == :NOTHING return end
-  
+
   #channels["KEYS"]
   #put!(channels[:BOOL], (:NOTHING, false))
   put!(channels[:BOOL], (:FRUSTUM_CULLING, FRUSTUM_CULLING))
   put!(channels[:BOOL], (:HIDE_UNSEEN_CUBES, HIDE_UNSEEN_CUBES))
-  
-checkCamera() = 
+
+checkCamera() =
       if length(procs()) > 1 put!(channels[:BOOL], (:NOTHING, false))
       else setFrustumMode()
       end
-      
-chooseRenderMethod(method=RENDER_METHOD) =   if myid() != 1 put!(channels[:SCENE],SCENE) end 
+
+chooseRenderMethod(method=RENDER_METHOD) =   if myid() != 1 put!(channels[:SCENE],SCENE) end
 =#
 
 end #Process

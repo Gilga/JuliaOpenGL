@@ -1,3 +1,5 @@
+__precompile__(false)
+
 """
 TODO
 """
@@ -65,7 +67,8 @@ function run()
         println("[ Command List ]")
         [println("- $cmd") for (_,cmd) in cmds]
     elseif input == "q" || input == getCMD(:QUIT) break
-    elseif input == getCMD(:GAME) load_debug(:Game, GAME_FILE, :(Game.run), :(Game.cleanUp))
+    elseif input == getCMD(:GAME)
+      load_debug(:Game, GAME_FILE, :(Game.run), :(Game.cleanUp))
     elseif input == getCMD(:APP)
       if window_is_loaded
         safe_invoke(@__MODULE__, :(WebApp.reload))

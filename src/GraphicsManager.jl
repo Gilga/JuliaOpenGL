@@ -2,16 +2,25 @@ __precompile__(false)
 
 module GraphicsManager
 
+using ModernGL
+
+using CodeGeneration
 using FileManager
 using LogManager
+using WindowManager
 
-using ModernGL
+###############################################################################
+
+CodeGeneration.module_listeners(@__MODULE__)
+
+WindowManager.addListener(@__MODULE__)
+
+###############################################################################
 
 DRIVER_INITALIZED = false
 
 init() = global DRIVER_INITALIZED = true
 
-########################################################
 # ModernGL functions for Extension
 gl_lib = C_NULL
 
@@ -180,32 +189,7 @@ function glDebug(debug::Bool)
 		glDebugMessageCallbackARB(_openglerrorcallback, C_NULL)
 	#end
 end
-
 export glDebug
-
-"""
-TODO
-"""
-function showExtensions()
-  count = GLint[0]
-  glGetIntegerv(GL_NUM_EXTENSIONS, count)
-  count=count[]
-  file=joinpath(@__DIR__,"../gl_exentsioninfo.txt")
-  open(file, "w") do f
-    for i=1:count
-      name=unsafe_string(glGetStringi(GL_EXTENSIONS, i-1))
-      write(f,string(name,"\n"))
-      #if strcmp(ccc, (const GLubyte *)"GL_ARB_debug_output") == 0
-      #  # The extension is supported by our hardware and driver
-      #  # Try to get the "glDebugMessageCallbackARB" function :
-      #  glDebugMessageCallbackARB  = (PFNGLDEBUGMESSAGECALLBACKARBPROC) wglGetProcAddress("glDebugMessageCallbackARB");
-      #end
-    end
-  end
-  info("$count Exensions saved in $file")
-end
-
-export showExtensions
 
 """
 TODO
@@ -335,12 +319,9 @@ export glGetIntegerval
 """
 TODO
 """
-glCreate(count::Number, arr::AbstractArray, func::Function, args...) = for i=1:count push!(arr, func(args...)) end
-
-"""
-TODO
-"""
-glDelete(ids::Array, func::Function, args...) = for id in ids func(id, args...) end
+glArrayFunc(ids::Array, func::Function) = begin len=length(ids); if len>0 func(len, ids) end; end
+#glCreate(count::Number, arr::AbstractArray, func::Function, args...) = for i=1:count push!(arr, func(args...)) end
+#glDelete(ids::Array, func::Function, args...) = for id in ids func(id, args...) end
 
 ##################################################
 ListElementType = GLuint
@@ -359,6 +340,8 @@ lists[:SAMPLER] = Dict(:LIST=>ListType(),:CREATE=>glGenSamplers,:DELETE=>glDelet
 TODO
 """
 function create(typ::Symbol, id::Symbol, count::Number)
+  if count <=0 return nothing end
+
   l=lists[typ]
   biglist=l[:LIST]
 
@@ -371,7 +354,7 @@ function create(typ::Symbol, id::Symbol, count::Number)
 
   if count > length(list)
     objs=zeros(ListElementType,count)
-    l[:CREATE](count, objs)
+    glArrayFunc(objs, l[:CREATE]) #(count, objs)
     for obj in objs push!(list, obj) end
   else
     objs = ListElementType[]
@@ -416,26 +399,33 @@ delete(typ::Symbol, id::ListElementType) = delete(typ, ListElementType[id])
 """
 TODO
 """
-function delete(typ::Symbol)
+function delete(typ::Symbol;freememory=true)
   l=lists[typ]
   rmlist=ListElementType[]
   for (_, list) in l[:LIST] rmlist = vcat(rmlist, list...) end
-  l[:DELETE](length(rmlist), rmlist)
+  if freememory glArrayFunc(rmlist, l[:DELETE]) end
   l[:LIST] = typeof(l[:LIST])()
 end
 
 """
 TODO
 """
-cleanLists() = for typ in keys(lists) delete(typ) end
+cleanLists(hascontext=true) = for typ in keys(lists) delete(typ;freememory=hascontext) end
+
+"""
+TODO
+"""
+freeMemory() = cleanLists()
 
 """
 TODO
 """
 function cleanUp()
+  #println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
   global DRIVER_INITALIZED
   if DRIVER_INITALIZED == false return end
-  cleanLists()
+  callOnListeners(:cleanUp)
+  cleanLists(false) #has no context, because window is already closed
   global DRIVER_INITALIZED = false
 end
 
@@ -620,8 +610,39 @@ function createShaderProgram(name::Symbol, shaders::AbstractArray; transformfeed
 
   prog
 end
-
 export createShaderProgram
+
+# function setExtensionsCallback()
+#   if strcmp(ccc, (const GLubyte *)"GL_ARB_debug_output") == 0
+#    # The extension is supported by our hardware and driver
+#    # Try to get the "glDebugMessageCallbackARB" function :
+#    glDebugMessageCallbackARB  = (PFNGLDEBUGMESSAGECALLBACKARBPROC) wglGetProcAddress("glDebugMessageCallbackARB");
+#   end
+# end
+
+"""
+TODO
+"""
+function getExtensions()
+  count = GLint[0]
+  glGetIntegerv(GL_NUM_EXTENSIONS, count)
+  count=count[]
+  exts=[]
+  file=joinpath(@__DIR__,"../gl_exentsioninfo.txt")
+  open(file, "w") do f
+    for i=1:count
+      name=unsafe_string(glGetStringi(GL_EXTENSIONS, i-1))
+      push!(exts,name)
+      #if strcmp(ccc, (const GLubyte *)"GL_ARB_debug_output") == 0
+      #  # The extension is supported by our hardware and driver
+      #  # Try to get the "glDebugMessageCallbackARB" function :
+      #  glDebugMessageCallbackARB  = (PFNGLDEBUGMESSAGECALLBACKARBPROC) wglGetProcAddress("glDebugMessageCallbackARB");
+      #end
+    end
+  end
+  exts
+end
+export getExtensions
 
 global GLSL_VERSION = ""
 
@@ -649,10 +670,9 @@ function createcontextinfo()
       :gl_version     => glv,
       :gl_vendor      => unsafe_string(@GLCHECK glGetString(GL_VENDOR)),
       :gl_renderer  => unsafe_string(@GLCHECK glGetString(GL_RENDERER)),
-      #:gl_extensions => split(unsafe_string(glGetString(GL_EXTENSIONS))),
+      :gl_extensions => getExtensions(), #split(unsafe_string(glGetString(GL_EXTENSIONS))),
   )
 end
-
 export createcontextinfo
 
 function get_glsl_version_string()

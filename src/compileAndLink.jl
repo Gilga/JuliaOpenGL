@@ -1,3 +1,5 @@
+__precompile__(false)
+
 @static if Sys.is_windows() using WinRPM end
 
 """
@@ -33,7 +35,7 @@ function gcc_compile(gcc,file,libname,env)
   gcc = find_system_gcc()
   C_cmd = setenv(`$gcc -fPIC -O3 -msse3 -xc -shared $file -Wl,-Bstatic -lopengl32 -o $(libname * "." * Libdl.dlext)`, env)
   Base.run(C_cmd)
-  
+
   if !(!isempty(libname) && Libdl.dlopen_e(libname) != C_NULL) # HAS LIB?
     error("Cannot open lib $(libname)!")
   end
@@ -45,7 +47,7 @@ TODO
 function write_c_file(libname)
   # write the C code inside a raw string
   C_code = raw"""
-  
+
 	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001; // NVIDIA
 	//__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1; // AMD Radeon
 
@@ -54,12 +56,12 @@ function write_c_file(libname)
   }
   """
 
-  cfile = libname * ".c" 
+  cfile = libname * ".c"
 
   open(cfile, "w") do f
       print( f, C_code)
   end
-  
+
   cfile
 end
 
@@ -84,7 +86,7 @@ function compiler_setPaths(gcc,env_path)
   ENV2["LIBRARY_PATH"] *= ";" * env_path
   ENV2["LIBRARY_PATH"] *= ";" * binary_path
   ENV2["LIBRARY_PATH"] *= ";" * lib_path
-  
+
   ENV2
 end
 

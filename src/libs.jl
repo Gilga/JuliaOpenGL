@@ -1,3 +1,5 @@
+__precompile__(false)
+
 #https://github.com/shiena/ansicolor/blob/master/README.md
 
 #ThreadMutex = Threads.Mutex()

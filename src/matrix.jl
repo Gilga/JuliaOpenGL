@@ -1,3 +1,5 @@
+__precompile__(false)
+
 eye(T,n,m) = Matrix{T}(LinearAlgebra.I,n,m)
 
 Mat2(T) = Mat2x2(T) = zeros(T,2,2)

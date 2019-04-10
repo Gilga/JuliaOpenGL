@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module ThreadManager
 
 using ..LoggerManager
@@ -71,7 +73,7 @@ end
 
 function thread_pool(numberOfThreads=0; idleTime=1)
     global THREAD_POOL
-    
+
     JULIA_NUM_THREADS = parse(Int32,ENV["JULIA_NUM_THREADS"])
     UV_THREADPOOL_SIZE = parse(Int32,ENV["UV_THREADPOOL_SIZE"])
 
@@ -80,20 +82,20 @@ function thread_pool(numberOfThreads=0; idleTime=1)
     if numberOfThreads > JULIA_NUM_THREADS numberOfThreads=JULIA_NUM_THREADS end
 
     thread_println("Start Thread Pool with $numberOfThreads...")
-    
+
     pool=ThreadPool()
     THREAD_POOL = pool
-    
+
     for i=1:numberOfThreads
       t = Thread(pool)
       t.idleTime = idleTime
       push!(pool.list, t)
     end
-    
+
     thread_println("Thread Pool created.")
-    
+
     #start(pool) # anything below this line will be paused until threads are closed
-    
+
     pool
 end
 
@@ -134,7 +136,7 @@ function set(this::ThreadPool, f::Function, name::String="")
       return t
     end
   end
-  
+
   thread_println("No free threads found.")
   nothing
 end
