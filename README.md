@@ -1,7 +1,7 @@
 [statusPic]: status.png "128³ Blocks up to 25 Chunks"
 
 # JuliaOpenGL
-[![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL) (Julia 1.1.0)
+[![Build Status](https://travis-ci.org/Gilga/JuliaOpenGL.svg?branch=master)](https://travis-ci.org/Gilga/JuliaOpenGL) ([Julia 1.1.0](https://julialang.org/downloads/))
 
 Example 3D OpenGL Szene passed 128³ Blocks and build up to 25 Chunks. Completely shader based approach.
 
@@ -24,8 +24,7 @@ See [Controls.md](Controls.md)
 Full detailed documentation can be found [here](https://gilga.github.io/JuliaOpenGL/).
 
 ## Requirements (Packages)
-* [Julia 1.1.0](https://julialang.org/downloads/)
-* ~~See [Project.toml](Project.toml)~~ See [REQUIRE](REQUIRE)
+See [REQUIRE](REQUIRE)
 
 ## Assets
 Example Assets can be found [here](https://github.com/Gilga/JLGLAssets)
