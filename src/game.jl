@@ -37,13 +37,7 @@ using LogManager
 using MathManager
 using WindowManager
 using GraphicsManager
-using DefaultModelData
 using CameraManager
-using FrustumManager
-using ChunkManager
-using MeshManager
-using TextureManager
-using ShaderManager
 
 ################################################################################
 # PATHS
@@ -107,7 +101,7 @@ function createWindow()
 end
 
 SLEEP=0 #1f0/200
-TITLE = "Blocks Game"
+TITLE = "My Game"
 STARTTIME = time()
 PREVTIME = STARTTIME
 FRAMES = 0
@@ -177,7 +171,7 @@ OnRender = () -> script_call(script_OnRender)
 
 function script_init(window::Window)
   println("Include Script...")
-  include_module(RessourceManager.getPath(:SCRIPTS,"scenes/blockWorld.jl"))
+  include_module(RessourceManager.getPath(:SCRIPTS,"scenes/factorioWorld.jl"))
   args = Dict{Symbol,Any}()
   args[:WINDOW] = window.ref
 
