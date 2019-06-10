@@ -18,7 +18,9 @@ export Mat2
 export Mat3
 export Mat4
 export Mat2x2
+export Mat2x2f
 export Mat3x3
+export Mat3x3f
 export Mat4x4
 export Mat4x4f
 export zerosMat4x4f
