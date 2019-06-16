@@ -171,7 +171,7 @@ OnRender = () -> script_call(script_OnRender)
 
 function script_init(window::Window)
   println("Include Script...")
-  include_module(RessourceManager.getPath(:SCRIPTS,"scenes/factorioWorld.jl"))
+  include_module(RessourceManager.getPath(:SCRIPTS,"scenes/mcWorld.jl"))
   args = Dict{Symbol,Any}()
   args[:WINDOW] = window.ref
 

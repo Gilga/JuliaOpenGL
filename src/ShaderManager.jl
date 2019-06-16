@@ -5,11 +5,26 @@ module ShaderManager
 using ModernGL
 
 using RessourceManager
+using LogManager
 using FileManager
 using GraphicsManager
 using GLLists
 
 const GPU = GraphicsManager
+
+mutable struct ShaderProperty
+  value::Union{Nothing,Any}
+  default::Union{Nothing,Any}
+  typ::Union{Nothing,GLenum}
+  layout::Union{Nothing,Dict{Symbol,Any}}
+  uniform::Bool
+
+  ShaderProperty(;value=nothing,default=nothing,typ=nothing,layout=nothing,uniform=false) = new(value,default,typ,layout,uniform)
+end
+export ShaderProperty
+
+Uniform(;value=nothing,default=nothing,typ=nothing,layout=nothing) = ShaderProperty(value=value,default=default,typ=typ,layout=layout,uniform=true)
+export Uniform
 
 mutable struct ShaderProgram
   id::Integer
@@ -75,6 +90,23 @@ export getProgram
 setProgram(this::IShaderManager, program::Symbol, id::Integer) = this.programs[program] = ShaderProgram(id)
 export setProgram
 
+nested_eltype(x) = nested_eltype(typeof(x))
+nested_eltype(::Type{T}) where T<:AbstractArray = nested_eltype(eltype(T))
+nested_eltype(::Type{T}) where T = T
+
+#@deprecated
+#flatten(a::AbstractArray) = begin try; while true a = vec(a...) end; catch ex; end; a; end
+
+# faster version
+function flatten(arr::AbstractArray)
+    rst = nested_eltype(arr)[]
+    grep(v) = for x in v
+        if isa(x, Array) grep(x) else push!(rst, x) end
+    end
+    grep(arr)
+    rst
+end
+
 """ TODO """
 function delProgram(this::IShaderManager, program::Symbol)
   p = getProgram(this, program)
@@ -120,8 +152,9 @@ function setProperty(this::IShaderManager, name::String, value::Any; program::Un
 
     if isa(value,AbstractArray)
       sz = size(value)
-      typ = eltype(value)
+      typ = nested_eltype(value)
       dims = length(sz) > 1 ? sz[2] : 1
+      value = flatten(value) #typ[value...]
       #dims = isa(value, AbstractArray{typ,1}) ? 1 : 2
     end
 
@@ -132,9 +165,9 @@ function setProperty(this::IShaderManager, name::String, value::Any; program::Un
       t = (l, value)
       elems = 0
     elseif dims == 1 && isa(val, AbstractFloat)
-      t = (l, 1, typ[value...])
+      t = (l, 1, value)
     elseif dims == 2 && isa(val, AbstractFloat)
-      t = (l, 1, false, typ[value...])
+      t = (l, 1, false, value)
     end
 
     list = GLLists.UNIFORMS
@@ -151,11 +184,29 @@ export setMode
 
 ################################################################################
 
+function getShaderTypeString(value::Any)
+  len=length(value)
+	isArray = isa(value,AbstractArray)
+  typ = isArray ? nested_eltype(value) : typeof(value)
+	base_typ = GLLists.BASE_TYPES[typ].name
+	type_str=base_typ #float
+	if isArray
+		if len>=2 && len <= 4
+			type_str = (base_typ[1] != 'f' ? base_typ[1] : "")*"vec"*string(len)
+			if isa(value[1],AbstractArray) type_str*="["*string(len)*"]" end #vec2[3]
+		else type_str*="["*string(len)*"]"  #float[3]
+		end
+	end
+	type_str
+end
+
 """
 load all content from shaders located in shaders folder in root dir
 """
-function loadShaders(global_vars=Dict{Symbol,Any}();dir=RessourceManager.getPath(:SHADERS)) #joinpath(@__DIR__,"../shaders/"))
+function loadShaders(shader_vars=Dict{Symbol,Any}();auto_inputs=false,dir=RessourceManager.getPath(:SHADERS)) #joinpath(@__DIR__,"../shaders/"))
   types=["VSH","FSH","GSH","CSH"]
+  uniforms = haskey(shader_vars, :UNIFORMS) ? shader_vars[:UNIFORMS] : Dict()
+  globals = haskey(shader_vars, :GLOBALS) ? shader_vars[:GLOBALS] : Dict()
 
   #shader_files = filter(x->isfile(dir*x) && uppercase(replace(splitext(x)[end],"."=>"")) == "GLSL",readdir(dir))
 
@@ -163,8 +214,8 @@ function loadShaders(global_vars=Dict{Symbol,Any}();dir=RessourceManager.getPath
 
   # replace vars and set types
   for (key,file) in list
+    shader=list[key]
     content=file[:content]
-    vars=[x[1] for x in collect(eachmatch(r"\$(\w+)",content))]
 
     keystr=string(key)
     typ = :NOTHING
@@ -175,17 +226,61 @@ function loadShaders(global_vars=Dict{Symbol,Any}();dir=RessourceManager.getPath
       end
     end
 
+    inputs = ""
+
+    if auto_inputs
+      if typ == :FSH
+        inputs *="layout(location = 0) out vec4 fragColor;\n"
+      else typ == :CSH
+        inputs *= "layout(local_size_x = \$iDispatchX, local_size_y = \$iDispatchY, local_size_z = \$iDispatchZ) in;\n"
+      end
+      if length(inputs)>0 inputs*="\n" end
+    end
+
+    if length(uniforms)>0
+      for (uname, shp) in uniforms
+        ulayout=""
+        if shp.layout != nothing
+          ulayout = "layout("
+          c=0
+          for (k,v) in shp.layout
+            c+=1
+            ulayout*=(c>1 ? ", " : "")*string(k)*(v == nothing ? "" : "="*string(v))
+          end
+          ulayout *= ") "
+        end
+
+        utype = ""
+        try
+          utype = shp.typ != nothing ? GLLists.LIST_TYPE_STRING[shp.typ] : getShaderTypeString(shp.value)
+        catch ex
+          warn("Shader Property $uname::$(typeof(shp.value)) is not valid!")
+          continue
+        end
+
+        uvalue = "" #!haskey(uform, :default) || uform.default == nothing ? "" : *" = "*string(uform.default)
+        inputs*=ulayout*"uniform "*utype*" "*string(uname)*uvalue*";\n"
+      end
+      inputs*="\n"
+    end
+
+    vars=(x->x[1]).(collect(eachmatch(r"\$(\w+)",inputs*content)))
+
     for var in vars
       entry = nothing
       svar=Symbol(var)
-      if haskey(global_vars, svar) entry=string(global_vars[svar])
+      if haskey(globals, svar) entry=string(globals[svar])
       elseif haskey(list, var) entry="\""*list[var][:content]*"\""
       end
-      if entry != nothing content=replace(content,"\$"*var=>entry) end
+      if entry != nothing
+        inputs=replace(inputs,"\$"*var=>entry)
+        content=replace(content,"\$"*var=>entry)
+      end
     end
 
-    list[key][:shader] = typ
-    list[key][:content] = content
+    shader[:type] = typ
+    shader[:inputs] = inputs
+    shader[:content] = content
   end
 
   # replace imports
@@ -217,7 +312,7 @@ function loadShaders(global_vars=Dict{Symbol,Any}();dir=RessourceManager.getPath
 
   # add glsl version
   for (key,file) in list
-    file[:content] = get_glsl_version_string()*file[:content]
+    file[:content] = get_glsl_version_string()*"\n"*file[:inputs]*file[:content]
   end
 
   list
