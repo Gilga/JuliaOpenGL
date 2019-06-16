@@ -3,8 +3,11 @@ module GLLists
 using ModernGL
 
 export GL_QUERY_BUFFER
+export GL_SHADER_BINARY_FORMAT_SPIR_V_ARB
+
 export DEFAULT_SHADER_VERSION
 export DEFAULT_SHADER_CODE
+
 export CLIP_DISTANCE
 export LIST_STATUS
 export LIST_BUFFER
@@ -19,7 +22,9 @@ export LIST_TYPE
 export LIST_TYPE_ELEMENTS
 export LIST_TYPE_STRING
 
-const GL_QUERY_BUFFER = 0x9192 # (was not defined)
+# missing constants
+const GL_QUERY_BUFFER = convert(GLenum, 0x9192)
+const GL_SHADER_BINARY_FORMAT_SPIR_V_ARB = convert(GLenum, 0x9551)
 
 """ TODO """
 const LIST_STATUS = Dict{Symbol,Dict{Symbol,Function}}(
@@ -392,6 +397,14 @@ const LIST_TYPE_STRING = Dict{GLuint,AbstractString}(
 	GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY => "usampler2D_Multisample_Array",
 	GL_UNSIGNED_INT_SAMPLER_BUFFER =>               "usampler_Buffer",
 	GL_UNSIGNED_INT_SAMPLER_2D_RECT =>              "usampler2D_Rect",
+)
+
+const BASE_TYPES = Dict{DataType, NamedTuple{(:id, :name),Tuple{GLenum,String}}}(
+	Float32 => (id=GL_FLOAT, name="float"),
+	Float64 => (id=GL_DOUBLE, name="double"),
+	Int32 => (id=GL_INT, name="int"),
+	UInt32 => (id=GL_UNSIGNED_INT, name="uint"),
+	Bool => (id=GL_BOOL, name="bool"),
 )
 
 const UNIFORMS = Dict{Integer,Dict{Integer,Dict{DataType,Function}}}(

@@ -41,11 +41,18 @@ end
 
 getRefIDs() = [this.refID for (_,this) in LIST]
 
+function bindTexture(id::Symbol, active::Union{Nothing,Integer}=nothing)
+  if active != nothing glActiveTexture(GL_TEXTURE0 + UInt32(active)) end
+  glBindTexture(GL_TEXTURE_2D, get(id).refID)
+end
+
+export bindTexture
+
 """
 uploads a texture by given file path
 """
-function uploadTextureGray(path)
-  this = load(Symbol(path*" (gray)"))
+function createTextureGray(id::Symbol, path::String)
+  this = load(id)
   if !this.created return this.refID end
 
   img = Images.load(path)
@@ -72,13 +79,15 @@ function uploadTextureGray(path)
   this.refID
 end
 
-export uploadTextureGray
+createTextureGray(path::String) = createTextureGray(Symbol(path*" (gray)"), path)
+
+export createTextureGray
 
 """
 uploads a texture by given file path
 """
-function uploadTexture(path)
-  this = load(Symbol(path))
+function createTexture(id::Symbol, path::String)
+  this = load(id)
   if !this.created return this.refID end
 
   img = Images.load(path)
@@ -99,6 +108,7 @@ function uploadTexture(path)
   GL_TEXTURE_MAX_ANISOTROPY = 0x84FE
   glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, largest_supported_anisotropy)
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, largest_supported_anisotropy[])
+  #glGenerateMipmap(GL_TEXTURE_2D)
   glBindTexture(GL_TEXTURE_2D, 0)
   glCheckError("texture")
 
@@ -108,7 +118,12 @@ end
 """
 uploads a texture by given file path
 """
-function uploadTexture(id::Symbol, sz::Tuple{Integer,Integer})
+createTexture(path::String) = createTexture(Symbol(path), path)
+
+"""
+TODO
+"""
+function createTexture(id::Symbol, sz::Tuple{Integer,Integer})
   this = load(id) #Symbol(id, string(sz[1])*"x"*string(sz[2]))
   if !this.created return this.refID end
 
@@ -135,7 +150,7 @@ end
 """
 TODO
 """
-function createTexture(id::Symbol, sz::Tuple{Integer,Integer};level=1)
+function createTextureStorage(id::Symbol, sz::Tuple{Integer,Integer}; level=1)
   this = load(id) #Symbol(string(sz[1])*"x"*string(sz[2])*"x"*string(level))
   if !this.created return this.refID end
 
@@ -184,6 +199,7 @@ end
 export createTextureMultiSample
 
 export createTexture
+export createTextureStorage
 export uploadTexture
 
 end #TextureManager

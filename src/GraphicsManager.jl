@@ -12,8 +12,6 @@ using WindowManager
 
 ###############################################################################
 
-push!(LOAD_PATH,joinpath(@__DIR__,"GL")) # add path
-
 using GLLists
 using GLDebug
 using GLExtensions
@@ -176,7 +174,11 @@ TODO
 """
 function createShader(name::Symbol, infos::Dict{Symbol,Any})
   pname = stringColor(name;color=:yellow)
-  key = Symbol(infos[:path]); file = infos[:file]; typ = infos[:shader]; source = infos[:content]; err=false
+  key = Symbol(infos[:path])
+  file = infos[:file]
+  typ = infos[:type]
+  source = infos[:content]
+  err=false
   source = string(strip(replace(source,"\r"=>"")))
 
   typname="?"
@@ -209,6 +211,16 @@ function createShader(name::Symbol, infos::Dict{Symbol,Any})
 
   open(tmpfile, "w") do f write(f,source) end
   result=compileShader(shader, source)
+
+  #binaryLength=GLint[0]
+  #glGetShaderiv(shader, GL_SHADER_SOURCE_LENGTH, binaryLength)
+  #num_formats = GLint[0]
+  #glGetIntegerv(GL_NUM_SHADER_BINARY_FORMATS,num_formats)
+  #formats=zeros(GLint,num_formats[])
+  #glGetIntegerv(GL_SHADER_BINARY_FORMATS,formats)
+  #binary = zeros(GLbyte,binaryLength)
+  #glShaderBinary(1, [shader], GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, binary, binaryLength[])
+
   if !result
     LogManager.warn("[$pname] $typname ($file) compile error: ", getInfoLog(shader))
 
@@ -271,6 +283,14 @@ function createShaderProgram(shaders::AbstractArray; transformfeedback=false, na
     LogManager.error("No valid shaders for shader program $pname found.")
   else
 
+    #binaryLength=GLint[0]
+    #binaryFormat=GLint[0]
+    #binary=zeros(GLbyte,binaryLength)
+    #glGetProgramiv(prog, GL_PROGRAM_BINARY_LENGTH, binaryLength)
+    #glGetProgramBinary(prog, binaryLength[], C_NULL, binaryFormat, binary)
+    #glProgramBinary( prog, binaryFormat, binary, binaryLength ) # upload
+    #success = GLint[0]; glGetProgramiv( prog, GL_LINK_STATUS, success )
+
     if transformfeedback
       #Ptr{Ptr{GLchar}}
       r = [
@@ -291,11 +311,11 @@ function createShaderProgram(shaders::AbstractArray; transformfeedback=false, na
     if status[] == GL_FALSE
       msg = getInfoLog(prog)
       glDeleteProgram(prog)
-      LogManager.error("Shader Program $pname: ($prog) Error Linking: $msg")
+      LogManager.error("Shader Program($prog) $pname: Error Linking: $msg")
       prog=-1
     end
 
-    LogManager.debug("Shader Program $pname: ($prog) is initalized.")
+    LogManager.debug("Shader Program($prog) $pname: Initalized.")
   end
 
   prog

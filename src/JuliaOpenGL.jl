@@ -30,6 +30,7 @@ if USE_PROCESSES addprocs(1) end
 
 @everywhere println("=== Process started ===")
 @everywhere push!(LOAD_PATH, @__DIR__)
+@everywhere push!(LOAD_PATH,joinpath(@__DIR__,"GL")) # add path
 if USE_PROCESSES
   #@everywhere include(joinpath(@__DIR__,"process.jl"))
   using Main.Process
